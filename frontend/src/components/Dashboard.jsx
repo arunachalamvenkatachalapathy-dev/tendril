@@ -1,16 +1,18 @@
 import { useEffect, useState } from 'react';
-import { getDashboardInsights } from '../api.js';
+import { getDashboardInsights, seedDemoData } from '../api.js';
 import { loadWithCache } from '../lib/localCache.js';
 import ClockChart from './ClockChart.jsx';
 import HeatmapCalendar from './HeatmapCalendar.jsx';
 import RecommendationCard from './RecommendationCard.jsx';
 
-export default function Dashboard({ uid, onBack }) {
+export default function Dashboard({ uid, onBack, onSeedRefresh }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [rangeDays, setRangeDays] = useState(30);
+  const [seeding, setSeeding] = useState(false);
+  const [inspectedDay, setInspectedDay] = useState(null); // { date, dominant, count }
 
-  useEffect(() => {
+  function fetchInsights() {
     setLoading(true);
     loadWithCache(uid, `dashboard-${rangeDays}`, () => getDashboardInsights(rangeDays), {
       onCacheHit: (cached) => {
@@ -22,7 +24,25 @@ export default function Dashboard({ uid, onBack }) {
         setLoading(false);
       },
     });
+  }
+
+  useEffect(() => {
+    fetchInsights();
   }, [uid, rangeDays]);
+
+  async function handleSeedDemoOnDemand() {
+    if (!window.confirm('Seed a 14-day sample cognitive journey to demonstrate Diurnal Telemetry and Sentiment Matrix?')) return;
+    setSeeding(true);
+    try {
+      await seedDemoData();
+      onSeedRefresh?.();
+      fetchInsights();
+    } catch (err) {
+      alert('Seeding error: ' + err.message);
+    } finally {
+      setSeeding(false);
+    }
+  }
 
   return (
     <div className="dashboard-container">
@@ -51,7 +71,17 @@ export default function Dashboard({ uid, onBack }) {
               </h1>
             </div>
 
-            <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+            <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+              <button
+                className="btn-tendril-secondary"
+                onClick={handleSeedDemoOnDemand}
+                disabled={seeding}
+                style={{ color: '#38bdf8', borderColor: 'rgba(56, 189, 248, 0.4)', fontSize: '12px' }}
+                title="Only loaded on explicit demand"
+              >
+                {seeding ? '⚡ Seeding Journey…' : '⚡ Demo Mode (Seed Journey)'}
+              </button>
+
               <select
                 value={rangeDays}
                 onChange={(e) => setRangeDays(Number(e.target.value))}
@@ -70,6 +100,7 @@ export default function Dashboard({ uid, onBack }) {
                 <option value={30}>Last 30 days</option>
                 <option value={90}>Last 90 days</option>
               </select>
+
               <button className="btn-tendril-secondary" onClick={onBack}>
                 ← Return to Journal
               </button>
@@ -108,10 +139,21 @@ export default function Dashboard({ uid, onBack }) {
           {data.entryCount === 0 ? (
             <div className="bezel-outer">
               <div className="bezel-inner" style={{ padding: '48px 24px', textAlign: 'center' }}>
-                <div style={{ fontSize: '28px', marginBottom: '8px' }}>📊</div>
-                <p style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>
-                  No entries in this time range yet. Capture thoughts via voice or text to illuminate your diurnal rhythm.
+                <div style={{ fontSize: '32px', marginBottom: '12px' }}>📊</div>
+                <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', color: '#fff', marginBottom: '8px' }}>
+                  No entries in this time range yet
+                </h3>
+                <p style={{ color: 'var(--text-secondary)', fontSize: '13.5px', maxWidth: '440px', margin: '0 auto 20px', lineHeight: '1.5' }}>
+                  Start writing or speaking in the journal to build your diurnal rhythm, or launch Demo Mode to preview telemetry immediately.
                 </p>
+                <button
+                  className="btn-tendril-primary"
+                  onClick={handleSeedDemoOnDemand}
+                  disabled={seeding}
+                  style={{ margin: '0 auto', fontSize: '13px' }}
+                >
+                  <span>{seeding ? 'Seeding Demo Journey…' : '⚡ Load Sample Journey (Demo Mode)'}</span>
+                </button>
               </div>
             </div>
           ) : (
@@ -130,11 +172,48 @@ export default function Dashboard({ uid, onBack }) {
 
                 <div className="bezel-outer">
                   <div className="bezel-inner" style={{ padding: '24px 28px' }}>
-                    <div className="panel-title" style={{ marginBottom: '18px' }}>
-                      <span>📅</span>
-                      <span>30-Day Sentiment Matrix</span>
+                    <div className="panel-title" style={{ marginBottom: '18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span>📅</span>
+                        <span>30-Day Sentiment Matrix</span>
+                      </div>
+                      <span style={{ fontSize: '11px', color: 'var(--text-dim)' }}>Click cell to inspect</span>
                     </div>
-                    <HeatmapCalendar heatmap={data.heatmap} rangeDays={data.rangeDays} />
+                    <HeatmapCalendar
+                      heatmap={data.heatmap}
+                      rangeDays={data.rangeDays}
+                      selectedDate={inspectedDay?.date}
+                      onSelectDate={(date, entry) => setInspectedDay({ date, ...entry })}
+                    />
+
+                    {/* Drill-down date drawer */}
+                    {inspectedDay && (
+                      <div style={{
+                        marginTop: '18px',
+                        padding: '14px 18px',
+                        background: 'rgba(255, 255, 255, 0.04)',
+                        borderRadius: '12px',
+                        border: '1px solid rgba(56, 189, 248, 0.3)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between'
+                      }}>
+                        <div>
+                          <div style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', color: '#38bdf8' }}>
+                            INSPECTED DATE: {inspectedDay.date}
+                          </div>
+                          <div style={{ fontSize: '13.5px', color: '#fff', marginTop: '2px' }}>
+                            Dominant mood: <strong>{inspectedDay.dominant}</strong> ({inspectedDay.count || 1} session{inspectedDay.count > 1 ? 's' : ''})
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => setInspectedDay(null)}
+                          style={{ background: 'transparent', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', fontSize: '16px' }}
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

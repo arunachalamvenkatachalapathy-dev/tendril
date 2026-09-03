@@ -30,10 +30,10 @@ async function authedFetch(path, options = {}) {
   return res.json();
 }
 
-export function sendChatMessage(message, history) {
+export function sendChatMessage(message, history, image = null) {
   return authedFetch('/api/chat', {
     method: 'POST',
-    body: JSON.stringify({ message, history }),
+    body: JSON.stringify({ message, history, image }),
   });
 }
 
@@ -41,6 +41,18 @@ export function saveEntry(messages) {
   return authedFetch('/api/entries', {
     method: 'POST',
     body: JSON.stringify({ messages }),
+  });
+}
+
+export function seedDemoData() {
+  return authedFetch('/api/demo/seed', {
+    method: 'POST',
+  });
+}
+
+export function wipeAllMemory() {
+  return authedFetch('/api/memory', {
+    method: 'DELETE',
   });
 }
 

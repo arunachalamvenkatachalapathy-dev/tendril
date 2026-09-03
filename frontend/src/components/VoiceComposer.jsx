@@ -3,7 +3,7 @@ import { useVoiceSession } from '../voice/useVoiceSession.js';
 import { saveEntry } from '../api.js';
 
 export default function VoiceComposer({ onSaved, onSwitchToText, onSurfacedIdeas }) {
-  const { status, liveTranscript, ideas, error, start, stop, sendText } = useVoiceSession();
+  const { status, activeEngine, audioLevel, liveTranscript, ideas, error, start, stop, sendText } = useVoiceSession();
   const [textDraft, setTextDraft] = useState('');
   const [saving, setSaving] = useState(false);
   const scrollRef = useRef(null);
@@ -46,7 +46,7 @@ export default function VoiceComposer({ onSaved, onSwitchToText, onSurfacedIdeas
     setTextDraft('');
   }
 
-  const isListening = status === 'listening' || status === 'connected';
+  const isListening = status === 'listening' || status === 'speaking';
 
   return (
     <div className="bezel-outer composer-canvas">
@@ -54,7 +54,7 @@ export default function VoiceComposer({ onSaved, onSwitchToText, onSurfacedIdeas
         
         {/* Voice Toolbar */}
         <div className="composer-toolbar">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
             <span style={{
               width: '8px',
               height: '8px',
@@ -63,7 +63,7 @@ export default function VoiceComposer({ onSaved, onSwitchToText, onSurfacedIdeas
               boxShadow: isListening ? '0 0 10px #10b981' : 'none'
             }} />
             <span style={{ fontFamily: 'var(--font-display)', fontWeight: '700', fontSize: '14px', color: '#fff' }}>
-              Gemini Live Audio
+              {activeEngine === 'live' ? 'Gemini Live Audio' : 'Ambient Voice Companion'}
             </span>
             <span style={{
               fontSize: '11px',
@@ -73,7 +73,7 @@ export default function VoiceComposer({ onSaved, onSwitchToText, onSurfacedIdeas
               padding: '2px 8px',
               borderRadius: '9999px'
             }}>
-              {status}
+              {status === 'speaking' ? 'Tendril speaking…' : isListening ? 'Listening…' : status}
             </span>
           </div>
 
@@ -101,12 +101,21 @@ export default function VoiceComposer({ onSaved, onSwitchToText, onSurfacedIdeas
         {error && (
           <div style={{
             padding: '10px 18px',
-            background: 'rgba(244, 63, 94, 0.1)',
-            borderBottom: '1px solid rgba(244, 63, 94, 0.25)',
-            color: '#fda4af',
-            fontSize: '12.5px'
+            background: 'rgba(245, 158, 11, 0.1)',
+            borderBottom: '1px solid rgba(245, 158, 11, 0.25)',
+            color: '#fbbf24',
+            fontSize: '12.5px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between'
           }}>
-            {error}
+            <span>🎙️ {error}</span>
+            <button
+              onClick={start}
+              style={{ background: 'transparent', border: '1px solid rgba(245, 158, 11, 0.4)', color: '#fbbf24', borderRadius: '4px', padding: '2px 8px', cursor: 'pointer', fontSize: '11px' }}
+            >
+              Retry Mic
+            </button>
           </div>
         )}
 
@@ -121,11 +130,12 @@ export default function VoiceComposer({ onSaved, onSwitchToText, onSurfacedIdeas
           justifyContent: 'center'
         }}>
           <div className="voice-orb-container" style={{ width: '80px', height: '80px', marginBottom: '14px' }}>
-            <div className="voice-orb-glow" />
+            <div className="voice-orb-glow" style={{ transform: `scale(${1 + (audioLevel / 100) * 0.6})` }} />
             <div
               className={`voice-orb-button ${isListening ? 'active' : ''}`}
               style={{ width: '64px', height: '64px' }}
               onClick={isListening ? stop : start}
+              title={isListening ? 'Click to pause' : 'Click to start voice companion'}
             >
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
@@ -136,22 +146,36 @@ export default function VoiceComposer({ onSaved, onSwitchToText, onSurfacedIdeas
             </div>
           </div>
 
+          {/* Dynamic Frequency Bars based on actual audioLevel */}
           <div className="audio-frequency-bars" style={{ height: '24px', marginBottom: '8px' }}>
-            {[1, 2, 3, 4, 5, 6, 7].map(i => (
-              <span key={i} className="frequency-bar" />
-            ))}
+            {[1, 2, 3, 4, 5, 6, 7].map(i => {
+              const height = isListening
+                ? Math.max(6, Math.round((audioLevel / 100) * 22 * (1 + ((i * 3) % 4) * 0.25)))
+                : 4;
+              return (
+                <span
+                  key={i}
+                  className="frequency-bar"
+                  style={{
+                    height: `${height}px`,
+                    background: isListening ? '#10b981' : 'rgba(255, 255, 255, 0.2)',
+                    transition: 'height 0.08s ease'
+                  }}
+                />
+              );
+            })}
           </div>
 
           <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-            {isListening ? 'Ambient microphone connected • Speak naturally' : 'Microphone paused • Click orb to reconnect'}
+            {isListening ? 'Ambient microphone connected • Speak naturally or click orb to pause' : 'Microphone paused • Click orb to activate'}
           </div>
         </div>
 
         {/* Live Transcript Stream */}
         <div className="transcript-stream" ref={scrollRef}>
           {liveTranscript.length === 0 && (
-            <div style={{ margin: 'auto', textAlign: 'center', color: 'var(--text-dim)', fontSize: '13px', maxWidth: '360px' }}>
-              Your spoken thoughts and Gemini's voice replies will stream here in real time.
+            <div style={{ margin: 'auto', textAlign: 'center', color: 'var(--text-dim)', fontSize: '13px', maxWidth: '380px' }}>
+              Your spoken thoughts and Tendril's voice replies will stream here in real time without stopping.
             </div>
           )}
 

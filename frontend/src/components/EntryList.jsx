@@ -12,7 +12,7 @@ const MOOD_COLOR = {
   anxious: '#ec4899',
 };
 
-export default function EntryList({ entries, loading, onNewEntry, onOpenEntry, selectedId }) {
+export default function EntryList({ entries, loading, onNewEntry, onOpenEntry, selectedId, onSeedDemo, seeding }) {
   return (
     <div className="bezel-outer sidebar-panel">
       <div className="bezel-inner" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -52,6 +52,16 @@ export default function EntryList({ entries, loading, onNewEntry, onOpenEntry, s
               <p style={{ color: 'var(--text-secondary)', fontSize: '13px', lineHeight: '1.5' }}>
                 Your neural journal is empty. Start a conversation in voice or text to capture your first thoughts.
               </p>
+              {onSeedDemo && (
+                <button
+                  className="btn-tendril-secondary"
+                  onClick={onSeedDemo}
+                  disabled={seeding}
+                  style={{ marginTop: '16px', fontSize: '12px', color: '#38bdf8', borderColor: 'rgba(56, 189, 248, 0.4)' }}
+                >
+                  {seeding ? '⚡ Seeding Journey…' : '⚡ Load Sample Journey (Demo Mode)'}
+                </button>
+              )}
             </div>
           )}
 

@@ -21,9 +21,13 @@ const allowedOrigins = (process.env.ALLOWED_ORIGINS || '')
 app.use(
   cors({
     origin(origin, callback) {
-      // Allow same-origin/non-browser tools (no Origin header) and any
-      // explicitly configured frontend origin.
-      if (!origin || allowedOrigins.includes(origin)) {
+      if (
+        !origin ||
+        allowedOrigins.includes(origin) ||
+        origin.endsWith('.web.app') ||
+        origin.endsWith('.firebaseapp.com') ||
+        origin.includes('localhost')
+      ) {
         return callback(null, true);
       }
       callback(new Error('Not allowed by CORS'));

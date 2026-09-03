@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { watchAuthState, signOut } from './firebase.js';
-import { listEntries, getEntry } from './api.js';
+import { listEntries, getEntry, seedDemoData } from './api.js';
 import Login from './components/Login.jsx';
 import EntryList from './components/EntryList.jsx';
 import EntryComposer from './components/EntryComposer.jsx';
@@ -34,6 +34,7 @@ export default function App() {
   const [composerMode, setComposerMode] = useState('text'); // 'text' | 'voice'
   const [surfacedIdeas, setSurfacedIdeas] = useState([]);
   const [showMemoryModal, setShowMemoryModal] = useState(false);
+  const [seedingDemo, setSeedingDemo] = useState(false);
   const [path, navigate] = usePath();
 
   useEffect(() => watchAuthState(setUser), []);
@@ -73,6 +74,20 @@ export default function App() {
   function handleSaved() {
     refreshEntries();
     handleNewEntry();
+  }
+
+  async function handleSeedDemo() {
+    if (!window.confirm('Load a 14-day sample cognitive journey to demonstrate Diurnal Telemetry, Sentiment Heatmap, and Layered Memory?')) return;
+    setSeedingDemo(true);
+    try {
+      await seedDemoData();
+      await refreshEntries();
+      navigate('/dashboard');
+    } catch (err) {
+      alert('Failed to seed demo data: ' + err.message);
+    } finally {
+      setSeedingDemo(false);
+    }
   }
 
   if (user === undefined) {
@@ -132,6 +147,15 @@ export default function App() {
           >
             <span>🧠 Memory Layers</span>
           </button>
+          <button
+            className="nav-tab-btn"
+            onClick={handleSeedDemo}
+            disabled={seedingDemo}
+            style={{ color: '#38bdf8', border: '1px dashed rgba(56, 189, 248, 0.4)' }}
+            title="Load 14-day sample journal journey for Hack2Skill evaluation"
+          >
+            <span>{seedingDemo ? '⚡ Seeding…' : '⚡ Demo Mode'}</span>
+          </button>
         </nav>
 
         {/* User Identity Chip */}
@@ -147,7 +171,7 @@ export default function App() {
 
       {/* Main Workspace */}
       {path === '/dashboard' ? (
-        <Dashboard uid={user.uid} onBack={() => navigate('/')} />
+        <Dashboard uid={user.uid} onBack={() => navigate('/')} onSeedRefresh={refreshEntries} />
       ) : (
         <div className="workspace-grid">
           {/* Column 1: Journal Stream List */}
@@ -156,6 +180,8 @@ export default function App() {
             loading={entriesLoading}
             onNewEntry={handleNewEntry}
             onOpenEntry={handleOpenEntry}
+            onSeedDemo={handleSeedDemo}
+            seeding={seedingDemo}
             selectedId={view.mode === 'detail' ? view.entry?.id : null}
           />
 

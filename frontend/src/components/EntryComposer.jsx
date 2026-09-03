@@ -2,32 +2,59 @@ import { useEffect, useRef, useState } from 'react';
 import { sendChatMessage, saveEntry } from '../api.js';
 
 export default function EntryComposer({ onSaved, onExtractIdeas }) {
-  const [messages, setMessages] = useState([]); // { role: 'user'|'assistant', text }
+  const [messages, setMessages] = useState([]); // { role: 'user'|'assistant', text, image }
   const [draft, setDraft] = useState('');
+  const [attachedImage, setAttachedImage] = useState(null); // { mimeType, data, previewUrl }
   const [sending, setSending] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
   const scrollRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
   }, [messages, sending]);
 
+  function handleImagePick(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const fullBase64 = event.target.result;
+      const [header, base64Data] = fullBase64.split(',');
+      const mimeType = header.match(/:(.*?);/)?.[1] || 'image/jpeg';
+      setAttachedImage({
+        mimeType,
+        data: base64Data,
+        previewUrl: fullBase64,
+      });
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  }
+
   async function handleSend(e) {
     e?.preventDefault?.();
     const text = draft.trim();
-    if (!text || sending) return;
+    if ((!text && !attachedImage) || sending) return;
 
     setError(null);
-    const nextMessages = [...messages, { role: 'user', text }];
+    const userMsg = {
+      role: 'user',
+      text: text || (attachedImage ? 'Visual snapshot attached.' : ''),
+      image: attachedImage?.previewUrl || null,
+    };
+    const nextMessages = [...messages, userMsg];
     setMessages(nextMessages);
     setDraft('');
+    const imageToSend = attachedImage ? { mimeType: attachedImage.mimeType, data: attachedImage.data } : null;
+    setAttachedImage(null);
     setSending(true);
 
     try {
-      const { reply } = await sendChatMessage(text, messages);
+      const { reply } = await sendChatMessage(text || 'Reflect on this sketch/image.', messages, imageToSend);
       setMessages([...nextMessages, { role: 'assistant', text: reply }]);
-      // extract ideas in background
       if (onExtractIdeas) {
         onExtractIdeas([...nextMessages, { role: 'assistant', text: reply }]);
       }
@@ -141,7 +168,7 @@ export default function EntryComposer({ onSaved, onExtractIdeas }) {
                 Cultivate your stream of thought
               </h3>
               <p style={{ color: 'var(--text-secondary)', fontSize: '13.5px', lineHeight: '1.5', marginBottom: '24px' }}>
-                Unpack ideas, talk through strategic decisions, or reflect. Tendril remembers recent context
+                Unpack ideas, talk through strategic decisions, or attach sketches. Tendril remembers recent context
                 and distills action points in real time.
               </p>
 
@@ -180,6 +207,15 @@ export default function EntryComposer({ onSaved, onExtractIdeas }) {
                 <span>{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
               </div>
               <div className={`message-bubble ${m.role === 'user' ? 'user' : 'model'}`}>
+                {m.image && (
+                  <div style={{ marginBottom: '10px' }}>
+                    <img
+                      src={m.image}
+                      alt="Journal Attachment"
+                      style={{ maxWidth: '240px', maxHeight: '180px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)' }}
+                    />
+                  </div>
+                )}
                 {m.text}
               </div>
             </div>
@@ -200,21 +236,77 @@ export default function EntryComposer({ onSaved, onExtractIdeas }) {
           )}
         </div>
 
+        {/* Attached image preview banner */}
+        {attachedImage && (
+          <div style={{
+            padding: '8px 16px',
+            background: 'rgba(255, 255, 255, 0.04)',
+            borderTop: '1px solid var(--border-subtle)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px'
+          }}>
+            <img
+              src={attachedImage.previewUrl}
+              alt="Preview"
+              style={{ width: '36px', height: '36px', objectFit: 'cover', borderRadius: '6px', border: '1px solid rgba(16, 185, 129, 0.4)' }}
+            />
+            <span style={{ fontSize: '12px', color: 'var(--text-secondary)', flex: 1 }}>
+              Visual attachment ready for Gemini Vision
+            </span>
+            <button
+              onClick={() => setAttachedImage(null)}
+              style={{ background: 'transparent', border: 'none', color: '#fb7185', cursor: 'pointer', fontSize: '14px' }}
+            >
+              ✕
+            </button>
+          </div>
+        )}
+
         {/* Input Bar */}
-        <form className="chat-input-bar" onSubmit={handleSend}>
+        <form className="chat-input-bar" onSubmit={handleSend} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleImagePick}
+            accept="image/*"
+            style={{ display: 'none' }}
+          />
+
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            title="Attach a sketch, photo, or handwritten note (Gemini Vision)"
+            style={{
+              background: attachedImage ? 'rgba(16, 185, 129, 0.2)' : 'rgba(255, 255, 255, 0.04)',
+              border: '1px solid var(--border-subtle)',
+              borderRadius: '50%',
+              width: '40px',
+              height: '40px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              color: attachedImage ? '#10b981' : 'var(--text-secondary)'
+            }}
+          >
+            📎
+          </button>
+
           <textarea
             className="chat-input-field"
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Explore an idea… (Press Enter to send, Shift+Enter for newline)"
+            placeholder="Explore an idea or ask about an attached sketch… (Press Enter to send)"
             rows={1}
-            style={{ resize: 'none', minHeight: '44px', maxHeight: '120px' }}
+            style={{ resize: 'none', minHeight: '44px', maxHeight: '120px', flex: 1 }}
           />
+
           <button
             type="submit"
             className="btn-tendril-primary"
-            disabled={!draft.trim() || sending}
+            disabled={(!draft.trim() && !attachedImage) || sending}
             style={{ padding: '10px 14px', borderRadius: '50%', minWidth: '44px', minHeight: '44px' }}
           >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>

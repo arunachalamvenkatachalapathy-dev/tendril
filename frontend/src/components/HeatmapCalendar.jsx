@@ -1,10 +1,14 @@
 const COLOR = {
-  worry: '#b5533c',
-  happy: '#6b8f71',
-  neutral: '#3a3f52',
+  happy: '#10b981',
+  excited: '#06b6d4',
+  hopeful: '#34d399',
+  worry: '#f43f5e',
+  anxious: '#ec4899',
+  stressed: '#f59e0b',
+  neutral: '#475569',
 };
 
-export default function HeatmapCalendar({ heatmap, rangeDays }) {
+export default function HeatmapCalendar({ heatmap = [], rangeDays = 30, onSelectDate, selectedDate }) {
   const byDate = Object.fromEntries(heatmap.map((d) => [d.date, d]));
 
   const days = [];
@@ -17,24 +21,44 @@ export default function HeatmapCalendar({ heatmap, rangeDays }) {
 
   return (
     <div className="heatmap">
-      <div className="heatmap-grid">
+      <div className="heatmap-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(22px, 1fr))', gap: '6px' }}>
         {days.map((date) => {
           const entry = byDate[date];
-          const color = entry ? COLOR[entry.dominant] : 'rgba(247,243,232,0.06)';
+          const isSelected = selectedDate === date;
+          const color = entry ? (COLOR[entry.dominant] || '#10b981') : 'rgba(255, 255, 255, 0.05)';
+
           return (
-            <div key={date} className="heatmap-cell" style={{ background: color }} title={date + (entry ? ` — ${entry.dominant}` : '')} />
+            <div
+              key={date}
+              className="heatmap-cell"
+              onClick={() => entry && onSelectDate?.(date, entry)}
+              style={{
+                background: color,
+                width: '100%',
+                aspectRatio: '1/1',
+                borderRadius: '5px',
+                cursor: entry ? 'pointer' : 'default',
+                outline: isSelected ? '2px solid #38bdf8' : 'none',
+                boxShadow: entry ? `0 0 8px ${color}33` : 'none',
+                transition: 'transform 0.15s ease',
+              }}
+              onMouseEnter={(e) => { if (entry) e.currentTarget.style.transform = 'scale(1.2)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
+              title={date + (entry ? ` — Dominant: ${entry.dominant} (Click to inspect)` : ' — No entries')}
+            />
           );
         })}
       </div>
-      <div className="clock-legend">
-        <span>
-          <i className="mood-dot" style={{ background: COLOR.worry }} /> worry day
+
+      <div className="clock-legend" style={{ display: 'flex', gap: '16px', marginTop: '16px', fontSize: '12px', color: 'var(--text-secondary)' }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <i className="mood-dot" style={{ background: COLOR.happy, width: '8px', height: '8px', borderRadius: '50%', display: 'inline-block' }} /> Happy / Energized
         </span>
-        <span>
-          <i className="mood-dot" style={{ background: COLOR.happy }} /> happy day
+        <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <i className="mood-dot" style={{ background: COLOR.worry, width: '8px', height: '8px', borderRadius: '50%', display: 'inline-block' }} /> Friction / Stress
         </span>
-        <span>
-          <i className="mood-dot" style={{ background: 'rgba(247,243,232,0.2)' }} /> no entry
+        <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <i className="mood-dot" style={{ background: 'rgba(255, 255, 255, 0.1)', width: '8px', height: '8px', borderRadius: '50%', display: 'inline-block' }} /> Inactive Day
         </span>
       </div>
     </div>
