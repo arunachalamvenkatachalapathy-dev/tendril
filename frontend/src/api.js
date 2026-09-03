@@ -7,7 +7,7 @@
 
 import { getIdToken } from './firebase.js';
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL;
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://tendril-api-j22ux7ph4a-el.a.run.app';
 
 async function authedFetch(path, options = {}) {
   const token = await getIdToken();
