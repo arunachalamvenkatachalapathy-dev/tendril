@@ -12,16 +12,34 @@ import IdeaStream from './components/IdeaStream.jsx';
 import MemoryProfileModal from './components/MemoryProfileModal.jsx';
 
 function usePath() {
-  const [path, setPath] = useState(window.location.pathname);
+  const getSubPath = () => {
+    if (window.location.hash) {
+      return window.location.hash.replace(/^#/, '') || '/';
+    }
+    const full = window.location.pathname;
+    const stripped = full.replace(/^\/tendril\/?/, '/');
+    return stripped || '/';
+  };
+
+  const [path, setPath] = useState(getSubPath());
+
   useEffect(() => {
-    const onPop = () => setPath(window.location.pathname);
+    const onPop = () => setPath(getSubPath());
     window.addEventListener('popstate', onPop);
-    return () => window.removeEventListener('popstate', onPop);
+    window.addEventListener('hashchange', onPop);
+    return () => {
+      window.removeEventListener('popstate', onPop);
+      window.removeEventListener('hashchange', onPop);
+    };
   }, []);
+
   const navigate = useCallback((to) => {
-    window.history.pushState({}, '', to);
+    const isGhPages = window.location.pathname.startsWith('/tendril');
+    const target = isGhPages ? `/tendril${to === '/' ? '' : to}` : to;
+    window.history.pushState({}, '', target);
     setPath(to);
   }, []);
+
   return [path, navigate];
 }
 
