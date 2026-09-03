@@ -26,6 +26,7 @@ app.use(
         allowedOrigins.includes(origin) ||
         origin.endsWith('.web.app') ||
         origin.endsWith('.firebaseapp.com') ||
+        origin.endsWith('.github.io') ||
         origin.includes('localhost')
       ) {
         return callback(null, true);
