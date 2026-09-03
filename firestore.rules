@@ -1,0 +1,26 @@
+rules_version = '2';
+
+// Article 4 (Data Isolation) of AI_STUDIO_CONSTITUTION.md:
+// This is the LAST LINE OF DEFENSE — it must independently guarantee
+// zero cross-user leakage even if the backend has a bug. Default-deny
+// everything; explicitly allow only a user's own subtree.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    match /users/{uid} {
+      // No direct reads/writes to the user root document itself in this
+      // app (we don't store anything there yet) — deny by omission.
+
+      match /entries/{entryId} {
+        allow read, write: if request.auth != null
+                            && request.auth.uid == uid;
+      }
+    }
+
+    // Default-deny: anything not explicitly matched above is inaccessible.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
