@@ -37,6 +37,13 @@ export function sendChatMessage(message, history, image = null) {
   });
 }
 
+export function extractIdeas(text) {
+  return authedFetch('/api/ideas/extract', {
+    method: 'POST',
+    body: JSON.stringify({ text }),
+  });
+}
+
 export function saveEntry(messages) {
   return authedFetch('/api/entries', {
     method: 'POST',

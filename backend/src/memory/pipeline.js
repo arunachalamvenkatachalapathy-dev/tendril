@@ -73,23 +73,38 @@ export async function loadMemoryContext(uid) {
   ]);
 
   const now = nowSnap.exists ? nowSnap.data() : { items: [] };
-  const recent = recentSnap.exists ? recentSnap.data().summary || '' : '';
-  const archive = archiveSnap.exists ? archiveSnap.data().summary || '' : '';
+  const recentData = recentSnap.exists ? recentSnap.data() : null;
+  const archiveData = archiveSnap.exists ? archiveSnap.data() : null;
 
-  const todaysIdeas = (now.items || []).flatMap((i) => i.ideas || []);
+  const todaysIdeas = now.bullets || (now.items || []).flatMap((i) => i.ideas || []);
 
-  return { todaysIdeas, recent, archive };
+  return {
+    todaysIdeas,
+    now: {
+      bullets: todaysIdeas
+    },
+    recent: {
+      summary: recentData?.summary || '',
+      topics: recentData?.topics || []
+    },
+    archive: {
+      summary: archiveData?.summary || '',
+      values: archiveData?.values || []
+    }
+  };
 }
 
 export function buildSystemPreamble({ recent, archive }) {
-  if (!recent && !archive) return '';
+  const recentText = typeof recent === 'string' ? recent : (recent?.summary || '');
+  const archiveText = typeof archive === 'string' ? archive : (archive?.summary || '');
+  if (!recentText && !archiveText) return '';
   return `Context from the user's own past journal entries, for
 continuity only — never quote it back verbatim unless the user brings it
 up, and never treat it as more certain than what the user says right now.
 
-RECENT (last ~7 days): ${recent || '(none yet)'}
+RECENT (last ~7 days): ${recentText || '(none yet)'}
 
-LONGER-TERM: ${archive || '(none yet)'}`;
+LONGER-TERM: ${archiveText || '(none yet)'}`;
 }
 
 /**

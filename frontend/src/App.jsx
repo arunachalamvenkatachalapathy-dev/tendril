@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { watchAuthState, signOut } from './firebase.js';
-import { listEntries, getEntry, seedDemoData } from './api.js';
+import { listEntries, getEntry, seedDemoData, getMemoryContext } from './api.js';
 import Login from './components/Login.jsx';
 import EntryList from './components/EntryList.jsx';
 import EntryComposer from './components/EntryComposer.jsx';
@@ -51,9 +51,26 @@ export default function App() {
     }
   }, []);
 
+  const refreshMemoryAndIdeas = useCallback(async () => {
+    try {
+      const mem = await getMemoryContext();
+      if (mem?.todaysIdeas && mem.todaysIdeas.length > 0) {
+        const formatted = mem.todaysIdeas.map(item => 
+          typeof item === 'string' ? { type: 'spark', text: item } : item
+        );
+        setSurfacedIdeas(formatted);
+      }
+    } catch (err) {
+      console.warn('Could not load memory context:', err.message);
+    }
+  }, []);
+
   useEffect(() => {
-    if (user) refreshEntries();
-  }, [user, refreshEntries]);
+    if (user) {
+      refreshEntries();
+      refreshMemoryAndIdeas();
+    }
+  }, [user, refreshEntries, refreshMemoryAndIdeas]);
 
   function handleNewEntry() {
     setView({ mode: 'compose' });
@@ -73,6 +90,7 @@ export default function App() {
 
   function handleSaved() {
     refreshEntries();
+    refreshMemoryAndIdeas();
     handleNewEntry();
   }
 
@@ -82,6 +100,7 @@ export default function App() {
     try {
       await seedDemoData();
       await refreshEntries();
+      await refreshMemoryAndIdeas();
       navigate('/dashboard');
     } catch (err) {
       alert('Failed to seed demo data: ' + err.message);
@@ -171,7 +190,7 @@ export default function App() {
 
       {/* Main Workspace */}
       {path === '/dashboard' ? (
-        <Dashboard uid={user.uid} onBack={() => navigate('/')} onSeedRefresh={refreshEntries} />
+        <Dashboard uid={user.uid} onBack={() => navigate('/')} onSeedRefresh={refreshEntries} entries={entries} />
       ) : (
         <div className="workspace-grid">
           {/* Column 1: Journal Stream List */}
@@ -198,14 +217,16 @@ export default function App() {
                 key={composerKey}
                 onSaved={handleSaved}
                 onSwitchToText={() => setComposerMode('text')}
-                onSurfacedIdeas={(newIdeas) => setSurfacedIdeas(prev => [...newIdeas, ...prev].slice(0, 8))}
+                onSurfacedIdeas={(newIdeas) => setSurfacedIdeas(prev => [...newIdeas, ...prev].slice(0, 10))}
               />
             ) : (
               <EntryComposer
                 key={composerKey}
                 onSaved={handleSaved}
-                onExtractIdeas={(newExchanges) => {
-                  // extract idea snippets if useful
+                onExtractIdeas={(newIdeas) => {
+                  if (newIdeas && newIdeas.length > 0) {
+                    setSurfacedIdeas(prev => [...newIdeas, ...prev].slice(0, 10));
+                  }
                 }}
               />
             )}

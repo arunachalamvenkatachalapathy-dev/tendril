@@ -5,12 +5,20 @@ import ClockChart from './ClockChart.jsx';
 import HeatmapCalendar from './HeatmapCalendar.jsx';
 import RecommendationCard from './RecommendationCard.jsx';
 
-export default function Dashboard({ uid, onBack, onSeedRefresh }) {
+export default function Dashboard({ uid, onBack, onSeedRefresh, entries = [] }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [rangeDays, setRangeDays] = useState(30);
   const [seeding, setSeeding] = useState(false);
   const [inspectedDay, setInspectedDay] = useState(null); // { date, dominant, count }
+
+  const inspectedEntries = inspectedDay
+    ? entries.filter(e => {
+        if (!e.createdAt) return false;
+        const d = typeof e.createdAt === 'string' ? e.createdAt : new Date(e.createdAt).toISOString();
+        return d.startsWith(inspectedDay.date);
+      })
+    : [];
 
   function fetchInsights() {
     setLoading(true);
@@ -190,28 +198,54 @@ export default function Dashboard({ uid, onBack, onSeedRefresh }) {
                     {inspectedDay && (
                       <div style={{
                         marginTop: '18px',
-                        padding: '14px 18px',
+                        padding: '16px 20px',
                         background: 'rgba(255, 255, 255, 0.04)',
                         borderRadius: '12px',
                         border: '1px solid rgba(56, 189, 248, 0.3)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between'
                       }}>
-                        <div>
-                          <div style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', color: '#38bdf8' }}>
-                            INSPECTED DATE: {inspectedDay.date}
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+                          <div>
+                            <div style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', color: '#38bdf8' }}>
+                              INSPECTED DATE: {inspectedDay.date}
+                            </div>
+                            <div style={{ fontSize: '14px', color: '#fff', marginTop: '2px' }}>
+                              Dominant mood: <strong>{inspectedDay.dominant}</strong> ({inspectedEntries.length || inspectedDay.count || 1} session{inspectedEntries.length > 1 ? 's' : ''})
+                            </div>
                           </div>
-                          <div style={{ fontSize: '13.5px', color: '#fff', marginTop: '2px' }}>
-                            Dominant mood: <strong>{inspectedDay.dominant}</strong> ({inspectedDay.count || 1} session{inspectedDay.count > 1 ? 's' : ''})
-                          </div>
+                          <button
+                            onClick={() => setInspectedDay(null)}
+                            style={{ background: 'transparent', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', fontSize: '16px' }}
+                          >
+                            ✕
+                          </button>
                         </div>
-                        <button
-                          onClick={() => setInspectedDay(null)}
-                          style={{ background: 'transparent', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', fontSize: '16px' }}
-                        >
-                          ✕
-                        </button>
+
+                        {inspectedEntries.length > 0 ? (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '12px' }}>
+                            {inspectedEntries.map(e => (
+                              <div
+                                key={e.id}
+                                style={{
+                                  padding: '10px 14px',
+                                  background: 'rgba(0, 0, 0, 0.25)',
+                                  borderRadius: '8px',
+                                  border: '1px solid var(--border-subtle)',
+                                }}
+                              >
+                                <div style={{ fontSize: '13px', fontWeight: '600', color: '#fff', marginBottom: '2px' }}>
+                                  {e.title || 'Journal Reflection'}
+                                </div>
+                                <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                                  {e.summary}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div style={{ fontSize: '12.5px', color: 'var(--text-secondary)', marginTop: '8px' }}>
+                            No full text entries saved on this date.
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>

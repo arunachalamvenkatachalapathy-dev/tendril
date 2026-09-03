@@ -1,44 +1,54 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { getMemoryContext, wipeAllMemory } from '../api.js';
 
 export default function MemoryProfileModal({ onClose }) {
   const [activeTab, setActiveTab] = useState('recent');
+  const [memoryData, setMemoryData] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [wiping, setWiping] = useState(false);
   const [wiped, setWiped] = useState(false);
+  const [error, setError] = useState(null);
 
-  const mockMemory = {
-    now: {
-      date: 'Today',
-      bullets: [
-        'Explored architectural trade-offs of WebSockets vs REST relays',
-        'Contemplated focus strategies for late evening fatigue',
-        'Prioritized data isolation verification for project Tendril'
-      ]
-    },
-    recent: {
-      period: 'Rolling 7 Days',
-      summary: `The user has been intensely focused on building production-grade AI applications with enterprise-level security boundaries. Strong interest in autonomous agents, multimodal voice systems, and cognitive memory models. Notable recurring theme of wanting tools that respect privacy and sovereignty while removing friction from the creative brainstorming process.`,
-      topics: ['Google Cloud Security', 'Gemini Live API', 'Cognitive Distillation', 'Flow States']
-    },
-    archive: {
-      period: 'Long-Term Core Identity',
-      summary: `High-conviction builder with deep curiosity in systems architecture, human-computer symbiosis, and agentic workflows. Values rigorous engineering foundations over quick prototypes. Regularly seeks to bridge theoretical ideas into robust, deployed production software.`,
-      values: ['Architectural Rigor', 'Sovereignty', 'Continuous Synthesis', 'High Agency']
+  async function loadMemory() {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await getMemoryContext();
+      setMemoryData(data);
+    } catch (err) {
+      console.error('Failed to load memory context:', err.message);
+      setError('Could not retrieve memory layers.');
+    } finally {
+      setLoading(false);
     }
-  };
+  }
+
+  useEffect(() => {
+    loadMemory();
+  }, []);
 
   async function handleWipe() {
-    if (!window.confirm('Are you sure you want to permanently erase your memory layers? This cannot be undone.')) {
+    if (!window.confirm('Are you sure you want to permanently erase your memory layers? This will clear your personal Claude-Remember profile in Firestore.')) {
       return;
     }
     setWiping(true);
+    setError(null);
     try {
-      // simulate wipe
-      await new Promise(r => setTimeout(r, 600));
+      await wipeAllMemory();
+      setMemoryData(null);
       setWiped(true);
+    } catch (err) {
+      setError(err.message || 'Failed to wipe memory layers.');
     } finally {
       setWiping(false);
     }
   }
+
+  const nowBullets = memoryData?.now?.bullets || memoryData?.todaysIdeas || [];
+  const recentSummary = memoryData?.recent?.summary || (typeof memoryData?.recent === 'string' ? memoryData?.recent : '');
+  const recentTopics = memoryData?.recent?.topics || [];
+  const archiveSummary = memoryData?.archive?.summary || (typeof memoryData?.archive === 'string' ? memoryData?.archive : '');
+  const archiveValues = memoryData?.archive?.values || [];
 
   return (
     <div className="memory-modal-backdrop" onClick={onClose}>
@@ -108,8 +118,25 @@ export default function MemoryProfileModal({ onClose }) {
             </button>
           </div>
 
+          {error && (
+            <div style={{
+              padding: '10px 18px',
+              background: 'rgba(244, 63, 94, 0.1)',
+              borderRadius: '8px',
+              color: '#fda4af',
+              fontSize: '12.5px',
+              marginBottom: '16px'
+            }}>
+              {error}
+            </div>
+          )}
+
           {/* Content Body */}
-          {wiped ? (
+          {loading ? (
+            <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>
+              Retrieving live memory layers from Firestore…
+            </div>
+          ) : wiped ? (
             <div style={{
               padding: '36px',
               textAlign: 'center',
@@ -118,10 +145,10 @@ export default function MemoryProfileModal({ onClose }) {
               border: '1px solid rgba(244, 63, 94, 0.2)'
             }}>
               <p style={{ color: '#fda4af', fontSize: '15px', fontWeight: '500' }}>
-                Memory layers have been completely erased.
+                All memory layers have been permanently wiped from Firestore.
               </p>
               <p style={{ fontSize: '12px', color: 'var(--text-dim)', marginTop: '6px' }}>
-                Your next conversation will start with a fresh, clean slate.
+                Your next journal session will begin with a fresh, clean neural slate.
               </p>
             </div>
           ) : activeTab === 'recent' ? (
@@ -129,88 +156,125 @@ export default function MemoryProfileModal({ onClose }) {
               <span className="tier-badge-pill" style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#34d399', border: '1px solid rgba(16, 185, 129, 0.3)' }}>
                 Rolling Context (users/{'{uid}'}/memory/recent)
               </span>
-              <p style={{ fontSize: '14.5px', color: 'var(--text-secondary)', lineHeight: '1.65', marginBottom: '18px' }}>
-                {mockMemory.recent.summary}
-              </p>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                {mockMemory.recent.topics.map((t, i) => (
-                  <span key={i} style={{
-                    fontSize: '11px',
-                    fontFamily: 'var(--font-mono)',
-                    padding: '3px 10px',
-                    borderRadius: '9999px',
-                    background: 'rgba(255, 255, 255, 0.04)',
-                    border: '1px solid var(--border-subtle)',
-                    color: 'var(--text-muted)'
-                  }}>
-                    #{t}
-                  </span>
-                ))}
-              </div>
+              {recentSummary ? (
+                <>
+                  <p style={{ fontSize: '14.5px', color: 'var(--text-secondary)', lineHeight: '1.65', marginBottom: '18px' }}>
+                    {recentSummary}
+                  </p>
+                  {recentTopics.length > 0 && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                      {recentTopics.map((t, i) => (
+                        <span key={i} style={{
+                          fontSize: '11px',
+                          fontFamily: 'var(--font-mono)',
+                          padding: '3px 10px',
+                          borderRadius: '9999px',
+                          background: 'rgba(255, 255, 255, 0.04)',
+                          border: '1px solid var(--border-subtle)',
+                          color: 'var(--text-muted)'
+                        }}>
+                          #{t}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <p style={{ fontSize: '13.5px', color: 'var(--text-dim)', lineHeight: '1.6' }}>
+                  No rolling 7-day memory crystallized yet. Entries are automatically compacted into this tier after recurring sessions.
+                </p>
+              )}
             </div>
           ) : activeTab === 'archive' ? (
             <div className="memory-tier-card">
               <span className="tier-badge-pill" style={{ background: 'rgba(139, 92, 246, 0.15)', color: '#c084fc', border: '1px solid rgba(139, 92, 246, 0.3)' }}>
                 Identity Profile (users/{'{uid}'}/memory/archive)
               </span>
-              <p style={{ fontSize: '14.5px', color: 'var(--text-secondary)', lineHeight: '1.65', marginBottom: '18px' }}>
-                {mockMemory.archive.summary}
-              </p>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                {mockMemory.archive.values.map((v, i) => (
-                  <span key={i} style={{
-                    fontSize: '11px',
-                    fontFamily: 'var(--font-mono)',
-                    padding: '3px 10px',
-                    borderRadius: '9999px',
-                    background: 'rgba(139, 92, 246, 0.1)',
-                    border: '1px solid rgba(139, 92, 246, 0.25)',
-                    color: '#e9d5ff'
-                  }}>
-                    ✦ {v}
-                  </span>
-                ))}
-              </div>
+              {archiveSummary ? (
+                <>
+                  <p style={{ fontSize: '14.5px', color: 'var(--text-secondary)', lineHeight: '1.65', marginBottom: '18px' }}>
+                    {archiveSummary}
+                  </p>
+                  {archiveValues.length > 0 && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                      {archiveValues.map((v, i) => (
+                        <span key={i} style={{
+                          fontSize: '11px',
+                          fontFamily: 'var(--font-mono)',
+                          padding: '3px 10px',
+                          borderRadius: '9999px',
+                          background: 'rgba(139, 92, 246, 0.1)',
+                          border: '1px solid rgba(139, 92, 246, 0.25)',
+                          color: '#e9d5ff'
+                        }}>
+                          ✦ {v}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <p style={{ fontSize: '13.5px', color: 'var(--text-dim)', lineHeight: '1.6' }}>
+                  Core identity archive is empty. Long-term values and principles merge here across weeks of journaling.
+                </p>
+              )}
             </div>
           ) : (
             <div className="memory-tier-card">
               <span className="tier-badge-pill" style={{ background: 'rgba(245, 158, 11, 0.15)', color: '#fbbf24', border: '1px solid rgba(245, 158, 11, 0.3)' }}>
                 Active Session Buffer (users/{'{uid}'}/memory/now)
               </span>
-              <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {mockMemory.now.bullets.map((b, i) => (
-                  <li key={i} style={{ fontSize: '13.5px', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ color: '#f59e0b' }}>•</span>
-                    {b}
-                  </li>
-                ))}
-              </ul>
+              {nowBullets.length > 0 ? (
+                <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {nowBullets.map((b, i) => (
+                    <li key={i} style={{
+                      fontSize: '13.5px',
+                      color: 'var(--text-secondary)',
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: '10px'
+                    }}>
+                      <span style={{ color: '#f59e0b', fontSize: '15px' }}>⚡</span>
+                      <span>{typeof b === 'string' ? b : b.text}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p style={{ fontSize: '13.5px', color: 'var(--text-dim)', lineHeight: '1.6' }}>
+                  Today's ephemeral buffer is clear. New insights and action points will stream here during active conversations.
+                </p>
+              )}
             </div>
           )}
 
-          {/* Actions Bar */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '24px', paddingTop: '18px', borderTop: '1px solid var(--border-subtle)' }}>
+          {/* Footer Controls & GDPR Wipe */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginTop: '24px',
+            paddingTop: '20px',
+            borderTop: '1px solid var(--border-subtle)'
+          }}>
+            <span style={{ fontSize: '11px', color: 'var(--text-dim)', fontFamily: 'var(--font-mono)' }}>
+              Data isolation: users/{'{req.uid}'}/memory/*
+            </span>
+
             <button
               onClick={handleWipe}
-              disabled={wiping || wiped}
+              disabled={wiping || loading}
               style={{
-                background: 'transparent',
-                border: '1px solid rgba(244, 63, 94, 0.3)',
-                color: '#fb7185',
-                padding: '6px 14px',
+                background: 'rgba(244, 63, 94, 0.08)',
+                border: '1px solid rgba(244, 63, 94, 0.25)',
+                color: '#fda4af',
+                padding: '8px 16px',
                 borderRadius: '8px',
                 fontSize: '12px',
-                cursor: 'pointer'
+                cursor: 'pointer',
+                transition: 'all 0.2s'
               }}
             >
               {wiping ? 'Erasing…' : '🗑️ Wipe All Memory Layers (GDPR)'}
-            </button>
-
-            <button
-              className="btn-tendril-secondary"
-              onClick={onClose}
-            >
-              Done
             </button>
           </div>
 

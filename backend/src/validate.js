@@ -12,13 +12,19 @@ export function validateConversationPayload(body) {
     return { ok: false, error: 'Request body must be a JSON object.' };
   }
 
-  const { message, history } = body;
+  const { message, history, image } = body;
 
-  if (typeof message !== 'string' || message.trim().length === 0) {
-    return { ok: false, error: '"message" must be a non-empty string.' };
+  const hasMessage = typeof message === 'string' && message.trim().length > 0;
+  const hasImage = image && typeof image === 'object' && typeof image.data === 'string';
+
+  if (!hasMessage && !hasImage) {
+    return { ok: false, error: 'Request must contain a message or an image.' };
   }
-  if (message.length > MAX_MESSAGE_CHARS) {
+  if (hasMessage && message.length > MAX_MESSAGE_CHARS) {
     return { ok: false, error: `"message" exceeds ${MAX_MESSAGE_CHARS} characters.` };
+  }
+  if (hasImage && image.data.length > 8_000_000) {
+    return { ok: false, error: 'Image exceeds maximum allowable size (5MB).' };
   }
 
   if (history !== undefined) {

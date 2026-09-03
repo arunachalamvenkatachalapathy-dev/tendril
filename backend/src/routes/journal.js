@@ -8,12 +8,27 @@
 // Nothing here ever reads a uid from req.body, req.query, or req.params.
 
 import { Router } from 'express';
-import { db, FieldValue } from '../firebaseAdmin.js';
-import { chatReply, summarizeConversation } from '../gemini.js';
+import { db, FieldValue, Timestamp } from '../firebaseAdmin.js';
+import { chatReply, summarizeConversation, extractIdeasFromText } from '../gemini.js';
 import { validateConversationPayload, validateSavePayload } from '../validate.js';
 import { loadMemoryContext, buildSystemPreamble, appendIdeasForEntry } from '../memory/pipeline.js';
 
 export const journalRouter = Router();
+
+// POST /api/ideas/extract — Real-time idea distillation from active user turns
+journalRouter.post('/ideas/extract', async (req, res) => {
+  try {
+    const { text } = req.body;
+    if (!text || typeof text !== 'string' || text.trim().length < 10) {
+      return res.json({ ideas: [] });
+    }
+    const ideas = await extractIdeasFromText(text);
+    res.json({ ideas });
+  } catch (err) {
+    console.error('[POST /api/ideas/extract] failed:', err.message);
+    res.json({ ideas: [] });
+  }
+});
 
 // POST /api/chat — one turn of the multi-turn conversation. Not persisted
 // until the user explicitly saves (POST /api/entries).
@@ -215,7 +230,7 @@ journalRouter.post('/demo/seed', async (req, res) => {
         cognitiveReframing: s.cognitiveReframing,
         actionItems: s.actionItems,
         messages: s.messages,
-        createdAt: entryDate,
+        createdAt: Timestamp.fromDate(entryDate),
       });
     }
 
@@ -224,14 +239,14 @@ journalRouter.post('/demo/seed', async (req, res) => {
     batch.set(recentRef, {
       summary: 'Actively engineering Tendril AI for the Google Cloud GenAI Academy APAC Ideathon. Deeply engaged in zero-trust architecture, diurnal mood mapping, and multi-tier memory compaction.',
       topics: ['tendril-ai', 'cloud-run-deployment', 'secret-manager', 'circadian-habits', 'claude-remember'],
-      updatedAt: new Date(),
+      updatedAt: Timestamp.now(),
     });
 
     const archiveRef = db.collection('users').doc(req.uid).collection('memory').doc('archive');
     batch.set(archiveRef, {
       summary: 'Engineering philosophy centered on radical user data sovereignty, aesthetic visual craftsmanship, and biological harmony.',
       values: ['Zero-Trust Security', 'Data Sovereignty', 'Diurnal Rhythm Alignment', 'Craftsmanship'],
-      updatedAt: new Date(),
+      updatedAt: Timestamp.now(),
     });
 
     const nowRef = db.collection('users').doc(req.uid).collection('memory').doc('now');
@@ -241,7 +256,7 @@ journalRouter.post('/demo/seed', async (req, res) => {
         'Validating 24-hour diurnal clock distribution',
         'Finalizing Hack2Skill submission checklist'
       ],
-      updatedAt: new Date(),
+      updatedAt: Timestamp.now(),
     });
 
     await batch.commit();

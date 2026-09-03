@@ -55,6 +55,11 @@ export function useVoiceSession() {
   const recognitionRef = useRef(null);
   const animFrameRef = useRef(null);
   const transcriptHistoryRef = useRef([]);
+  const statusRef = useRef('idle');
+
+  useEffect(() => {
+    statusRef.current = status;
+  }, [status]);
 
   // Keep transcript history in sync
   useEffect(() => {
@@ -179,7 +184,7 @@ export function useVoiceSession() {
 
       recognition.onend = () => {
         // Auto-restart continuous listening unless stopped
-        if (status !== 'idle' && recognitionRef.current) {
+        if (statusRef.current !== 'idle' && recognitionRef.current) {
           try {
             recognition.start();
           } catch {}
@@ -191,7 +196,7 @@ export function useVoiceSession() {
       console.warn('SpeechRecognition start failed:', e);
       setError('Microphone active. You can speak or type seamlessly.');
     }
-  }, [speakReply, status]);
+  }, [speakReply]);
 
   const start = useCallback(async () => {
     setStatus('connecting');
@@ -214,12 +219,12 @@ export function useVoiceSession() {
       wsRef.current = ws;
 
       const connectionTimeout = setTimeout(() => {
-        if (!connectedLive) {
-          console.log('[Voice] WebSocket timeout after 4s, activating ambient cascade engine');
-          ws.close();
+        if (!connectedLive && statusRef.current !== 'idle') {
+          console.log('[Voice] WebSocket handshake exceeded, activating ambient cascade engine');
+          try { ws.close(); } catch {}
           startSpeechCascade(stream);
         }
-      }, 4000);
+      }, 12000);
 
       ws.onopen = () => {
         ws.send(JSON.stringify({ type: 'auth', idToken: token }));
@@ -244,7 +249,7 @@ export function useVoiceSession() {
           } else if (payload.type === 'error') {
             console.warn('[Voice] Upstream error, falling back to speech cascade');
             clearTimeout(connectionTimeout);
-            ws.close();
+            try { ws.close(); } catch {}
             startSpeechCascade(stream);
           }
         } catch (e) {
@@ -255,12 +260,13 @@ export function useVoiceSession() {
       ws.onerror = () => {
         console.log('[Voice] WebSocket error, gracefully falling back to Ambient Speech Engine');
         clearTimeout(connectionTimeout);
-        startSpeechCascade(stream);
+        if (!connectedLive && statusRef.current !== 'idle') {
+          startSpeechCascade(stream);
+        }
       };
 
       ws.onclose = () => {
-        if (activeEngine === 'live') {
-          console.log('[Voice] WebSocket closed, activating fallback ambient engine');
+        if (!connectedLive && statusRef.current !== 'idle') {
           startSpeechCascade(stream);
         }
       };

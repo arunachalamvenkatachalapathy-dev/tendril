@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { sendChatMessage, saveEntry } from '../api.js';
+import { sendChatMessage, saveEntry, extractIdeas } from '../api.js';
 
 export default function EntryComposer({ onSaved, onExtractIdeas }) {
   const [messages, setMessages] = useState([]); // { role: 'user'|'assistant', text, image }
@@ -56,7 +56,11 @@ export default function EntryComposer({ onSaved, onExtractIdeas }) {
       const { reply } = await sendChatMessage(text || 'Reflect on this sketch/image.', messages, imageToSend);
       setMessages([...nextMessages, { role: 'assistant', text: reply }]);
       if (onExtractIdeas) {
-        onExtractIdeas([...nextMessages, { role: 'assistant', text: reply }]);
+        extractIdeas(`${text}\n${reply}`).then(res => {
+          if (res?.ideas && res.ideas.length > 0) {
+            onExtractIdeas(res.ideas);
+          }
+        }).catch(err => console.warn('extractIdeas background note:', err.message));
       }
     } catch (err) {
       setError(err.message || 'Something went wrong. Please try again.');

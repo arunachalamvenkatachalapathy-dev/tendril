@@ -176,55 +176,84 @@ it, classify mood and themes, provide a gentle cognitive reframing if distress o
   };
 }
 
+const CHAT_MODEL = 'gemini-2.0-flash';
+
 /**
- * Generic plain-text generation, used by the memory compaction pipeline
- * (src/memory/*) for daily/recent/archive summarization prompts.
+ * Generic plain-text generation with resilient model cascade.
  */
 export async function generateText(prompt) {
   const client = await getClient();
-  const model = client.getGenerativeModel({ model: CHAT_MODEL });
-  const result = await model.generateContent(prompt);
-  return result.response.text().trim();
+  let lastError = null;
+
+  for (const modelName of CHAT_MODELS_CASCADE) {
+    try {
+      const model = client.getGenerativeModel({ model: modelName });
+      const result = await model.generateContent(prompt);
+      return result.response.text().trim();
+    } catch (err) {
+      console.warn(`[gemini.generateText] ${modelName} failed (${err.message}), falling back...`);
+      lastError = err;
+    }
+  }
+
+  throw lastError || new Error('generateText cascade failed');
 }
 
 /**
- * Generic JSON-object generation (e.g. dashboard recommendations). Returns
- * null on any parse/generation failure — callers must treat the
- * recommendation feature as optional and never let it break the dashboard.
+ * Generic JSON-object generation with cascade fallback.
  */
 export async function generateJsonObject(prompt) {
   const client = await getClient();
-  const model = client.getGenerativeModel({
-    model: CHAT_MODEL,
-    generationConfig: { responseMimeType: 'application/json' },
-  });
-  try {
-    const result = await model.generateContent(prompt);
-    return JSON.parse(result.response.text());
-  } catch (err) {
-    console.error('[gemini.generateJsonObject] failed:', err.message);
-    return null;
+  for (const modelName of ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-flash-8b']) {
+    try {
+      const model = client.getGenerativeModel({
+        model: modelName,
+        generationConfig: { responseMimeType: 'application/json' },
+      });
+      const result = await model.generateContent(prompt);
+      return JSON.parse(result.response.text());
+    } catch (err) {
+      console.warn(`[gemini.generateJsonObject] ${modelName} failed (${err.message}), trying next...`);
+    }
   }
+  return null;
 }
 
 /**
  * JSON-array generation for idea extraction (src/memory/pipeline.js).
- * Falls back to an empty array if the model doesn't return valid JSON —
- * idea extraction is a nice-to-have layer and must never throw and block
- * the entry-save flow it's attached to.
  */
 export async function generateJsonArray(prompt) {
   const client = await getClient();
-  const model = client.getGenerativeModel({
-    model: CHAT_MODEL,
-    generationConfig: { responseMimeType: 'application/json' },
-  });
+  for (const modelName of ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-flash-8b']) {
+    try {
+      const model = client.getGenerativeModel({
+        model: modelName,
+        generationConfig: { responseMimeType: 'application/json' },
+      });
+      const result = await model.generateContent(prompt);
+      const parsed = JSON.parse(result.response.text());
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (err) {
+      console.warn(`[gemini.generateJsonArray] ${modelName} failed (${err.message}), trying next...`);
+    }
+  }
+  return [];
+}
+
+/**
+ * Real-time Idea Extractor for active user turns.
+ * Analyzes conversation text and extracts 1-3 structured sparks.
+ */
+export async function extractIdeasFromText(text) {
+  if (!text || text.length < 15) return [];
+  const prompt = `Analyze this thought or journal message. Extract 1 to 3 atomic idea sparks in JSON array format:
+[{"type": "spark" | "insight" | "action" | "question", "text": "concise distilled insight under 15 words"}]
+Only return the valid JSON array.\n\nMessage: "${text}"`;
+
   try {
-    const result = await model.generateContent(prompt);
-    const parsed = JSON.parse(result.response.text());
-    return Array.isArray(parsed) ? parsed : [];
+    const array = await generateJsonArray(prompt);
+    return Array.isArray(array) ? array : [];
   } catch (err) {
-    console.error('[gemini.generateJsonArray] failed:', err.message);
-    return [];
+    return [{ type: 'spark', text: text.slice(0, 60) }];
   }
 }

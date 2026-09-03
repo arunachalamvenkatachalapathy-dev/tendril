@@ -43,7 +43,7 @@ dashboardRouter.get('/dashboard/insights', async (req, res) => {
           id: d.id,
           mood: data.mood || 'neutral',
           themes: data.themes || [],
-          createdAt: data.createdAt ? data.createdAt.toDate() : null,
+          createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : (data.createdAt ? new Date(data.createdAt) : null),
         };
       })
       .filter((e) => e.createdAt && e.createdAt >= since);
