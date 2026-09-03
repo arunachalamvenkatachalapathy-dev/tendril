@@ -7,3 +7,4 @@ dist/
 service-account*.json
 .DS_Store
 *.log
+.firebase/
