@@ -138,26 +138,10 @@ export default function App() {
     );
   }
 
-  function handleDemoAccess() {
-    localStorage.setItem('tendril_demo_mode', 'true');
-    setUser({
-      uid: 'demo-judge-user',
-      email: 'judge@hack2skill.eval',
-      displayName: 'Hackathon Judge (Guest)',
-      isDemo: true,
-    });
-    seedDemoData().then(() => {
-      refreshEntries();
-      refreshMemoryAndIdeas();
-    }).catch((err) => {
-      console.warn('Demo seed attempt:', err.message);
-    });
-  }
-
   if (!user) {
     return (
       <div className="tendril-shell">
-        <Login onDemoAccess={handleDemoAccess} />
+        <Login />
       </div>
     );
   }

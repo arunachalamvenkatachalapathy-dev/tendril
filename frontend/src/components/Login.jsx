@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { signInWithGoogle } from '../firebase.js';
 
-export default function Login({ onDemoAccess }) {
+export default function Login() {
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
 
@@ -141,25 +141,6 @@ export default function Login({ onDemoAccess }) {
                 </svg>
               </div>
             </button>
-
-            {onDemoAccess && (
-              <button
-                type="button"
-                className="btn-tendril-secondary"
-                onClick={onDemoAccess}
-                style={{
-                  fontSize: '13px',
-                  padding: '8px 20px',
-                  color: '#38bdf8',
-                  borderColor: 'rgba(56, 189, 248, 0.4)',
-                  borderRadius: '9999px',
-                  cursor: 'pointer'
-                }}
-                title="Instant exploration mode for evaluators and hackathon judges"
-              >
-                ⚡ Instant Demo / Judge Mode (No Sign-in Needed)
-              </button>
-            )}
           </div>
 
           {error && (

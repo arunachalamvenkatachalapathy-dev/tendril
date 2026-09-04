@@ -16,7 +16,6 @@
     "express": "^4.19.2",
     "firebase-admin": "^12.5.0",
     "google-auth-library": "^9.14.2",
-    "puppeteer-core": "^25.10.0",
     "ws": "^8.18.0"
   }
 }

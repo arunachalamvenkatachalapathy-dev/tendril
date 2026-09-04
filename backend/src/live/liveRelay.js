@@ -22,7 +22,7 @@ import { getGeminiApiKey } from '../secretManager.js';
 import { loadMemoryContext, buildSystemPreamble } from '../memory/pipeline.js';
 import { generateJsonArray } from '../gemini.js';
 
-const LIVE_MODEL = process.env.GEMINI_LIVE_MODEL || 'gemini-2.0-flash';
+const LIVE_MODEL = process.env.GEMINI_LIVE_MODEL || 'gemini-3.1-flash-live-preview';
 const AUTH_TIMEOUT_MS = 10_000;
 const IDEA_EXTRACTION_TURN_INTERVAL = 3; // extract ideas every N model turns
 
@@ -66,11 +66,6 @@ async function handleConnection(clientSocket) {
     const memoryContext = await loadMemoryContext(uid);
     const preamble = buildSystemPreamble(memoryContext);
 
-    // Requirement 3a: surface today's ideas immediately on session start.
-    clientSocket.send(
-      JSON.stringify({ type: 'ideas', ideas: memoryContext.todaysIdeas, source: 'memory' })
-    );
-
     const apiKey = await getGeminiApiKey();
     const ai = new GoogleGenAI({ apiKey });
 
@@ -83,6 +78,9 @@ async function handleConnection(clientSocket) {
           : 'You are a warm, non-judgmental voice journaling companion.',
       },
       callbacks: {
+        onopen: () => {
+          console.log('[liveRelay] upstream session connected for uid=%s', uid);
+        },
         onmessage: (message) => onUpstreamMessage(message),
         onerror: (err) => {
           console.error('[liveRelay] upstream error for uid=%s:', uid, err.message);
@@ -93,6 +91,16 @@ async function handleConnection(clientSocket) {
         },
       },
     });
+
+    // 3. Confirm to client that auth AND upstream live session are ready.
+    safeSend(clientSocket, { type: 'auth_ok' });
+
+    // Requirement 3a: surface today's ideas immediately on session start.
+    safeSend(clientSocket, {
+      type: 'ideas',
+      ideas: memoryContext.todaysIdeas,
+      source: 'memory',
+    });
   } catch (err) {
     console.error('[liveRelay] failed to open upstream session for uid=%s:', uid, err.message);
     safeSend(clientSocket, { type: 'error', error: 'Could not start voice session.' });
@@ -102,14 +110,21 @@ async function handleConnection(clientSocket) {
 
   function onUpstreamMessage(message) {
     // Relay audio/text back to the browser as-is (base64 audio chunks,
-    // transcription text, turnComplete flags) — shape follows the SDK's
-    // LiveServerMessage; adjust field names if the SDK version differs.
+    // transcription text, turnComplete flags)
     safeSend(clientSocket, { type: 'upstream', message });
 
     if (message?.serverContent?.modelTurn) {
       const parts = message.serverContent.modelTurn.parts || [];
       const text = parts.map((p) => p.text).filter(Boolean).join(' ');
       if (text) transcriptBuffer.push({ role: 'assistant', text });
+    }
+
+    if (message?.serverContent?.outputTranscription?.text) {
+      transcriptBuffer.push({ role: 'assistant', text: message.serverContent.outputTranscription.text });
+    }
+
+    if (message?.serverContent?.inputTranscription?.text) {
+      transcriptBuffer.push({ role: 'user', text: message.serverContent.inputTranscription.text });
     }
 
     if (message?.serverContent?.turnComplete) {
@@ -147,13 +162,20 @@ words. Return ONLY a JSON array of strings.\n\n${transcriptBuffer
 
     if (payload.type === 'audio_chunk' && payload.data) {
       // payload.data: base64 PCM16 audio, 16kHz mono, from the browser.
-      liveSession.sendRealtimeInput({
-        audio: { data: payload.data, mimeType: 'audio/pcm;rate=16000' },
-      });
+      if (liveSession) {
+        liveSession.sendRealtimeInput({
+          media: { data: payload.data, mimeType: 'audio/pcm;rate=16000' },
+        });
+      }
     } else if (payload.type === 'text_message' && payload.text) {
       // Lets the user type mid-voice-session (mode toggle parity).
       transcriptBuffer.push({ role: 'user', text: payload.text });
-      liveSession.sendClientContent({ turns: [{ role: 'user', parts: [{ text: payload.text }] }] });
+      if (liveSession) {
+        liveSession.sendClientContent({
+          turns: [{ role: 'user', parts: [{ text: payload.text }] }],
+          turnComplete: true,
+        });
+      }
     } else if (payload.type === 'end_session') {
       clientSocket.close(1000, 'Client ended session');
     }
@@ -185,7 +207,6 @@ function waitForVerifiedUid(clientSocket) {
         // (Article 2) — construct the "Bearer <token>" shape verifyToken
         // expects.
         const uid = await verifyToken(`Bearer ${payload.idToken}`);
-        clientSocket.send(JSON.stringify({ type: 'auth_ok' }));
         resolve(uid);
       } catch (err) {
         clientSocket.close(4401, 'Invalid token');

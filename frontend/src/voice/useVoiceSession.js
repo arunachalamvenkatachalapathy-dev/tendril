@@ -17,6 +17,28 @@ import { buildVoiceWsUrl, sendChatMessage, extractIdeas } from '../api.js';
 
 const INPUT_SAMPLE_RATE = 16000;
 
+function downsampleTo16k(inputBuffer, fromSampleRate) {
+  if (!fromSampleRate || fromSampleRate === INPUT_SAMPLE_RATE) return inputBuffer;
+  const sampleRateRatio = fromSampleRate / INPUT_SAMPLE_RATE;
+  const newLength = Math.round(inputBuffer.length / sampleRateRatio);
+  const result = new Float32Array(newLength);
+  let offsetResult = 0;
+  let offsetBuffer = 0;
+  while (offsetResult < result.length) {
+    const nextOffsetBuffer = Math.round((offsetResult + 1) * sampleRateRatio);
+    let accum = 0;
+    let count = 0;
+    for (let i = offsetBuffer; i < nextOffsetBuffer && i < inputBuffer.length; i++) {
+      accum += inputBuffer[i];
+      count++;
+    }
+    result[offsetResult] = count > 0 ? accum / count : 0;
+    offsetResult++;
+    offsetBuffer = nextOffsetBuffer;
+  }
+  return result;
+}
+
 function floatTo16BitPCM(float32Array) {
   const buffer = new ArrayBuffer(float32Array.length * 2);
   const view = new DataView(buffer);
@@ -59,6 +81,8 @@ export function useVoiceSession() {
   const processorRef = useRef(null);
   const micStreamRef = useRef(null);
   const playbackCtxRef = useRef(null);
+  const nextStartTimeRef = useRef(0);
+  const activeSourcesRef = useRef([]);
   const recognitionRef = useRef(null);
   const animFrameRef = useRef(null);
   const transcriptHistoryRef = useRef([]);
@@ -299,24 +323,55 @@ export function useVoiceSession() {
     setStatus('listening');
   }, [acquireMic, startAudioMeter, startSpeechRecognition]);
 
+  function stopAudioPlayback() {
+    activeSourcesRef.current.forEach((s) => {
+      try { s.stop(); } catch {}
+    });
+    activeSourcesRef.current = [];
+    nextStartTimeRef.current = 0;
+    if (window.speechSynthesis) window.speechSynthesis.cancel();
+  }
+
   function handleUpstreamMessage(message) {
+    if (message?.serverContent?.interrupted) {
+      stopAudioPlayback();
+    }
+
     const parts = message?.serverContent?.modelTurn?.parts || [];
     for (const part of parts) {
-      if (part.text) {
-        setLiveTranscript((prev) => [...prev, { role: 'assistant', text: part.text }]);
-        if (voiceOutputRef.current) speakReply(part.text);
-      }
       if (part.inlineData?.data) {
         playAudioChunk(part.inlineData.data);
+      } else if (part.text) {
+        setLiveTranscript((prev) => [...prev, { role: 'assistant', text: part.text }]);
       }
+    }
+
+    if (message?.serverContent?.outputTranscription?.text) {
+      const transText = message.serverContent.outputTranscription.text;
+      setLiveTranscript((prev) => {
+        const last = prev[prev.length - 1];
+        if (last && last.role === 'assistant') {
+          return [...prev.slice(0, -1), { role: 'assistant', text: (last.text + ' ' + transText).trim() }];
+        }
+        return [...prev, { role: 'assistant', text: transText }];
+      });
+    }
+
+    if (message?.serverContent?.inputTranscription?.text) {
+      const userText = message.serverContent.inputTranscription.text;
+      setLiveTranscript((prev) => {
+        const last = prev[prev.length - 1];
+        if (last && last.role === 'user') {
+          return [...prev.slice(0, -1), { role: 'user', text: (last.text + ' ' + userText).trim() }];
+        }
+        return [...prev, { role: 'user', text: userText }];
+      });
     }
   }
 
   function beginMicCapture(ws, stream) {
     try {
-      const audioCtx = new (window.AudioContext || window.webkitAudioContext)({
-        sampleRate: INPUT_SAMPLE_RATE,
-      });
+      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
       audioCtxRef.current = audioCtx;
 
       const source = audioCtx.createMediaStreamSource(stream);
@@ -326,7 +381,8 @@ export function useVoiceSession() {
       processor.onaudioprocess = (e) => {
         if (ws.readyState !== WebSocket.OPEN) return;
         const input = e.inputBuffer.getChannelData(0);
-        const pcm = floatTo16BitPCM(input);
+        const resampled = downsampleTo16k(input, audioCtx.sampleRate);
+        const pcm = floatTo16BitPCM(resampled);
         ws.send(JSON.stringify({ type: 'audio_chunk', data: bufferToBase64(pcm) }));
       };
 
@@ -346,7 +402,7 @@ export function useVoiceSession() {
       try { recognitionRef.current.stop(); } catch {}
       recognitionRef.current = null;
     }
-    if (window.speechSynthesis) window.speechSynthesis.cancel();
+    stopAudioPlayback();
     processorRef.current = null;
     audioCtxRef.current = null;
     micStreamRef.current = null;
@@ -354,24 +410,44 @@ export function useVoiceSession() {
   }
 
   function playAudioChunk(base64Data) {
-    if (!playbackCtxRef.current) {
-      playbackCtxRef.current = new (window.AudioContext || window.webkitAudioContext)({
-        sampleRate: 24000,
-      });
+    if (!voiceOutputRef.current) return;
+    try {
+      if (!playbackCtxRef.current) {
+        playbackCtxRef.current = new (window.AudioContext || window.webkitAudioContext)({
+          sampleRate: 24000,
+        });
+      }
+      const ctx = playbackCtxRef.current;
+      if (ctx.state === 'suspended') {
+        ctx.resume();
+      }
+      const arrayBuffer = base64ToArrayBuffer(base64Data);
+      const pcm16 = new Int16Array(arrayBuffer);
+      const float32 = new Float32Array(pcm16.length);
+      for (let i = 0; i < pcm16.length; i++) float32[i] = pcm16[i] / 0x8000;
+
+      const audioBuffer = ctx.createBuffer(1, float32.length, 24000);
+      audioBuffer.copyToChannel(float32, 0);
+
+      const src = ctx.createBufferSource();
+      src.buffer = audioBuffer;
+      src.connect(ctx.destination);
+
+      const startTime = Math.max(ctx.currentTime, nextStartTimeRef.current);
+      src.start(startTime);
+      nextStartTimeRef.current = startTime + audioBuffer.duration;
+
+      activeSourcesRef.current.push(src);
+      src.onended = () => {
+        activeSourcesRef.current = activeSourcesRef.current.filter((s) => s !== src);
+        if (activeSourcesRef.current.length === 0 && statusRef.current === 'speaking') {
+          setStatus('listening');
+        }
+      };
+      setStatus('speaking');
+    } catch (err) {
+      console.warn('Audio playback error:', err);
     }
-    const ctx = playbackCtxRef.current;
-    const arrayBuffer = base64ToArrayBuffer(base64Data);
-    const pcm16 = new Int16Array(arrayBuffer);
-    const float32 = new Float32Array(pcm16.length);
-    for (let i = 0; i < pcm16.length; i++) float32[i] = pcm16[i] / 0x8000;
-
-    const audioBuffer = ctx.createBuffer(1, float32.length, 24000);
-    audioBuffer.copyToChannel(float32, 0);
-
-    const src = ctx.createBufferSource();
-    src.buffer = audioBuffer;
-    src.connect(ctx.destination);
-    src.start();
   }
 
   // Unified Bulletproof Send: ALWAYS succeeds, WS or HTTP cascade
@@ -462,6 +538,7 @@ export function useVoiceSession() {
       wsRef.current?.close();
     } catch {}
     stopMicCapture();
+    stopAudioPlayback();
     setStatus('idle');
   }, [stopAudioMeter]);
 
