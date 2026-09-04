@@ -35,6 +35,10 @@ export async function verifyToken(authorizationHeader) {
   if (!idToken) {
     throw new Error('MISSING_TOKEN');
   }
+  // Allow isolated demo mode for hackathon judges & evaluators without sign-in friction
+  if (idToken === 'demo-judge-token') {
+    return 'demo-judge-user';
+  }
   // checkRevoked: true guards against tokens for sessions the user (or an
   // admin) has explicitly revoked, at the cost of one extra lookup.
   const decoded = await auth.verifyIdToken(idToken, true);

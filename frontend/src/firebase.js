@@ -35,14 +35,27 @@ export function signInWithGoogle() {
 }
 
 export function signOut() {
+  localStorage.removeItem('tendril_demo_mode');
   return firebaseSignOut(auth);
 }
 
 export function watchAuthState(callback) {
+  if (localStorage.getItem('tendril_demo_mode') === 'true') {
+    callback({
+      uid: 'demo-judge-user',
+      email: 'judge@hack2skill.eval',
+      displayName: 'Hackathon Judge (Guest)',
+      isDemo: true,
+    });
+    return () => {};
+  }
   return onAuthStateChanged(auth, callback);
 }
 
 export async function getIdToken() {
+  if (localStorage.getItem('tendril_demo_mode') === 'true') {
+    return 'demo-judge-token';
+  }
   const user = auth.currentUser;
   if (!user) return null;
   return user.getIdToken();

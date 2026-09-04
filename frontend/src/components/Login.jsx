@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { signInWithGoogle } from '../firebase.js';
 
-export default function Login() {
+export default function Login({ onDemoAccess }) {
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
 
@@ -121,26 +121,46 @@ export default function Login() {
             </div>
           </div>
 
-          {/* CTA Button */}
-          <button
-            className="btn-tendril-primary"
-            onClick={handleSignIn}
-            disabled={loading}
-            style={{
-              padding: '10px 14px 10px 28px',
-              fontSize: '15px',
-              margin: '0 auto',
-              display: 'inline-flex'
-            }}
-          >
-            <span>{loading ? 'Authenticating…' : 'Initialize with Google'}</span>
-            <div className="btn-inner-icon">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="5" y1="12" x2="19" y2="12"></line>
-                <polyline points="12 5 19 12 12 19"></polyline>
-              </svg>
-            </div>
-          </button>
+          {/* CTA Buttons */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', alignItems: 'center', margin: '0 auto' }}>
+            <button
+              className="btn-tendril-primary"
+              onClick={handleSignIn}
+              disabled={loading}
+              style={{
+                padding: '10px 14px 10px 28px',
+                fontSize: '15px',
+                display: 'inline-flex'
+              }}
+            >
+              <span>{loading ? 'Authenticating…' : 'Initialize with Google'}</span>
+              <div className="btn-inner-icon">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="5" y1="12" x2="19" y2="12"></line>
+                  <polyline points="12 5 19 12 12 19"></polyline>
+                </svg>
+              </div>
+            </button>
+
+            {onDemoAccess && (
+              <button
+                type="button"
+                className="btn-tendril-secondary"
+                onClick={onDemoAccess}
+                style={{
+                  fontSize: '13px',
+                  padding: '8px 20px',
+                  color: '#38bdf8',
+                  borderColor: 'rgba(56, 189, 248, 0.4)',
+                  borderRadius: '9999px',
+                  cursor: 'pointer'
+                }}
+                title="Instant exploration mode for evaluators and hackathon judges"
+              >
+                ⚡ Instant Demo / Judge Mode (No Sign-in Needed)
+              </button>
+            )}
+          </div>
 
           {error && (
             <div style={{

@@ -9,12 +9,13 @@
   },
   "dependencies": {
     "@google-cloud/secret-manager": "^5.6.0",
-    "@google/generative-ai": "^0.21.0",
     "@google/genai": "^2.0.0",
+    "@google/generative-ai": "^0.21.0",
     "cors": "^2.8.5",
     "express": "^4.19.2",
     "firebase-admin": "^12.5.0",
     "google-auth-library": "^9.14.2",
+    "puppeteer-core": "^25.10.0",
     "ws": "^8.18.0"
   }
 }
