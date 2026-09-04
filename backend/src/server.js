@@ -38,8 +38,21 @@ app.use(
 
 app.use(express.json({ limit: '256kb' }));
 
-// Unauthenticated health check for Cloud Run / uptime checks only.
-app.get('/healthz', (req, res) => res.status(200).send('ok'));
+// Root route: seamlessly redirect browser visitors to the frontend app, or return API status
+app.get('/', (req, res) => {
+  if (req.query.format === 'json' || (req.headers.accept && req.headers.accept.includes('application/json'))) {
+    return res.json({
+      name: 'Tendril Neural Journal API',
+      status: 'operational',
+      frontend: 'https://tendril-74291.web.app',
+      health: '/healthz',
+    });
+  }
+  res.redirect('https://tendril-74291.web.app');
+});
+
+// Health check endpoints for uptime probes and monitoring
+app.get(['/health', '/healthz'], (req, res) => res.status(200).json({ status: 'ok', service: 'tendril-api' }));
 
 // Everything under /api requires a verified Firebase ID token, and is
 // rate-limited per verified uid.
