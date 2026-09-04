@@ -12,8 +12,24 @@ import { db, FieldValue, Timestamp } from '../firebaseAdmin.js';
 import { chatReply, summarizeConversation, extractIdeasFromText } from '../gemini.js';
 import { validateConversationPayload, validateSavePayload } from '../validate.js';
 import { loadMemoryContext, buildSystemPreamble, appendIdeasForEntry } from '../memory/pipeline.js';
+import { synthesizeGoogleLiveTts } from '../googleTts.js';
 
 export const journalRouter = Router();
+
+// POST /api/tts — Google Live Text-to-Speech audio synthesis
+journalRouter.post('/tts', async (req, res) => {
+  try {
+    const { text } = req.body;
+    if (!text || typeof text !== 'string') {
+      return res.status(400).json({ error: 'Text required' });
+    }
+    const audioContent = await synthesizeGoogleLiveTts(text);
+    res.json({ audioContent });
+  } catch (err) {
+    console.error('[POST /api/tts] failed:', err.message);
+    res.status(500).json({ error: 'TTS synthesis failed' });
+  }
+});
 
 // POST /api/ideas/extract — Real-time idea distillation from active user turns
 journalRouter.post('/ideas/extract', async (req, res) => {
@@ -30,8 +46,7 @@ journalRouter.post('/ideas/extract', async (req, res) => {
   }
 });
 
-// POST /api/chat — one turn of the multi-turn conversation. Not persisted
-// until the user explicitly saves (POST /api/entries).
+// POST /api/chat — one turn of the multi-turn conversation.
 journalRouter.post('/chat', async (req, res) => {
   const validation = validateConversationPayload(req.body);
   if (!validation.ok) {
@@ -39,13 +54,19 @@ journalRouter.post('/chat', async (req, res) => {
   }
 
   try {
-    const { message, history = [], image } = req.body;
+    const { message, history = [], image, voice = true } = req.body;
     // Continuity: fold in the user's own recent/archive memory (Article 9)
-    // so a brand-new session already has context, not a blank slate.
     const memoryContext = await loadMemoryContext(req.uid).catch(() => null);
     const preamble = memoryContext ? buildSystemPreamble(memoryContext) : '';
     const reply = await chatReply(history, message, preamble, image);
-    res.json({ reply });
+
+    // Google Live TTS: synthesize warm, realistic human audio
+    let audioContent = null;
+    if (voice) {
+      audioContent = await synthesizeGoogleLiveTts(reply).catch(() => null);
+    }
+
+    res.json({ reply, audioContent });
   } catch (err) {
     console.error('[POST /api/chat] failed for uid=%s:', req.uid, err.message);
     if (err.message === 'SECRET_UNAVAILABLE') {

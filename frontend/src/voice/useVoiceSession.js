@@ -129,6 +129,27 @@ export function useVoiceSession() {
     }
   }, []);
 
+  // Google Live TTS Neural Audio playback
+  const playGoogleLiveAudio = useCallback((base64Mp3, fallbackText) => {
+    if (!voiceOutputRef.current) return;
+    try {
+      const audio = new Audio(`data:audio/mp3;base64,${base64Mp3}`);
+      setStatus('speaking');
+      audio.onended = () => setStatus('listening');
+      audio.onerror = () => {
+        if (fallbackText) speakReply(fallbackText);
+        else setStatus('listening');
+      };
+      audio.play().catch(() => {
+        if (fallbackText) speakReply(fallbackText);
+        else setStatus('listening');
+      });
+    } catch (e) {
+      if (fallbackText) speakReply(fallbackText);
+      else setStatus('listening');
+    }
+  }, [speakReply]);
+
   // Continuous SpeechRecognition engine
   const startSpeechRecognition = useCallback((stream) => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -388,11 +409,15 @@ export function useVoiceSession() {
         text: t.text,
       }));
 
-      const res = await sendChatMessage(clean, history, imagePayload);
+      const res = await sendChatMessage(clean, history, imagePayload, voiceOutputRef.current);
       if (res.reply) {
         setLiveTranscript((prev) => [...prev, { role: 'assistant', text: res.reply }]);
         if (voiceOutputRef.current) {
-          speakReply(res.reply);
+          if (res.audioContent) {
+            playGoogleLiveAudio(res.audioContent, res.reply);
+          } else {
+            speakReply(res.reply);
+          }
         } else {
           setStatus('listening');
         }
@@ -405,7 +430,7 @@ export function useVoiceSession() {
       setLiveTranscript((prev) => [...prev, { role: 'assistant', text: fallbackMsg }]);
       setStatus('listening');
     }
-  }, [speakReply]);
+  }, [playGoogleLiveAudio, speakReply]);
 
   // Toggle microphone on demand
   const toggleMic = useCallback(async () => {
