@@ -1,19 +1,48 @@
 import { useEffect, useRef, useState } from 'react';
-import { sendChatMessage, saveEntry, extractIdeas } from '../api.js';
+import { saveEntry } from '../api.js';
+import { useVoiceSession } from '../voice/useVoiceSession.js';
 
-export default function EntryComposer({ onSaved, onExtractIdeas }) {
-  const [messages, setMessages] = useState([]); // { role: 'user'|'assistant', text, image }
+export default function EntryComposer({ onSaved, onExtractIdeas, initialVoiceActive = false }) {
+  const {
+    status,
+    audioLevel,
+    liveTranscript,
+    ideas,
+    notice,
+    hasMic,
+    micActive,
+    voiceOutputEnabled,
+    toggleMic,
+    toggleVoiceOutput,
+    start,
+    sendText,
+    setNotice,
+  } = useVoiceSession();
+
   const [draft, setDraft] = useState('');
   const [attachedImage, setAttachedImage] = useState(null); // { mimeType, data, previewUrl }
-  const [sending, setSending] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
   const scrollRef = useRef(null);
   const fileInputRef = useRef(null);
 
+  // Initialize runtime on mount
+  useEffect(() => {
+    start(initialVoiceActive);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Forward real-time sparks to parent Idea Vault
+  useEffect(() => {
+    if (ideas && ideas.length > 0 && onExtractIdeas) {
+      onExtractIdeas(ideas.map(t => typeof t === 'string' ? { type: 'spark', text: t } : t));
+    }
+  }, [ideas, onExtractIdeas]);
+
+  // Auto-scroll transcript on new messages
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
-  }, [messages, sending]);
+  }, [liveTranscript, status]);
 
   function handleImagePick(e) {
     const file = e.target.files?.[0];
@@ -37,48 +66,27 @@ export default function EntryComposer({ onSaved, onExtractIdeas }) {
   async function handleSend(e) {
     e?.preventDefault?.();
     const text = draft.trim();
-    if ((!text && !attachedImage) || sending) return;
+    if (!text && !attachedImage) return;
 
     setError(null);
-    const userMsg = {
-      role: 'user',
-      text: text || (attachedImage ? 'Visual snapshot attached.' : ''),
-      image: attachedImage?.previewUrl || null,
-    };
-    const nextMessages = [...messages, userMsg];
-    setMessages(nextMessages);
-    setDraft('');
     const imageToSend = attachedImage ? { mimeType: attachedImage.mimeType, data: attachedImage.data } : null;
-    setAttachedImage(null);
-    setSending(true);
+    const promptText = text || (attachedImage ? 'Reflect on this attached visual sketch or diagram.' : '');
 
-    try {
-      const { reply } = await sendChatMessage(text || 'Reflect on this sketch/image.', messages, imageToSend);
-      setMessages([...nextMessages, { role: 'assistant', text: reply }]);
-      if (onExtractIdeas) {
-        extractIdeas(`${text}\n${reply}`).then(res => {
-          if (res?.ideas && res.ideas.length > 0) {
-            onExtractIdeas(res.ideas);
-          }
-        }).catch(err => console.warn('extractIdeas background note:', err.message));
-      }
-    } catch (err) {
-      setError(err.message || 'Something went wrong. Please try again.');
-    } finally {
-      setSending(false);
-    }
+    setDraft('');
+    setAttachedImage(null);
+
+    await sendText(promptText, imageToSend);
   }
 
   async function handleSave() {
-    if (messages.length === 0 || saving) return;
+    if (liveTranscript.length === 0 || saving) return;
     setSaving(true);
     setError(null);
     try {
-      await saveEntry(messages);
-      setMessages([]);
+      await saveEntry(liveTranscript);
       onSaved?.();
     } catch (err) {
-      setError(err.message || 'Could not save this entry.');
+      setError(err.message || 'Could not compact and save this entry.');
     } finally {
       setSaving(false);
     }
@@ -98,45 +106,96 @@ export default function EntryComposer({ onSaved, onExtractIdeas }) {
     '🎯 Mapping out my highest-leverage goal for this week'
   ];
 
+  const isSynthesizing = status === 'speaking';
+  const isListening = status === 'listening' && micActive;
+
   return (
     <div className="bezel-outer composer-canvas">
       <div className="bezel-inner" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
         
-        {/* Top Action Toolbar */}
+        {/* Top Neural Toolbar */}
         <div className="composer-toolbar">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981', boxShadow: '0 0 8px #10b981' }} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            <span style={{
+              width: '8px',
+              height: '8px',
+              borderRadius: '50%',
+              background: micActive ? '#10b981' : isSynthesizing ? '#38bdf8' : '#64748b',
+              boxShadow: micActive ? '0 0 10px #10b981' : isSynthesizing ? '0 0 8px #38bdf8' : 'none',
+              transition: 'all 0.3s ease'
+            }} />
             <span style={{ fontFamily: 'var(--font-display)', fontWeight: '700', fontSize: '14px', color: '#fff', letterSpacing: '-0.01em' }}>
-              Cognitive Session
+              Unified Neural Canvas
             </span>
             <span style={{
               fontSize: '11px',
-              color: 'var(--text-dim)',
+              color: micActive ? '#34d399' : 'var(--text-dim)',
               fontFamily: 'var(--font-mono)',
-              background: 'rgba(255, 255, 255, 0.04)',
+              background: micActive ? 'rgba(16, 185, 129, 0.1)' : 'rgba(255, 255, 255, 0.04)',
               padding: '2px 8px',
               borderRadius: '9999px'
             }}>
-              {messages.length} exchanges
+              {micActive ? '🎙️ Mic Active' : isSynthesizing ? '🔊 Voicing Reply…' : `${liveTranscript.length} exchanges`}
             </span>
           </div>
 
-          <button
-            className="btn-tendril-primary"
-            onClick={handleSave}
-            disabled={messages.length === 0 || saving}
-            style={{ opacity: messages.length === 0 ? 0.5 : 1 }}
-          >
-            <span>{saving ? 'Compacting & Saving…' : 'Save & Compact'}</span>
-            <div className="btn-inner-icon">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
-                <polyline points="17 21 17 13 7 13 7 21"></polyline>
-                <polyline points="7 3 7 8 15 8"></polyline>
-              </svg>
-            </div>
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            {/* Voice Replies Toggle */}
+            <button
+              type="button"
+              className="btn-tendril-secondary"
+              onClick={toggleVoiceOutput}
+              style={{
+                fontSize: '11.5px',
+                padding: '5px 10px',
+                color: voiceOutputEnabled ? '#34d399' : 'var(--text-muted)',
+                borderColor: voiceOutputEnabled ? 'rgba(16, 185, 129, 0.3)' : 'var(--border-subtle)',
+                background: voiceOutputEnabled ? 'rgba(16, 185, 129, 0.06)' : 'transparent',
+              }}
+              title={voiceOutputEnabled ? 'Voice replies enabled (click to mute)' : 'Voice replies muted (click to unmute)'}
+            >
+              {voiceOutputEnabled ? '🔊 Voice Replies: ON' : '🔇 Voice: Muted'}
+            </button>
+
+            {/* Save & Compact Button */}
+            <button
+              className="btn-tendril-primary"
+              onClick={handleSave}
+              disabled={liveTranscript.length === 0 || saving}
+              style={{ opacity: liveTranscript.length === 0 ? 0.5 : 1, padding: '7px 14px', fontSize: '13px' }}
+            >
+              <span>{saving ? 'Compacting…' : 'Save & Compact'}</span>
+              <div className="btn-inner-icon">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                  <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                </svg>
+              </div>
+            </button>
+          </div>
         </div>
+
+        {/* Informational Notice Banner (Gentle, Not An Error) */}
+        {notice && (
+          <div style={{
+            padding: '8px 16px',
+            background: 'rgba(56, 189, 248, 0.08)',
+            borderBottom: '1px solid rgba(56, 189, 248, 0.2)',
+            color: '#7dd3fc',
+            fontSize: '12px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between'
+          }}>
+            <span>💡 {notice}</span>
+            <button
+              onClick={() => setNotice(null)}
+              style={{ background: 'transparent', border: 'none', color: '#7dd3fc', cursor: 'pointer', fontSize: '13px' }}
+            >
+              ✕
+            </button>
+          </div>
+        )}
 
         {error && (
           <div style={{
@@ -150,9 +209,9 @@ export default function EntryComposer({ onSaved, onExtractIdeas }) {
           </div>
         )}
 
-        {/* Message Stream */}
+        {/* Message Transcript Stream */}
         <div className="transcript-stream" ref={scrollRef}>
-          {messages.length === 0 && (
+          {liveTranscript.length === 0 && (
             <div style={{ margin: 'auto', maxWidth: '480px', textAlign: 'center', padding: '30px 10px' }}>
               <div style={{
                 width: '48px',
@@ -172,8 +231,7 @@ export default function EntryComposer({ onSaved, onExtractIdeas }) {
                 Cultivate your stream of thought
               </h3>
               <p style={{ color: 'var(--text-secondary)', fontSize: '13.5px', lineHeight: '1.5', marginBottom: '24px' }}>
-                Unpack ideas, talk through strategic decisions, or attach sketches. Tendril remembers recent context
-                and distills action points in real time.
+                Type reflections, attach visual sketches, or tap the microphone to talk aloud. Tendril retains layered context and distills sparks in real time.
               </p>
 
               {/* Starter chips */}
@@ -203,7 +261,7 @@ export default function EntryComposer({ onSaved, onExtractIdeas }) {
             </div>
           )}
 
-          {messages.map((m, i) => (
+          {liveTranscript.map((m, i) => (
             <div key={i} className={`message-bubble-row ${m.role === 'user' ? 'user' : 'model'}`}>
               <div className="message-meta">
                 <span>{m.role === 'user' ? 'YOU' : 'TENDRIL'}</span>
@@ -225,7 +283,7 @@ export default function EntryComposer({ onSaved, onExtractIdeas }) {
             </div>
           ))}
 
-          {sending && (
+          {status === 'speaking' && liveTranscript[liveTranscript.length - 1]?.role === 'user' && (
             <div className="message-bubble-row model">
               <div className="message-meta">
                 <span>TENDRIL</span>
@@ -234,7 +292,7 @@ export default function EntryComposer({ onSaved, onExtractIdeas }) {
               </div>
               <div className="message-bubble model" style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-secondary)' }}>
                 <span className="frequency-bar" style={{ width: '4px', height: '14px', animation: 'sound-bounce 0.8s infinite alternate ease-in-out' }} />
-                <span>Distilling thoughts with Gemini…</span>
+                <span>Distilling reflection with Gemini…</span>
               </div>
             </div>
           )}
@@ -267,7 +325,36 @@ export default function EntryComposer({ onSaved, onExtractIdeas }) {
           </div>
         )}
 
-        {/* Input Bar */}
+        {/* Dynamic Frequency Bars when Mic is active */}
+        {micActive && (
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '4px',
+            padding: '6px 0',
+            background: 'rgba(16, 185, 129, 0.04)',
+            borderTop: '1px solid rgba(16, 185, 129, 0.15)'
+          }}>
+            <span style={{ fontSize: '11px', color: '#34d399', fontFamily: 'var(--font-mono)', marginRight: '8px' }}>
+              LISTENING
+            </span>
+            {[12, 22, 16, 28, 14, 24, 18, 10].map((h, idx) => (
+              <span
+                key={idx}
+                style={{
+                  width: '3px',
+                  height: `${Math.max(4, Math.min(26, (audioLevel / 100) * h * 1.5))}px`,
+                  background: '#10b981',
+                  borderRadius: '2px',
+                  transition: 'height 0.08s ease'
+                }}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* Unified Multimodal Input Bar */}
         <form className="chat-input-bar" onSubmit={handleSend} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <input
             type="file"
@@ -277,6 +364,7 @@ export default function EntryComposer({ onSaved, onExtractIdeas }) {
             style={{ display: 'none' }}
           />
 
+          {/* Attach Button */}
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
@@ -297,20 +385,50 @@ export default function EntryComposer({ onSaved, onExtractIdeas }) {
             📎
           </button>
 
+          {/* Ambient Microphone Toggle Button */}
+          <button
+            type="button"
+            onClick={toggleMic}
+            title={micActive ? 'Mute microphone' : hasMic ? 'Activate voice conversation' : 'No mic detected — Voice Reader active'}
+            style={{
+              background: micActive ? 'rgba(16, 185, 129, 0.25)' : 'rgba(255, 255, 255, 0.04)',
+              border: micActive ? '1px solid rgba(16, 185, 129, 0.6)' : '1px solid var(--border-subtle)',
+              borderRadius: '50%',
+              width: '40px',
+              height: '40px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              color: micActive ? '#10b981' : 'var(--text-secondary)',
+              boxShadow: micActive ? '0 0 12px rgba(16, 185, 129, 0.4)' : 'none',
+              transition: 'all 0.2s ease'
+            }}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+              <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+              <line x1="12" y1="19" x2="12" y2="23"></line>
+              <line x1="8" y1="23" x2="16" y2="23"></line>
+            </svg>
+          </button>
+
+          {/* Text Input Field */}
           <textarea
             className="chat-input-field"
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Explore an idea or ask about an attached sketch… (Press Enter to send)"
+            placeholder={micActive ? "Speaking into Tendril... or type a thought" : "Type a reflection or speak via mic… (Enter to send)"}
             rows={1}
             style={{ resize: 'none', minHeight: '44px', maxHeight: '120px', flex: 1 }}
           />
 
+          {/* Send Button */}
           <button
             type="submit"
             className="btn-tendril-primary"
-            disabled={(!draft.trim() && !attachedImage) || sending}
+            disabled={(!draft.trim() && !attachedImage) || status === 'speaking'}
             style={{ padding: '10px 14px', borderRadius: '50%', minWidth: '44px', minHeight: '44px' }}
           >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
