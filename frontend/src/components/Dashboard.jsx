@@ -56,72 +56,59 @@ export default function Dashboard({ uid, onBack, onSeedRefresh, entries = [] }) 
     <div className="dashboard-container">
       
       {/* Top Header Card */}
-      <div className="bezel-outer">
-        <div className="bezel-inner" style={{ padding: '28px 32px' }}>
+      <div className="google-surface-card">
+        <div className="google-card-body" style={{ padding: '28px 32px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
             <div>
-              <div style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px',
-                fontSize: '11px',
-                fontFamily: 'var(--font-mono)',
-                color: '#10b981',
-                textTransform: 'uppercase',
-                letterSpacing: '0.15em',
-                marginBottom: '6px'
-              }}>
-                <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10b981', boxShadow: '0 0 8px #10b981' }} />
-                Cognitive Analytics & Circadian Rhythm
+              <div className="google-eyebrow" style={{ marginBottom: '6px' }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style={{ color: '#a8c7fa' }}>
+                  <path d="M12 2L14.4 9.6L22 12L14.4 14.4L12 22L9.6 14.4L2 12L9.6 9.6Z" />
+                </svg>
+                <span>Activity & Reflection Insights</span>
               </div>
-              <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '28px', fontWeight: '800', color: '#fff' }}>
-                Your Neural Patterns
+              <h1 style={{ fontSize: '26px', fontWeight: '500', color: '#e3e3e3' }}>
+                Journal Activity
               </h1>
             </div>
 
             <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
               <button
-                className="btn-tendril-secondary"
+                className="btn-google-secondary"
                 onClick={handleSeedDemoOnDemand}
                 disabled={seeding}
-                style={{ color: '#38bdf8', borderColor: 'rgba(56, 189, 248, 0.4)', fontSize: '12px' }}
-                title="Only loaded on explicit demand"
+                style={{ fontSize: '12px', padding: '6px 14px', borderRadius: '9999px' }}
+                title="Load sample entries"
               >
-                {seeding ? '⚡ Seeding Journey…' : '⚡ Demo Mode (Seed Journey)'}
+                {seeding ? 'Loading sample…' : 'Load sample notes'}
               </button>
 
               <select
                 value={rangeDays}
                 onChange={(e) => setRangeDays(Number(e.target.value))}
-                style={{
-                  background: 'rgba(255, 255, 255, 0.05)',
-                  border: '1px solid var(--border-subtle)',
-                  borderRadius: '9999px',
-                  color: 'var(--text-secondary)',
-                  padding: '8px 16px',
-                  fontSize: '13px',
-                  outline: 'none',
-                  cursor: 'pointer'
-                }}
+                className="google-select"
               >
                 <option value={7}>Last 7 days</option>
                 <option value={30}>Last 30 days</option>
                 <option value={90}>Last 90 days</option>
               </select>
 
-              <button className="btn-tendril-secondary" onClick={onBack}>
-                ← Return to Journal
+              <button className="btn-google-secondary" onClick={onBack} style={{ display: 'flex', alignItems: 'center', gap: '6px', borderRadius: '9999px', padding: '6px 14px', fontSize: '13px' }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="19" y1="12" x2="5" y2="12"></line>
+                  <polyline points="12 19 5 12 12 5"></polyline>
+                </svg>
+                <span>Back to notes</span>
               </button>
             </div>
           </div>
 
           {data && (
             <p style={{
-              fontSize: '15px',
+              fontSize: '14.5px',
               color: 'var(--text-secondary)',
               lineHeight: '1.6',
               maxWidth: '780px',
-              marginTop: '18px'
+              marginTop: '16px'
             }}>
               {data.blurb}
             </p>
@@ -130,62 +117,76 @@ export default function Dashboard({ uid, onBack, onSeedRefresh, entries = [] }) 
       </div>
 
       {loading && !data && (
-        <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>
-          Computing cognitive telemetry…
+        <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-secondary)' }}>
+          Loading insights…
         </div>
       )}
 
       {data && (
         <>
           {/* Gemini Mood Recommendation Pill */}
-          <div className="bezel-outer">
-            <div className="bezel-inner" style={{ padding: '20px 24px' }}>
+          <div className="google-surface-card">
+            <div className="google-card-body" style={{ padding: '20px 24px' }}>
               <RecommendationCard recommendation={data.recommendation} />
             </div>
           </div>
 
           {data.entryCount === 0 ? (
-            <div className="bezel-outer">
-              <div className="bezel-inner" style={{ padding: '48px 24px', textAlign: 'center' }}>
-                <div style={{ fontSize: '32px', marginBottom: '12px' }}>📊</div>
-                <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', color: '#fff', marginBottom: '8px' }}>
+            <div className="google-surface-card">
+              <div className="google-card-body" style={{ padding: '48px 24px', textAlign: 'center' }}>
+                <div style={{ width: '48px', height: '48px', margin: '0 auto 16px', borderRadius: '50%', background: 'rgba(255,255,255,0.04)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" style={{ color: '#a8c7fa' }}>
+                    <line x1="18" y1="20" x2="18" y2="10"/>
+                    <line x1="12" y1="20" x2="12" y2="4"/>
+                    <line x1="6" y1="20" x2="6" y2="14"/>
+                  </svg>
+                </div>
+                <h3 style={{ fontSize: '17px', fontWeight: '500', color: '#e3e3e3', marginBottom: '8px' }}>
                   No entries in this time range yet
                 </h3>
-                <p style={{ color: 'var(--text-secondary)', fontSize: '13.5px', maxWidth: '440px', margin: '0 auto 20px', lineHeight: '1.5' }}>
-                  Start writing or speaking in the journal to build your diurnal rhythm, or launch Demo Mode to preview telemetry immediately.
+                <p style={{ color: 'var(--text-secondary)', fontSize: '13.5px', maxWidth: '420px', margin: '0 auto 20px', lineHeight: '1.5' }}>
+                  Write or record reflections to see your patterns over time, or explore with sample entries.
                 </p>
                 <button
-                  className="btn-tendril-primary"
+                  className="btn-google-primary"
                   onClick={handleSeedDemoOnDemand}
                   disabled={seeding}
-                  style={{ margin: '0 auto', fontSize: '13px' }}
+                  style={{ margin: '0 auto', fontSize: '13px', borderRadius: '9999px', padding: '8px 20px' }}
                 >
-                  <span>{seeding ? 'Seeding Demo Journey…' : '⚡ Load Sample Journey (Demo Mode)'}</span>
+                  <span>{seeding ? 'Loading sample…' : 'Load sample notes'}</span>
                 </button>
               </div>
             </div>
           ) : (
             <>
-              {/* 2-Column Bento: Clock Face + 30-Day Heatmap */}
+              {/* 2-Column: Clock Face + Heatmap */}
               <div className="dashboard-grid-2col">
-                <div className="bezel-outer">
-                  <div className="bezel-inner" style={{ padding: '24px 28px' }}>
-                    <div className="panel-title" style={{ marginBottom: '18px' }}>
-                      <span>🕒</span>
-                      <span>Diurnal Sentiment Clock</span>
+                <div className="google-surface-card">
+                  <div className="google-card-body" style={{ padding: '24px 28px' }}>
+                    <div className="panel-title" style={{ marginBottom: '18px', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '500', fontSize: '15px' }}>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#a8c7fa' }}>
+                        <circle cx="12" cy="12" r="10"/>
+                        <polyline points="12 6 12 12 16 14"/>
+                      </svg>
+                      <span>Daily Reflection Hours</span>
                     </div>
                     <ClockChart hourly={data.hourly} />
                   </div>
                 </div>
 
-                <div className="bezel-outer">
-                  <div className="bezel-inner" style={{ padding: '24px 28px' }}>
+                <div className="google-surface-card">
+                  <div className="google-card-body" style={{ padding: '24px 28px' }}>
                     <div className="panel-title" style={{ marginBottom: '18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span>📅</span>
-                        <span>30-Day Sentiment Matrix</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '500', fontSize: '15px' }}>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#a8c7fa' }}>
+                          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                          <line x1="16" y1="2" x2="16" y2="6"></line>
+                          <line x1="8" y1="2" x2="8" y2="6"></line>
+                          <line x1="3" y1="10" x2="21" y2="10"></line>
+                        </svg>
+                        <span>Reflection Calendar</span>
                       </div>
-                      <span style={{ fontSize: '11px', color: 'var(--text-dim)' }}>Click cell to inspect</span>
+                      <span style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>Click cell to inspect</span>
                     </div>
                     <HeatmapCalendar
                       heatmap={data.heatmap}
@@ -199,22 +200,22 @@ export default function Dashboard({ uid, onBack, onSeedRefresh, entries = [] }) 
                       <div style={{
                         marginTop: '18px',
                         padding: '16px 20px',
-                        background: 'rgba(255, 255, 255, 0.04)',
+                        background: 'rgba(255, 255, 255, 0.03)',
                         borderRadius: '12px',
-                        border: '1px solid rgba(56, 189, 248, 0.3)',
+                        border: '1px solid var(--border-subtle)',
                       }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
                           <div>
-                            <div style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', color: '#38bdf8' }}>
-                              INSPECTED DATE: {inspectedDay.date}
+                            <div style={{ fontSize: '11px', color: '#a8c7fa', fontWeight: '500' }}>
+                              DATE: {inspectedDay.date}
                             </div>
-                            <div style={{ fontSize: '14px', color: '#fff', marginTop: '2px' }}>
-                              Dominant mood: <strong>{inspectedDay.dominant}</strong> ({inspectedEntries.length || inspectedDay.count || 1} session{inspectedEntries.length > 1 ? 's' : ''})
+                            <div style={{ fontSize: '13.5px', color: '#e3e3e3', marginTop: '2px' }}>
+                              Dominant mood: <strong style={{ textTransform: 'capitalize' }}>{inspectedDay.dominant}</strong> ({inspectedEntries.length || inspectedDay.count || 1} note{inspectedEntries.length > 1 ? 's' : ''})
                             </div>
                           </div>
                           <button
                             onClick={() => setInspectedDay(null)}
-                            style={{ background: 'transparent', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', fontSize: '16px' }}
+                            style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '14px' }}
                           >
                             ✕
                           </button>
@@ -227,12 +228,12 @@ export default function Dashboard({ uid, onBack, onSeedRefresh, entries = [] }) 
                                 key={e.id}
                                 style={{
                                   padding: '10px 14px',
-                                  background: 'rgba(0, 0, 0, 0.25)',
+                                  background: 'var(--bg-surface)',
                                   borderRadius: '8px',
                                   border: '1px solid var(--border-subtle)',
                                 }}
                               >
-                                <div style={{ fontSize: '13px', fontWeight: '600', color: '#fff', marginBottom: '2px' }}>
+                                <div style={{ fontSize: '13px', fontWeight: '500', color: '#e3e3e3', marginBottom: '2px' }}>
                                   {e.title || 'Journal Reflection'}
                                 </div>
                                 <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
@@ -254,25 +255,20 @@ export default function Dashboard({ uid, onBack, onSeedRefresh, entries = [] }) 
 
               {/* Frequent Themes */}
               {data.topThemes && data.topThemes.length > 0 && (
-                <div className="bezel-outer">
-                  <div className="bezel-inner" style={{ padding: '24px 28px' }}>
-                    <div className="panel-title" style={{ marginBottom: '14px' }}>
-                      <span>🏷️</span>
-                      <span>Dominant Life & Project Themes</span>
+                <div className="google-surface-card">
+                  <div className="google-card-body" style={{ padding: '24px 28px' }}>
+                    <div className="panel-title" style={{ marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '500', fontSize: '15px' }}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#a8c7fa' }}>
+                        <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/>
+                        <line x1="7" y1="7" x2="7.01" y2="7"/>
+                      </svg>
+                      <span>Frequent Themes</span>
                     </div>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                       {data.topThemes.map((t) => (
                         <span
                           key={t}
-                          style={{
-                            padding: '6px 14px',
-                            borderRadius: '9999px',
-                            background: 'rgba(16, 185, 129, 0.08)',
-                            border: '1px solid rgba(16, 185, 129, 0.25)',
-                            color: '#34d399',
-                            fontSize: '12.5px',
-                            fontFamily: 'var(--font-mono)'
-                          }}
+                          className="google-chip"
                         >
                           #{t}
                         </span>

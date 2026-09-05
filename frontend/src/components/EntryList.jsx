@@ -1,65 +1,80 @@
 import MoodTrend from './MoodTrend.jsx';
 
 const MOOD_COLOR = {
-  calm: '#10b981',
-  happy: '#06b6d4',
-  excited: '#3b82f6',
-  hopeful: '#10b981',
-  neutral: '#94a3b8',
-  stressed: '#f59e0b',
-  frustrated: '#ef4444',
-  sad: '#8b5cf6',
-  anxious: '#ec4899',
+  calm: '#a8c7fa',
+  happy: '#6dd58c',
+  excited: '#d3e3fd',
+  hopeful: '#a8c7fa',
+  neutral: '#c4c7c5',
+  stressed: '#f28b82',
+  frustrated: '#f28b82',
+  sad: '#c58af9',
+  anxious: '#fdd663',
 };
 
 export default function EntryList({ entries, loading, onNewEntry, onOpenEntry, selectedId, onSeedDemo, seeding }) {
   return (
-    <div className="bezel-outer sidebar-panel">
-      <div className="bezel-inner" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+    <div className="google-surface-card sidebar-panel">
+      <div className="google-card-body" style={{ display: 'flex', flexDirection: 'column', height: '100%', padding: '0' }}>
         
-        {/* Header & New Entry CTA */}
-        <div className="sidebar-header">
-          <div className="panel-title">
-            <span>🌿</span>
-            <span>Journal Stream</span>
+        {/* Header & New Note CTA */}
+        <div className="sidebar-header" style={{ padding: '16px 20px', borderBottom: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div className="panel-title" style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '600', fontSize: '15px' }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#a8c7fa' }}>
+              <line x1="8" y1="6" x2="21" y2="6"/>
+              <line x1="8" y1="12" x2="21" y2="12"/>
+              <line x1="8" y1="18" x2="21" y2="18"/>
+              <line x1="3" y1="6" x2="3.01" y2="6"/>
+              <line x1="3" y1="12" x2="3.01" y2="12"/>
+              <line x1="3" y1="18" x2="3.01" y2="18"/>
+            </svg>
+            <span>Notes</span>
           </div>
           <button
-            className="btn-tendril-primary"
-            style={{ padding: '6px 12px 6px 16px', fontSize: '12px' }}
+            className="btn-google-primary"
+            style={{ padding: '6px 14px', fontSize: '13px', borderRadius: '9999px', display: 'flex', alignItems: 'center', gap: '6px' }}
             onClick={onNewEntry}
           >
-            <span>+ New</span>
-            <div className="btn-inner-icon" style={{ width: '22px', height: '22px' }}>
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <line x1="12" y1="5" x2="12" y2="19"></line>
-                <line x1="5" y1="12" x2="19" y2="12"></line>
-              </svg>
-            </div>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            <span>New note</span>
           </button>
         </div>
 
         {/* Scrollable list */}
         <div className="entries-scroll-area">
           {loading && (
-            <div style={{ padding: '30px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>
-              Synthesizing entries…
+            <div style={{ padding: '36px 20px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '13px' }}>
+              Loading notes…
             </div>
           )}
 
           {!loading && entries.length === 0 && (
-            <div style={{ padding: '36px 18px', textAlign: 'center' }}>
-              <div style={{ fontSize: '24px', marginBottom: '8px', opacity: 0.6 }}>🌱</div>
-              <p style={{ color: 'var(--text-secondary)', fontSize: '13px', lineHeight: '1.5' }}>
-                Your neural journal is empty. Start a conversation in voice or text to capture your first thoughts.
+            <div style={{ padding: '48px 24px', textAlign: 'center' }}>
+              <div style={{ width: '48px', height: '48px', margin: '0 auto 16px', borderRadius: '50%', background: 'rgba(255,255,255,0.04)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#a8c7fa' }}>
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                  <polyline points="14 2 14 8 20 8"/>
+                  <line x1="12" y1="18" x2="12" y2="12"/>
+                  <line x1="9" y1="15" x2="15" y2="15"/>
+                </svg>
+              </div>
+              <div style={{ fontWeight: '500', color: '#e3e3e3', fontSize: '14px', marginBottom: '6px' }}>
+                No notes yet
+              </div>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '13px', lineHeight: '1.5', maxWidth: '280px', margin: '0 auto' }}>
+                Speak your thoughts with voice or write a quick note to get started.
               </p>
               {onSeedDemo && (
                 <button
-                  className="btn-tendril-secondary"
+                  className="btn-google-secondary"
                   onClick={onSeedDemo}
                   disabled={seeding}
-                  style={{ marginTop: '16px', fontSize: '12px', color: '#38bdf8', borderColor: 'rgba(56, 189, 248, 0.4)' }}
+                  style={{ marginTop: '20px', fontSize: '12px', padding: '6px 14px', borderRadius: '9999px' }}
                 >
-                  {seeding ? '⚡ Seeding Journey…' : '⚡ Load Sample Journey (Demo Mode)'}
+                  {seeding ? 'Loading sample…' : 'Load sample notes'}
                 </button>
               )}
             </div>
@@ -67,7 +82,7 @@ export default function EntryList({ entries, loading, onNewEntry, onOpenEntry, s
 
           {entries.map((e) => {
             const isSelected = selectedId === e.id;
-            const moodCol = MOOD_COLOR[e.mood] || '#94a3b8';
+            const moodCol = MOOD_COLOR[e.mood] || '#c4c7c5';
 
             return (
               <div
@@ -81,20 +96,21 @@ export default function EntryList({ entries, loading, onNewEntry, onOpenEntry, s
                       width: '6px',
                       height: '6px',
                       borderRadius: '50%',
-                      background: moodCol,
-                      boxShadow: `0 0 6px ${moodCol}`
+                      background: moodCol
                     }} />
-                    <span style={{ textTransform: 'capitalize', color: 'var(--text-secondary)' }}>{e.mood || 'neutral'}</span>
+                    <span style={{ textTransform: 'capitalize', color: 'var(--text-secondary)', fontSize: '11.5px' }}>{e.mood || 'note'}</span>
                   </span>
-                  <span>{e.createdAt ? new Date(e.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : ''}</span>
+                  <span style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>
+                    {e.createdAt ? new Date(e.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : ''}
+                  </span>
                 </div>
 
-                <div style={{ fontWeight: '600', color: '#f1f5f9', fontSize: '13.5px', marginBottom: '3px' }}>
-                  {e.title || 'Untitled Session'}
+                <div style={{ fontWeight: '500', color: '#e3e3e3', fontSize: '14px', marginBottom: '4px' }}>
+                  {e.title || 'Untitled Note'}
                 </div>
 
                 <p className="entry-card-summary">
-                  {e.summary || 'Click to review conversation details…'}
+                  {e.summary || 'Click to review note details…'}
                 </p>
               </div>
             );
@@ -102,7 +118,7 @@ export default function EntryList({ entries, loading, onNewEntry, onOpenEntry, s
         </div>
 
         {/* Mood Trend Strip at bottom of sidebar */}
-        <div style={{ padding: '14px', borderTop: '1px solid var(--border-subtle)', background: 'rgba(0,0,0,0.15)' }}>
+        <div style={{ padding: '14px 20px', borderTop: '1px solid var(--border-subtle)', background: 'var(--bg-surface)' }}>
           <MoodTrend entries={entries} />
         </div>
 

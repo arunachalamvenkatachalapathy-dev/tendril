@@ -20,123 +20,92 @@ export default function Login() {
 
   return (
     <div className="login-screen-wrap">
-      <div className="bezel-outer" style={{ maxWidth: '640px', width: '100%' }}>
-        <div className="bezel-inner login-card-inner">
+      <div className="google-surface-card" style={{ maxWidth: '620px', width: '100%' }}>
+        <div className="google-card-body login-card-inner">
           
-          {/* Eyebrow Pill */}
-          <div style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '8px',
-            padding: '4px 14px',
-            borderRadius: '9999px',
-            background: 'rgba(16, 185, 129, 0.1)',
-            border: '1px solid rgba(16, 185, 129, 0.25)',
-            fontSize: '11px',
-            fontFamily: 'var(--font-mono)',
-            fontWeight: '600',
-            letterSpacing: '0.15em',
-            color: '#34d399',
-            textTransform: 'uppercase',
-            marginBottom: '20px'
-          }}>
-            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10b981', boxShadow: '0 0 8px #10b981' }} />
-            Zero-Trust Neural Architecture
+          {/* Google Labs / Gemini Product Eyebrow */}
+          <div className="google-eyebrow">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style={{ color: '#a8c7fa' }}>
+              <path d="M12 2L14.4 9.6L22 12L14.4 14.4L12 22L9.6 14.4L2 12L9.6 9.6Z" />
+            </svg>
+            <span>Powered by Google Gemini</span>
           </div>
 
-          {/* Logo & Headline */}
+          {/* Product Title */}
           <h1 className="login-title">
-            Tendril <span style={{
-              background: 'linear-gradient(135deg, #10b981, #06b6d4)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent'
-            }}>Neural Journal</span>
+            Tendril <span className="login-title-sub">Journal</span>
           </h1>
 
           <p className="login-subtitle">
-            Cultivate your stream of consciousness. Ambient conversational voice companion with 
-            persistent 3-tier layered memory and live cognitive idea distillation.
+            A thoughtful, intelligent journal. Speak your thoughts freely, organize ideas effortlessly, 
+            and rediscover past reflections through continuous context.
           </p>
 
-          {/* Feature Trio Bento */}
+          {/* Google Material 3 Feature Cards */}
           <div className="login-bento-grid">
-            <div style={{
-              padding: '16px 14px',
-              borderRadius: '16px',
-              background: 'rgba(255, 255, 255, 0.02)',
-              border: '1px solid var(--border-subtle)'
-            }}>
-              <div style={{ fontSize: '18px', marginBottom: '6px' }}>🎙️</div>
-              <div style={{ fontSize: '13px', fontWeight: '600', color: '#f1f5f9', marginBottom: '4px' }}>Live Voice</div>
-              <div style={{ fontSize: '11px', color: 'var(--text-muted)', lineHeight: '1.4' }}>Gemini Live native multimodal audio streaming</div>
+            <div className="google-feature-tile">
+              <div className="tile-icon-wrap">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#a8c7fa" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                  <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                  <line x1="12" y1="19" x2="12" y2="23"/>
+                  <line x1="8" y1="23" x2="16" y2="23"/>
+                </svg>
+              </div>
+              <div className="tile-title">Live Voice Dialogue</div>
+              <div className="tile-desc">Low-latency conversational voice companion via Gemini Live audio streaming.</div>
             </div>
 
-            <div style={{
-              padding: '16px 14px',
-              borderRadius: '16px',
-              background: 'rgba(255, 255, 255, 0.02)',
-              border: '1px solid var(--border-subtle)'
-            }}>
-              <div style={{ fontSize: '18px', marginBottom: '6px' }}>🧠</div>
-              <div style={{ fontSize: '13px', fontWeight: '600', color: '#f1f5f9', marginBottom: '4px' }}>Layered Memory</div>
-              <div style={{ fontSize: '11px', color: 'var(--text-muted)', lineHeight: '1.4' }}>Now → Recent 7-Day Rollup → Identity Archive</div>
+            <div className="google-feature-tile">
+              <div className="tile-icon-wrap">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#a8c7fa" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+                  <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+                </svg>
+              </div>
+              <div className="tile-title">Continuous Context</div>
+              <div className="tile-desc">Intelligently bridges thoughts and themes across days, resurfacing relevant reflections.</div>
             </div>
 
-            <div style={{
-              padding: '16px 14px',
-              borderRadius: '16px',
-              background: 'rgba(255, 255, 255, 0.02)',
-              border: '1px solid var(--border-subtle)'
-            }}>
-              <div style={{ fontSize: '18px', marginBottom: '6px' }}>🛡️</div>
-              <div style={{ fontSize: '13px', fontWeight: '600', color: '#f1f5f9', marginBottom: '4px' }}>Zero-Key Vault</div>
-              <div style={{ fontSize: '11px', color: 'var(--text-muted)', lineHeight: '1.4' }}>Strict UID row isolation & Secret Manager</div>
+            <div className="google-feature-tile">
+              <div className="tile-icon-wrap">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#a8c7fa" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                </svg>
+              </div>
+              <div className="tile-title">Private & Secure</div>
+              <div className="tile-desc">Personal entries and voice data are strictly isolated to your authenticated account.</div>
             </div>
           </div>
 
-          {/* CTA Buttons */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', alignItems: 'center', margin: '0 auto' }}>
+          {/* Official Google Sign-In Button */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', alignItems: 'center', margin: '28px auto 0' }}>
             <button
-              className="btn-tendril-primary"
+              className="google-signin-btn btn-tendril-primary"
               onClick={handleSignIn}
               disabled={loading}
-              style={{
-                padding: '10px 14px 10px 28px',
-                fontSize: '15px',
-                display: 'inline-flex'
-              }}
             >
-              <span>{loading ? 'Authenticating…' : 'Initialize with Google'}</span>
-              <div className="btn-inner-icon">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <line x1="5" y1="12" x2="19" y2="12"></line>
-                  <polyline points="12 5 19 12 12 19"></polyline>
-                </svg>
-              </div>
+              <svg width="18" height="18" viewBox="0 0 48 48" style={{ marginRight: '12px', flexShrink: 0 }}>
+                <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+                <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+                <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+                <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+                <path fill="none" d="M0 0h48v48H0z"/>
+              </svg>
+              <span>{loading ? 'Signing in with Google…' : 'Sign in with Google'}</span>
             </button>
           </div>
 
           {error && (
-            <div style={{
-              marginTop: '20px',
-              padding: '10px 14px',
-              borderRadius: '10px',
-              background: 'rgba(244, 63, 94, 0.1)',
-              border: '1px solid rgba(244, 63, 94, 0.3)',
-              color: '#fda4af',
-              fontSize: '12px'
-            }}>
+            <div className="google-alert-error">
               {error}
             </div>
           )}
 
-          <div style={{
-            marginTop: '32px',
-            fontSize: '11px',
-            color: 'var(--text-dim)',
-            fontFamily: 'var(--font-mono)'
-          }}>
-            PROJECT TENDRIL • ID: tendril-74291 • REGION: asia-south1
+          {/* Clean Google Project Footer */}
+          <div className="google-footer-meta">
+            Google Cloud Project tendril-74291 • Built with Google Gemini
           </div>
 
         </div>

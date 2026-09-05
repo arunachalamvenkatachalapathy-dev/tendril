@@ -28,7 +28,7 @@ export default function MemoryProfileModal({ onClose }) {
   }, []);
 
   async function handleWipe() {
-    if (!window.confirm('Are you sure you want to permanently erase your memory layers? This will clear your personal Claude-Remember profile in Firestore.')) {
+    if (!window.confirm('Are you sure you want to permanently clear your journal memory? This removes all personalized reflections and context stored for your account in Firestore.')) {
       return;
     }
     setWiping(true);
@@ -38,7 +38,7 @@ export default function MemoryProfileModal({ onClose }) {
       setMemoryData(null);
       setWiped(true);
     } catch (err) {
-      setError(err.message || 'Failed to wipe memory layers.');
+      setError(err.message || 'Failed to clear memory.');
     } finally {
       setWiping(false);
     }
@@ -52,127 +52,94 @@ export default function MemoryProfileModal({ onClose }) {
 
   return (
     <div className="memory-modal-backdrop" onClick={onClose}>
-      <div className="memory-modal-dialog bezel-outer" onClick={e => e.stopPropagation()}>
-        <div className="bezel-inner" style={{ padding: '32px 28px' }}>
+      <div className="memory-modal-dialog google-surface-card" onClick={e => e.stopPropagation()}>
+        <div className="google-card-body" style={{ padding: '32px 28px' }}>
           
           {/* Header */}
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '24px' }}>
             <div>
-              <div style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px',
-                fontSize: '11px',
-                fontFamily: 'var(--font-mono)',
-                color: '#10b981',
-                textTransform: 'uppercase',
-                letterSpacing: '0.15em',
-                marginBottom: '6px'
-              }}>
-                <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10b981', boxShadow: '0 0 8px #10b981' }} />
-                Claude-Remember Cognitive Architecture
+              <div className="google-eyebrow" style={{ marginBottom: '8px' }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style={{ color: '#a8c7fa' }}>
+                  <path d="M12 2L14.4 9.6L22 12L14.4 14.4L12 22L9.6 14.4L2 12L9.6 9.6Z" />
+                </svg>
+                <span>Gemini Memory Bank</span>
               </div>
-              <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '24px', fontWeight: '700', color: '#fff' }}>
-                Neural Memory Layers
+              <h2 style={{ fontSize: '22px', fontWeight: '500', color: '#e3e3e3' }}>
+                Journal Memory & Context
               </h2>
             </div>
             
             <button
               onClick={onClose}
-              style={{
-                width: '32px',
-                height: '32px',
-                borderRadius: '50%',
-                background: 'rgba(255, 255, 255, 0.05)',
-                border: '1px solid var(--border-subtle)',
-                color: 'var(--text-secondary)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'pointer'
-              }}
+              className="btn-google-icon"
+              style={{ width: '32px', height: '32px' }}
             >
               ✕
             </button>
           </div>
 
-          {/* Tier Switcher Pills */}
-          <div style={{ display: 'flex', gap: '8px', marginBottom: '24px' }}>
+          {/* Tab Switcher */}
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', flexWrap: 'wrap' }}>
             <button
-              className={`nav-tab-btn ${activeTab === 'recent' ? 'active' : ''}`}
+              className={`google-pill-tab ${activeTab === 'recent' ? 'active' : ''}`}
               onClick={() => setActiveTab('recent')}
             >
-              🌿 Tier 2: 7-Day Recent Rollup
+              Recent Context (7 Days)
             </button>
             <button
-              className={`nav-tab-btn ${activeTab === 'archive' ? 'active' : ''}`}
+              className={`google-pill-tab ${activeTab === 'archive' ? 'active' : ''}`}
               onClick={() => setActiveTab('archive')}
             >
-              🏛️ Tier 3: Core Identity Archive
+              Long-Term Themes
             </button>
             <button
-              className={`nav-tab-btn ${activeTab === 'now' ? 'active' : ''}`}
+              className={`google-pill-tab ${activeTab === 'now' ? 'active' : ''}`}
               onClick={() => setActiveTab('now')}
             >
-              ⚡ Tier 1: Ephemeral Buffer (Now)
+              Today's Reflections
             </button>
           </div>
 
           {error && (
-            <div style={{
-              padding: '10px 18px',
-              background: 'rgba(244, 63, 94, 0.1)',
-              borderRadius: '8px',
-              color: '#fda4af',
-              fontSize: '12.5px',
-              marginBottom: '16px'
-            }}>
+            <div className="google-alert-error" style={{ marginBottom: '16px' }}>
               {error}
             </div>
           )}
 
           {/* Content Body */}
           {loading ? (
-            <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>
-              Retrieving live memory layers from Firestore…
+            <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '13px' }}>
+              Loading memory context from Firestore…
             </div>
           ) : wiped ? (
             <div style={{
               padding: '36px',
               textAlign: 'center',
-              background: 'rgba(244, 63, 94, 0.05)',
+              background: 'rgba(255, 255, 255, 0.02)',
               borderRadius: '16px',
-              border: '1px solid rgba(244, 63, 94, 0.2)'
+              border: '1px solid var(--border-subtle)'
             }}>
-              <p style={{ color: '#fda4af', fontSize: '15px', fontWeight: '500' }}>
-                All memory layers have been permanently wiped from Firestore.
+              <p style={{ color: '#e3e3e3', fontSize: '15px', fontWeight: '500' }}>
+                Memory context has been cleared from Firestore.
               </p>
-              <p style={{ fontSize: '12px', color: 'var(--text-dim)', marginTop: '6px' }}>
-                Your next journal session will begin with a fresh, clean neural slate.
+              <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '6px' }}>
+                Your next journal session will begin with a clean context.
               </p>
             </div>
           ) : activeTab === 'recent' ? (
-            <div className="memory-tier-card">
-              <span className="tier-badge-pill" style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#34d399', border: '1px solid rgba(16, 185, 129, 0.3)' }}>
-                Rolling Context (users/{'{uid}'}/memory/recent)
+            <div className="google-memory-panel">
+              <span className="google-panel-badge">
+                Rolling 7-Day Context
               </span>
               {recentSummary ? (
                 <>
-                  <p style={{ fontSize: '14.5px', color: 'var(--text-secondary)', lineHeight: '1.65', marginBottom: '18px' }}>
+                  <p style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: '1.65', marginBottom: '16px' }}>
                     {recentSummary}
                   </p>
                   {recentTopics.length > 0 && (
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                       {recentTopics.map((t, i) => (
-                        <span key={i} style={{
-                          fontSize: '11px',
-                          fontFamily: 'var(--font-mono)',
-                          padding: '3px 10px',
-                          borderRadius: '9999px',
-                          background: 'rgba(255, 255, 255, 0.04)',
-                          border: '1px solid var(--border-subtle)',
-                          color: 'var(--text-muted)'
-                        }}>
+                        <span key={i} className="google-chip">
                           #{t}
                         </span>
                       ))}
@@ -180,49 +147,41 @@ export default function MemoryProfileModal({ onClose }) {
                   )}
                 </>
               ) : (
-                <p style={{ fontSize: '13.5px', color: 'var(--text-dim)', lineHeight: '1.6' }}>
-                  No rolling 7-day memory crystallized yet. Entries are automatically compacted into this tier after recurring sessions.
+                <p style={{ fontSize: '13.5px', color: 'var(--text-muted)', lineHeight: '1.6' }}>
+                  No rolling 7-day memory recorded yet. As you journal across days, Gemini summarizes your recurring themes here.
                 </p>
               )}
             </div>
           ) : activeTab === 'archive' ? (
-            <div className="memory-tier-card">
-              <span className="tier-badge-pill" style={{ background: 'rgba(139, 92, 246, 0.15)', color: '#c084fc', border: '1px solid rgba(139, 92, 246, 0.3)' }}>
-                Identity Profile (users/{'{uid}'}/memory/archive)
+            <div className="google-memory-panel">
+              <span className="google-panel-badge">
+                Core Themes & Values
               </span>
               {archiveSummary ? (
                 <>
-                  <p style={{ fontSize: '14.5px', color: 'var(--text-secondary)', lineHeight: '1.65', marginBottom: '18px' }}>
+                  <p style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: '1.65', marginBottom: '16px' }}>
                     {archiveSummary}
                   </p>
                   {archiveValues.length > 0 && (
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                       {archiveValues.map((v, i) => (
-                        <span key={i} style={{
-                          fontSize: '11px',
-                          fontFamily: 'var(--font-mono)',
-                          padding: '3px 10px',
-                          borderRadius: '9999px',
-                          background: 'rgba(139, 92, 246, 0.1)',
-                          border: '1px solid rgba(139, 92, 246, 0.25)',
-                          color: '#e9d5ff'
-                        }}>
-                          ✦ {v}
+                        <span key={i} className="google-chip" style={{ color: '#a8c7fa' }}>
+                          • {v}
                         </span>
                       ))}
                     </div>
                   )}
                 </>
               ) : (
-                <p style={{ fontSize: '13.5px', color: 'var(--text-dim)', lineHeight: '1.6' }}>
-                  Core identity archive is empty. Long-term values and principles merge here across weeks of journaling.
+                <p style={{ fontSize: '13.5px', color: 'var(--text-muted)', lineHeight: '1.6' }}>
+                  Long-term themes are empty. Over weeks of journaling, your core goals and principles are preserved here.
                 </p>
               )}
             </div>
           ) : (
-            <div className="memory-tier-card">
-              <span className="tier-badge-pill" style={{ background: 'rgba(245, 158, 11, 0.15)', color: '#fbbf24', border: '1px solid rgba(245, 158, 11, 0.3)' }}>
-                Active Session Buffer (users/{'{uid}'}/memory/now)
+            <div className="google-memory-panel">
+              <span className="google-panel-badge">
+                Active Session Context
               </span>
               {nowBullets.length > 0 ? (
                 <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -234,47 +193,46 @@ export default function MemoryProfileModal({ onClose }) {
                       alignItems: 'flex-start',
                       gap: '10px'
                     }}>
-                      <span style={{ color: '#f59e0b', fontSize: '15px' }}>⚡</span>
+                      <span style={{ color: '#a8c7fa', marginTop: '2px' }}>•</span>
                       <span>{typeof b === 'string' ? b : b.text}</span>
                     </li>
                   ))}
                 </ul>
               ) : (
-                <p style={{ fontSize: '13.5px', color: 'var(--text-dim)', lineHeight: '1.6' }}>
-                  Today's ephemeral buffer is clear. New insights and action points will stream here during active conversations.
+                <p style={{ fontSize: '13.5px', color: 'var(--text-muted)', lineHeight: '1.6' }}>
+                  Today's session context is clear. New points will appear here during active conversations.
                 </p>
               )}
             </div>
           )}
 
-          {/* Footer Controls & GDPR Wipe */}
+          {/* Footer Controls & Privacy Wipe */}
           <div style={{
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
             marginTop: '24px',
             paddingTop: '20px',
-            borderTop: '1px solid var(--border-subtle)'
+            borderTop: '1px solid var(--border-subtle)',
+            flexWrap: 'wrap',
+            gap: '12px'
           }}>
-            <span style={{ fontSize: '11px', color: 'var(--text-dim)', fontFamily: 'var(--font-mono)' }}>
-              Data isolation: users/{'{req.uid}'}/memory/*
+            <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+              Private storage scoped to your Google account
             </span>
 
             <button
               onClick={handleWipe}
               disabled={wiping || loading}
+              className="btn-google-secondary"
               style={{
-                background: 'rgba(244, 63, 94, 0.08)',
-                border: '1px solid rgba(244, 63, 94, 0.25)',
-                color: '#fda4af',
-                padding: '8px 16px',
-                borderRadius: '8px',
-                fontSize: '12px',
-                cursor: 'pointer',
-                transition: 'all 0.2s'
+                color: '#f28b82',
+                borderColor: 'rgba(242, 139, 130, 0.3)',
+                padding: '6px 14px',
+                fontSize: '12px'
               }}
             >
-              {wiping ? 'Erasing…' : '🗑️ Wipe All Memory Layers (GDPR)'}
+              {wiping ? 'Clearing…' : 'Clear memory context'}
             </button>
           </div>
 

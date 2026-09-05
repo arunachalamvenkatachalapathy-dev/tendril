@@ -133,9 +133,11 @@ export default function App() {
   if (user === undefined) {
     return (
       <div className="tendril-shell" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--text-secondary)' }}>
-          <span className="frequency-bar" style={{ width: '4px', height: '16px', background: '#10b981' }} />
-          <span>Initializing Tendril Neural Core…</span>
+        <div className="google-loading-wrap">
+          <svg className="google-spinner" width="32" height="32" viewBox="0 0 50 50">
+            <circle className="google-spinner-path" cx="25" cy="25" r="20" fill="none" strokeWidth="4" />
+          </svg>
+          <span style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>Loading Tendril…</span>
         </div>
       </div>
     );
@@ -151,64 +153,84 @@ export default function App() {
 
   return (
     <div className="tendril-shell">
-      {/* Floating Island Navigation */}
-      <header className="floating-nav">
+      {/* Google App Header Bar */}
+      <header className="google-app-header">
         <div className="brand-wrapper" onClick={() => { navigate('/'); setMobileTab('reflect'); }}>
           <div className="brand-glyph">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 2a10 10 0 0 1 10 10c0 5.5-4.5 10-10 10S2 17.5 2 12" />
-              <path d="M12 6a6 6 0 0 1 6 6c0 3.3-2.7 6-6 6s-6-2.7-6-6" />
-              <path d="M12 10a2 2 0 0 1 2 2" />
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" style={{ color: '#a8c7fa' }}>
+              <path d="M12 2L14.4 9.6L22 12L14.4 14.4L12 22L9.6 14.4L2 12L9.6 9.6Z" />
             </svg>
           </div>
           <div className="brand-title">
-            Tendril <span className="accent">AI</span>
+            Tendril <span className="brand-subtitle">Journal</span>
           </div>
         </div>
 
-        {/* Center Nav Switcher (Desktop Only) */}
+        {/* Center Desktop Navigation Tabs */}
         <nav className="nav-tabs desktop-only">
           <button
             className={`nav-tab-btn ${path === '/' && mobileTab === 'reflect' ? 'active' : ''}`}
             onClick={() => { navigate('/'); setMobileTab('reflect'); }}
           >
-            <span>✍️ Journal</span>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '6px' }}>
+              <path d="M12 20h9"/>
+              <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+            </svg>
+            <span>Journal</span>
           </button>
           <button
             className={`nav-tab-btn ${path === '/dashboard' ? 'active' : ''}`}
             onClick={() => navigate('/dashboard')}
           >
-            <span>📊 Circadian & Heatmap</span>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '6px' }}>
+              <line x1="18" y1="20" x2="18" y2="10"/>
+              <line x1="12" y1="20" x2="12" y2="4"/>
+              <line x1="6" y1="20" x2="6" y2="14"/>
+            </svg>
+            <span>Activity</span>
           </button>
           <button
             className="nav-tab-btn"
             onClick={() => setShowMemoryModal(true)}
-            style={{ color: '#34d399' }}
           >
-            <span>🧠 Memory Layers</span>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '6px' }}>
+              <circle cx="12" cy="12" r="10"/>
+              <path d="M12 6v6l4 2"/>
+            </svg>
+            <span>Memory</span>
           </button>
           <button
-            className="nav-tab-btn"
+            className="nav-tab-btn nav-tab-demo"
             onClick={handleSeedDemo}
             disabled={seedingDemo}
-            style={{ color: '#38bdf8', border: '1px dashed rgba(56, 189, 248, 0.4)' }}
-            title="Load 14-day sample journal journey for Hack2Skill evaluation"
+            title="Load sample journal entries"
           >
-            <span>{seedingDemo ? '⚡ Seeding…' : '⚡ Demo Mode'}</span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '5px' }}>
+              <path d="M10 2v7.31M14 2v7.31M8.5 2h7M14 9.3a6.5 6.5 0 1 1-4 0"/>
+            </svg>
+            <span>{seedingDemo ? 'Loading sample…' : 'Sample entries'}</span>
           </button>
         </nav>
 
-        {/* User Identity Chip */}
+        {/* User Identity & Account Actions */}
         <div className="user-profile-chip">
-          <span className="user-email-badge desktop-only">
-            {user.email}
-          </span>
+          <div className="google-account-pill">
+            <div className="google-user-avatar">
+              {user.email ? user.email.charAt(0).toUpperCase() : 'U'}
+            </div>
+            <span className="user-email-badge desktop-only">
+              {user.email}
+            </span>
+          </div>
           <button
             className="mobile-only btn-mobile-new"
             onClick={handleNewEntry}
-            title="Compose New Thought"
+            title="New note"
           >
-            +
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <line x1="12" y1="5" x2="12" y2="19"/>
+              <line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
           </button>
           <button className="btn-signout" onClick={() => signOut()}>
             Sign out
@@ -269,7 +291,7 @@ export default function App() {
         </div>
       )}
 
-      {/* Mobile Native-Feel Bottom App Navigation Bar */}
+      {/* Material Design 3 Mobile Navigation Dock */}
       <nav className="mobile-bottom-nav">
         <button
           className={`mobile-nav-item ${path === '/' && mobileTab === 'reflect' ? 'active' : ''}`}
@@ -278,9 +300,15 @@ export default function App() {
             setMobileTab('reflect');
           }}
         >
-          <div className="mobile-nav-icon">✍️</div>
-          <span>Reflect</span>
+          <div className="mobile-nav-icon-wrap">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 20h9"/>
+              <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+            </svg>
+          </div>
+          <span className="mobile-nav-label">Journal</span>
         </button>
+
         <button
           className={`mobile-nav-item ${path === '/' && mobileTab === 'timeline' ? 'active' : ''}`}
           onClick={() => {
@@ -288,10 +316,20 @@ export default function App() {
             setMobileTab('timeline');
           }}
         >
-          <div className="mobile-nav-icon">📖</div>
-          <span>Timeline</span>
-          {entries.length > 0 && <span className="mobile-nav-badge">{entries.length}</span>}
+          <div className="mobile-nav-icon-wrap">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="8" y1="6" x2="21" y2="6"/>
+              <line x1="8" y1="12" x2="21" y2="12"/>
+              <line x1="8" y1="18" x2="21" y2="18"/>
+              <line x1="3" y1="6" x2="3.01" y2="6"/>
+              <line x1="3" y1="12" x2="3.01" y2="12"/>
+              <line x1="3" y1="18" x2="3.01" y2="18"/>
+            </svg>
+            {entries.length > 0 && <span className="mobile-nav-badge">{entries.length}</span>}
+          </div>
+          <span className="mobile-nav-label">Notes</span>
         </button>
+
         <button
           className={`mobile-nav-item ${path === '/' && mobileTab === 'sparks' ? 'active' : ''}`}
           onClick={() => {
@@ -299,27 +337,44 @@ export default function App() {
             setMobileTab('sparks');
           }}
         >
-          <div className="mobile-nav-icon">💡</div>
-          <span>Sparks</span>
-          {surfacedIdeas.length > 0 && <span className="mobile-nav-badge">{surfacedIdeas.length}</span>}
+          <div className="mobile-nav-icon-wrap">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 2L14.4 9.6L22 12L14.4 14.4L12 22L9.6 14.4L2 12L9.6 9.6Z"/>
+            </svg>
+            {surfacedIdeas.length > 0 && <span className="mobile-nav-badge">{surfacedIdeas.length}</span>}
+          </div>
+          <span className="mobile-nav-label">Insights</span>
         </button>
+
         <button
           className={`mobile-nav-item ${path === '/dashboard' ? 'active' : ''}`}
           onClick={() => navigate('/dashboard')}
         >
-          <div className="mobile-nav-icon">📊</div>
-          <span>Metrics</span>
+          <div className="mobile-nav-icon-wrap">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="18" y1="20" x2="18" y2="10"/>
+              <line x1="12" y1="20" x2="12" y2="4"/>
+              <line x1="6" y1="20" x2="6" y2="14"/>
+            </svg>
+          </div>
+          <span className="mobile-nav-label">Activity</span>
         </button>
+
         <button
           className="mobile-nav-item"
           onClick={() => setShowMemoryModal(true)}
         >
-          <div className="mobile-nav-icon">🧠</div>
-          <span>Memory</span>
+          <div className="mobile-nav-icon-wrap">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10"/>
+              <path d="M12 6v6l4 2"/>
+            </svg>
+          </div>
+          <span className="mobile-nav-label">Memory</span>
         </button>
       </nav>
 
-      {/* Memory Layers Inspector Modal */}
+      {/* Memory Inspector Modal */}
       {showMemoryModal && (
         <MemoryProfileModal onClose={() => setShowMemoryModal(false)} />
       )}
