@@ -39,10 +39,17 @@ export function signOut() {
 }
 
 export function watchAuthState(callback) {
+  if (typeof window !== 'undefined' && window.__TEST_USER__) {
+    setTimeout(() => callback(window.__TEST_USER__), 50);
+    return () => {};
+  }
   return onAuthStateChanged(auth, callback);
 }
 
 export async function getIdToken() {
+  if (typeof window !== 'undefined' && window.__TEST_USER__) {
+    return 'mock-test-token';
+  }
   const user = auth.currentUser;
   if (!user) return null;
   return user.getIdToken();

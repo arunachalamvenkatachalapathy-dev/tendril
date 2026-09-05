@@ -480,6 +480,11 @@ body::before {
   align-items: start;
 }
 
+.workspace-col.col-reflect {
+  display: flex;
+  flex-direction: column;
+}
+
 /* Desktop & Responsive Visibility */
 .desktop-only {
   display: flex !important;
@@ -686,7 +691,7 @@ body::before {
   }
 
   .workspace-col {
-    display: none;
+    display: none !important;
   }
 
   .workspace-grid.mobile-tab-reflect .workspace-col.col-reflect {

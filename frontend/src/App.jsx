@@ -257,7 +257,7 @@ export default function App() {
           </div>
 
           {/* Column 2: Composer Center Canvas */}
-          <div className="workspace-col col-reflect" style={{ display: 'flex', flexDirection: 'column' }}>
+          <div className="workspace-col col-reflect">
             {view.mode !== 'detail' && (
               <ModeToggle mode={composerMode} onChange={setComposerMode} />
             )}
