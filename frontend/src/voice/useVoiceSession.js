@@ -397,6 +397,64 @@ export function useVoiceSession() {
     }
   }, [beginMicCapture, handleUpstreamMessage]);
 
+  // Unified Bulletproof Send: ALWAYS succeeds, WS or HTTP cascade
+  const sendText = useCallback(async (text, imagePayload = null) => {
+    if (!text || !text.trim()) return;
+    const clean = text.trim();
+
+    // 1. Immediately record user turn in local transcript
+    setLiveTranscript((prev) => [...prev, { role: 'user', text: clean }]);
+
+    // 2. Extract sparks asynchronously in background
+    extractIdeas(clean)
+      .then((sparks) => {
+        if (sparks && sparks.length > 0) {
+          setIdeas((prev) => [...new Set([...sparks, ...prev])].slice(0, 8));
+        }
+      })
+      .catch(() => {});
+
+    // 3. Try WebSocket if available and open
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      try {
+        wsRef.current.send(JSON.stringify({ type: 'text_message', text: clean }));
+        return;
+      } catch (e) {
+        console.warn('WS send failed, falling back to HTTP:', e);
+      }
+    }
+
+    // 4. Guaranteed HTTP Cascade Fallback
+    setStatus('speaking');
+    try {
+      const history = transcriptHistoryRef.current.map((t) => ({
+        role: t.role === 'assistant' ? 'assistant' : 'user',
+        text: t.text,
+      }));
+
+      const res = await sendChatMessage(clean, history, imagePayload, voiceOutputRef.current);
+      if (res.reply) {
+        setLiveTranscript((prev) => [...prev, { role: 'assistant', text: res.reply }]);
+        if (voiceOutputRef.current) {
+          if (res.audioContent) {
+            playGoogleLiveAudio(res.audioContent, res.reply);
+          } else {
+            speakReply(res.reply);
+          }
+        } else {
+          setStatus('listening');
+        }
+      } else {
+        setStatus('listening');
+      }
+    } catch (err) {
+      console.warn('Chat dispatch warning:', err);
+      const fallbackMsg = "I'm holding this thought in your memory stream. Reflect further or compact whenever you're ready.";
+      setLiveTranscript((prev) => [...prev, { role: 'assistant', text: fallbackMsg }]);
+      setStatus('listening');
+    }
+  }, [playGoogleLiveAudio, speakReply]);
+
   // SpeechRecognition engine for real-time interim user preview
   const startSpeechRecognition = useCallback((stream) => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -524,64 +582,6 @@ export function useVoiceSession() {
 
     setStatus('listening');
   }, [acquireMic, beginMicCapture, connectWs, startAudioMeter, startSpeechRecognition]);
-
-  // Unified Bulletproof Send: ALWAYS succeeds, WS or HTTP cascade
-  const sendText = useCallback(async (text, imagePayload = null) => {
-    if (!text || !text.trim()) return;
-    const clean = text.trim();
-
-    // 1. Immediately record user turn in local transcript
-    setLiveTranscript((prev) => [...prev, { role: 'user', text: clean }]);
-
-    // 2. Extract sparks asynchronously in background
-    extractIdeas(clean)
-      .then((sparks) => {
-        if (sparks && sparks.length > 0) {
-          setIdeas((prev) => [...new Set([...sparks, ...prev])].slice(0, 8));
-        }
-      })
-      .catch(() => {});
-
-    // 3. Try WebSocket if available and open
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
-      try {
-        wsRef.current.send(JSON.stringify({ type: 'text_message', text: clean }));
-        return;
-      } catch (e) {
-        console.warn('WS send failed, falling back to HTTP:', e);
-      }
-    }
-
-    // 4. Guaranteed HTTP Cascade Fallback
-    setStatus('speaking');
-    try {
-      const history = transcriptHistoryRef.current.map((t) => ({
-        role: t.role === 'assistant' ? 'assistant' : 'user',
-        text: t.text,
-      }));
-
-      const res = await sendChatMessage(clean, history, imagePayload, voiceOutputRef.current);
-      if (res.reply) {
-        setLiveTranscript((prev) => [...prev, { role: 'assistant', text: res.reply }]);
-        if (voiceOutputRef.current) {
-          if (res.audioContent) {
-            playGoogleLiveAudio(res.audioContent, res.reply);
-          } else {
-            speakReply(res.reply);
-          }
-        } else {
-          setStatus('listening');
-        }
-      } else {
-        setStatus('listening');
-      }
-    } catch (err) {
-      console.warn('Chat dispatch warning:', err);
-      const fallbackMsg = "I'm holding this thought in your memory stream. Reflect further or compact whenever you're ready.";
-      setLiveTranscript((prev) => [...prev, { role: 'assistant', text: fallbackMsg }]);
-      setStatus('listening');
-    }
-  }, [playGoogleLiveAudio, speakReply]);
 
   // Toggle microphone on demand
   const toggleMic = useCallback(async () => {
