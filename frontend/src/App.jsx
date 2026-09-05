@@ -53,6 +53,7 @@ export default function App() {
   const [surfacedIdeas, setSurfacedIdeas] = useState([]);
   const [showMemoryModal, setShowMemoryModal] = useState(false);
   const [seedingDemo, setSeedingDemo] = useState(false);
+  const [mobileTab, setMobileTab] = useState('reflect'); // 'reflect' | 'timeline' | 'sparks'
   const [path, navigate] = usePath();
 
   useEffect(() => watchAuthState(setUser), []);
@@ -93,6 +94,7 @@ export default function App() {
   function handleNewEntry() {
     setView({ mode: 'compose' });
     setComposerKey((k) => k + 1);
+    setMobileTab('reflect');
     if (path !== '/') navigate('/');
   }
 
@@ -100,6 +102,7 @@ export default function App() {
     try {
       const entry = await getEntry(id);
       setView({ mode: 'detail', entry });
+      setMobileTab('reflect');
       if (path !== '/') navigate('/');
     } catch (err) {
       console.error('Failed to load entry:', err.message);
@@ -150,7 +153,7 @@ export default function App() {
     <div className="tendril-shell">
       {/* Floating Island Navigation */}
       <header className="floating-nav">
-        <div className="brand-wrapper" onClick={() => navigate('/')}>
+        <div className="brand-wrapper" onClick={() => { navigate('/'); setMobileTab('reflect'); }}>
           <div className="brand-glyph">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
               <path d="M12 2a10 10 0 0 1 10 10c0 5.5-4.5 10-10 10S2 17.5 2 12" />
@@ -163,11 +166,11 @@ export default function App() {
           </div>
         </div>
 
-        {/* Center Nav Switcher */}
-        <nav className="nav-tabs">
+        {/* Center Nav Switcher (Desktop Only) */}
+        <nav className="nav-tabs desktop-only">
           <button
-            className={`nav-tab-btn ${path === '/' ? 'active' : ''}`}
-            onClick={() => navigate('/')}
+            className={`nav-tab-btn ${path === '/' && mobileTab === 'reflect' ? 'active' : ''}`}
+            onClick={() => { navigate('/'); setMobileTab('reflect'); }}
           >
             <span>✍️ Journal</span>
           </button>
@@ -197,9 +200,16 @@ export default function App() {
 
         {/* User Identity Chip */}
         <div className="user-profile-chip">
-          <span className="user-email-badge">
+          <span className="user-email-badge desktop-only">
             {user.email}
           </span>
+          <button
+            className="mobile-only btn-mobile-new"
+            onClick={handleNewEntry}
+            title="Compose New Thought"
+          >
+            +
+          </button>
           <button className="btn-signout" onClick={() => signOut()}>
             Sign out
           </button>
@@ -208,22 +218,24 @@ export default function App() {
 
       {/* Main Workspace */}
       {path === '/dashboard' ? (
-        <Dashboard uid={user.uid} onBack={() => navigate('/')} onSeedRefresh={refreshEntries} entries={entries} />
+        <Dashboard uid={user.uid} onBack={() => { navigate('/'); setMobileTab('reflect'); }} onSeedRefresh={refreshEntries} entries={entries} />
       ) : (
-        <div className="workspace-grid">
+        <div className={`workspace-grid mobile-tab-${mobileTab}`}>
           {/* Column 1: Journal Stream List */}
-          <EntryList
-            entries={entries}
-            loading={entriesLoading}
-            onNewEntry={handleNewEntry}
-            onOpenEntry={handleOpenEntry}
-            onSeedDemo={handleSeedDemo}
-            seeding={seedingDemo}
-            selectedId={view.mode === 'detail' ? view.entry?.id : null}
-          />
+          <div className="workspace-col col-timeline">
+            <EntryList
+              entries={entries}
+              loading={entriesLoading}
+              onNewEntry={handleNewEntry}
+              onOpenEntry={handleOpenEntry}
+              onSeedDemo={handleSeedDemo}
+              seeding={seedingDemo}
+              selectedId={view.mode === 'detail' ? view.entry?.id : null}
+            />
+          </div>
 
           {/* Column 2: Composer Center Canvas */}
-          <div style={{ display: 'flex', flexDirection: 'column' }}>
+          <div className="workspace-col col-reflect" style={{ display: 'flex', flexDirection: 'column' }}>
             {view.mode !== 'detail' && (
               <ModeToggle mode={composerMode} onChange={setComposerMode} />
             )}
@@ -251,9 +263,61 @@ export default function App() {
           </div>
 
           {/* Column 3: Live Idea Vault Stream */}
-          <IdeaStream ideas={surfacedIdeas} />
+          <div className="workspace-col col-sparks">
+            <IdeaStream ideas={surfacedIdeas} />
+          </div>
         </div>
       )}
+
+      {/* Mobile Native-Feel Bottom App Navigation Bar */}
+      <nav className="mobile-bottom-nav">
+        <button
+          className={`mobile-nav-item ${path === '/' && mobileTab === 'reflect' ? 'active' : ''}`}
+          onClick={() => {
+            if (path !== '/') navigate('/');
+            setMobileTab('reflect');
+          }}
+        >
+          <div className="mobile-nav-icon">✍️</div>
+          <span>Reflect</span>
+        </button>
+        <button
+          className={`mobile-nav-item ${path === '/' && mobileTab === 'timeline' ? 'active' : ''}`}
+          onClick={() => {
+            if (path !== '/') navigate('/');
+            setMobileTab('timeline');
+          }}
+        >
+          <div className="mobile-nav-icon">📖</div>
+          <span>Timeline</span>
+          {entries.length > 0 && <span className="mobile-nav-badge">{entries.length}</span>}
+        </button>
+        <button
+          className={`mobile-nav-item ${path === '/' && mobileTab === 'sparks' ? 'active' : ''}`}
+          onClick={() => {
+            if (path !== '/') navigate('/');
+            setMobileTab('sparks');
+          }}
+        >
+          <div className="mobile-nav-icon">💡</div>
+          <span>Sparks</span>
+          {surfacedIdeas.length > 0 && <span className="mobile-nav-badge">{surfacedIdeas.length}</span>}
+        </button>
+        <button
+          className={`mobile-nav-item ${path === '/dashboard' ? 'active' : ''}`}
+          onClick={() => navigate('/dashboard')}
+        >
+          <div className="mobile-nav-icon">📊</div>
+          <span>Metrics</span>
+        </button>
+        <button
+          className="mobile-nav-item"
+          onClick={() => setShowMemoryModal(true)}
+        >
+          <div className="mobile-nav-icon">🧠</div>
+          <span>Memory</span>
+        </button>
+      </nav>
 
       {/* Memory Layers Inspector Modal */}
       {showMemoryModal && (

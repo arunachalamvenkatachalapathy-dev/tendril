@@ -19,16 +19,9 @@ export default function Login() {
   }
 
   return (
-    <div style={{
-      minHeight: '85vh',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: '40px 20px',
-      position: 'relative'
-    }}>
+    <div className="login-screen-wrap">
       <div className="bezel-outer" style={{ maxWidth: '640px', width: '100%' }}>
-        <div className="bezel-inner" style={{ padding: '48px 36px', textAlign: 'center' }}>
+        <div className="bezel-inner login-card-inner">
           
           {/* Eyebrow Pill */}
           <div style={{
@@ -45,22 +38,14 @@ export default function Login() {
             letterSpacing: '0.15em',
             color: '#34d399',
             textTransform: 'uppercase',
-            marginBottom: '24px'
+            marginBottom: '20px'
           }}>
             <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10b981', boxShadow: '0 0 8px #10b981' }} />
             Zero-Trust Neural Architecture
           </div>
 
           {/* Logo & Headline */}
-          <h1 style={{
-            fontFamily: 'var(--font-display)',
-            fontSize: '38px',
-            fontWeight: '800',
-            letterSpacing: '-0.03em',
-            lineHeight: '1.15',
-            color: '#fff',
-            marginBottom: '14px'
-          }}>
+          <h1 className="login-title">
             Tendril <span style={{
               background: 'linear-gradient(135deg, #10b981, #06b6d4)',
               WebkitBackgroundClip: 'text',
@@ -68,25 +53,13 @@ export default function Login() {
             }}>Neural Journal</span>
           </h1>
 
-          <p style={{
-            fontSize: '15px',
-            color: 'var(--text-secondary)',
-            lineHeight: '1.6',
-            maxWidth: '480px',
-            margin: '0 auto 32px'
-          }}>
+          <p className="login-subtitle">
             Cultivate your stream of consciousness. Ambient conversational voice companion with 
             persistent 3-tier layered memory and live cognitive idea distillation.
           </p>
 
           {/* Feature Trio Bento */}
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(3, 1fr)',
-            gap: '12px',
-            marginBottom: '36px',
-            textAlign: 'left'
-          }}>
+          <div className="login-bento-grid">
             <div style={{
               padding: '16px 14px',
               borderRadius: '16px',
