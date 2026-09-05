@@ -38,7 +38,7 @@ const CACHE_TTL_MS = 30 * 60 * 1000; // 30 min — bounds staleness after rotati
 export async function getGeminiApiKey() {
   // Local development convenience override: strictly gated by NODE_ENV !== 'production'
   if (process.env.NODE_ENV !== 'production' && process.env.GEMINI_API_KEY) {
-    return process.env.GEMINI_API_KEY;
+    return process.env.GEMINI_API_KEY.replace(/^\uFEFF/, '').trim();
   }
 
   const isFresh = cachedKey && Date.now() - cachedAt < CACHE_TTL_MS;
@@ -57,7 +57,7 @@ export async function getGeminiApiKey() {
     if (!payload) {
       throw new Error('Secret Manager returned an empty payload.');
     }
-    cachedKey = payload;
+    cachedKey = payload.replace(/^\uFEFF/, '').trim();
     cachedAt = Date.now();
     return cachedKey;
   } catch (err) {

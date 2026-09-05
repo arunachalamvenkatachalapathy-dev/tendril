@@ -22,7 +22,7 @@ import { getGeminiApiKey } from '../secretManager.js';
 import { loadMemoryContext, buildSystemPreamble } from '../memory/pipeline.js';
 import { generateJsonArray } from '../gemini.js';
 
-const LIVE_MODEL = process.env.GEMINI_LIVE_MODEL || 'gemini-3.1-flash-live-preview';
+const LIVE_MODEL = process.env.GEMINI_LIVE_MODEL || 'gemini-2.5-flash-native-audio-latest';
 const AUTH_TIMEOUT_MS = 10_000;
 const IDEA_EXTRACTION_TURN_INTERVAL = 3; // extract ideas every N model turns
 
@@ -30,7 +30,8 @@ export function attachVoiceRelay(httpServer) {
   const wss = new WebSocketServer({ noServer: true });
 
   httpServer.on('upgrade', (req, socket, head) => {
-    if (req.url !== '/ws/voice') {
+    const pathname = (req.url || '').split('?')[0].replace(/\/$/, '');
+    if (pathname !== '/ws/voice') {
       socket.destroy();
       return;
     }
