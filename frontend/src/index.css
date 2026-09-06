@@ -685,9 +685,11 @@ body::before {
   /* Workspace Grid transforms into single-view native app screen */
   .workspace-grid {
     display: block;
-    width: calc(100% - 16px);
+    width: 100%;
+    max-width: 100%;
     margin: 0 auto;
-    padding-bottom: 84px; /* space for Material 3 mobile bottom dock */
+    padding: 0 8px 84px 8px; /* space for Material 3 mobile bottom dock */
+    box-sizing: border-box;
   }
 
   .workspace-col {
@@ -697,6 +699,10 @@ body::before {
   .workspace-grid.mobile-tab-reflect .workspace-col.col-reflect {
     display: flex !important;
     flex-direction: column;
+    height: calc(100dvh - 156px);
+    max-height: calc(100dvh - 156px);
+    min-height: 0;
+    overflow: hidden;
   }
 
   .workspace-grid.mobile-tab-timeline .workspace-col.col-timeline {
@@ -720,26 +726,42 @@ body::before {
 
   /* Sidebar Timeline panel on mobile */
   .sidebar-panel {
-    height: calc(100vh - 165px);
+    height: calc(100dvh - 156px);
     min-height: unset;
   }
 
   /* Canvas Toolbar on mobile */
   .composer-toolbar {
-    padding: 10px 12px;
-    gap: 8px;
+    padding: 8px 12px;
+    gap: 6px;
+    flex-shrink: 0;
   }
 
   .composer-canvas {
-    height: calc(100vh - 165px);
+    height: 100% !important;
+    max-height: 100% !important;
+    min-height: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
   }
 
   .transcript-stream {
-    flex: 1;
-    min-height: 200px;
-    max-height: calc(100vh - 280px);
-    padding: 12px 10px;
+    flex: 1 1 0 !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    padding: 10px 10px;
+    overflow-y: auto !important;
     -webkit-overflow-scrolling: touch;
+  }
+
+  .gemini-live-subtitle-cloud {
+    margin: 0 8px 6px 8px !important;
+    padding: 8px 12px !important;
+    border-radius: 12px !important;
+    max-height: 85px !important;
+    overflow-y: auto !important;
+    flex-shrink: 0 !important;
   }
 
   .message-bubble {
@@ -750,11 +772,13 @@ body::before {
   .chat-input-bar {
     padding: 8px 10px;
     gap: 6px;
+    flex-shrink: 0 !important;
   }
 
   .chat-input-field {
     font-size: 14px;
     padding: 8px 12px;
+    min-height: 40px !important;
   }
 
   /* Material Design 3 Mobile Navigation Bar */

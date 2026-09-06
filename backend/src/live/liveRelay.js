@@ -153,18 +153,20 @@ async function handleConnection(clientSocket) {
       }
     }
 
-    // 5. Filter out internal thought parts (thought === true) to prevent reasoning leakage
+    // 5. Filter out internal model thoughts (skip if outputTranscription already captured spoken response or if text is thought)
     if (message?.serverContent?.modelTurn?.parts) {
       const parts = message.serverContent.modelTurn.parts;
       const nonThoughtText = parts
-        .filter((p) => !p.thought && p.text)
+        .filter((p) => !p.thought && p.text && !p.text.startsWith('**') && !p.text.includes('**Choosing a Response**'))
         .map((p) => p.text)
-        .join(' ');
-      if (nonThoughtText) {
-        const last = transcriptBuffer[transcriptBuffer.length - 1];
-        if (last && last.role === 'assistant' && !last.text.includes(nonThoughtText)) {
+        .join(' ')
+        .trim();
+      // Only append if we haven't already captured output transcription for this turn
+      const last = transcriptBuffer[transcriptBuffer.length - 1];
+      if (nonThoughtText && (!last || last.role !== 'assistant' || (!last.text && !message?.serverContent?.outputTranscription))) {
+        if (last && last.role === 'assistant') {
           last.text += ' ' + nonThoughtText;
-        } else if (!last || last.role !== 'assistant') {
+        } else {
           transcriptBuffer.push({ role: 'assistant', text: nonThoughtText });
         }
       }
@@ -211,27 +213,29 @@ words. Return ONLY a JSON array of strings.\n\n${transcriptBuffer
     }
 
     if (payload.type === 'audio_chunk' && payload.data) {
-      // payload.data: base64-encoded audio from MediaRecorder (webm/mp4/ogg on mobile)
-      // payload.mimeType: MIME type reported by MediaRecorder (e.g. 'audio/webm;codecs=opus')
+      // payload.data: base64-encoded 16kHz 16-bit linear PCM audio
+      // Gemini Live API strictly requires audio/pcm;rate=16000
       if (liveSession) {
-        const mime = payload.mimeType || 'audio/pcm;rate=16000';
-        // Normalize to the base MIME type Gemini Live expects
-        // audio/webm;codecs=opus → audio/webm (Gemini accepts the base type)
-        const baseMime = mime.split(';')[0].trim();
-        const supported = ['audio/pcm', 'audio/webm', 'audio/mp4', 'audio/ogg', 'audio/wav'];
-        const finalMime = supported.find(m => baseMime.startsWith(m)) || 'audio/webm';
-        liveSession.sendRealtimeInput({
-          media: { data: payload.data, mimeType: finalMime },
-        });
+        try {
+          liveSession.sendRealtimeInput({
+            media: { data: payload.data, mimeType: 'audio/pcm;rate=16000' },
+          });
+        } catch (err) {
+          console.warn('[liveRelay] failed to send realtime audio:', err.message);
+        }
       }
     } else if (payload.type === 'text_message' && payload.text) {
       // Lets the user type mid-voice-session (mode toggle parity).
       transcriptBuffer.push({ role: 'user', text: payload.text });
       if (liveSession) {
-        liveSession.sendClientContent({
-          turns: [{ role: 'user', parts: [{ text: payload.text }] }],
-          turnComplete: true,
-        });
+        try {
+          liveSession.sendClientContent({
+            turns: [{ role: 'user', parts: [{ text: payload.text }] }],
+            turnComplete: true,
+          });
+        } catch (err) {
+          console.warn('[liveRelay] failed to send client content:', err.message);
+        }
       }
     } else if (payload.type === 'end_session') {
       clientSocket.close(1000, 'Client ended session');

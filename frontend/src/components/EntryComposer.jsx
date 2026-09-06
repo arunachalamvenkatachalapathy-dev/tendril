@@ -113,7 +113,7 @@ export default function EntryComposer({ onSaved, onExtractIdeas, initialVoiceAct
 
   return (
     <div className="google-surface-card composer-canvas">
-      <div className="google-card-body" style={{ display: 'flex', flexDirection: 'column', height: '100%', padding: '0' }}>
+      <div className="google-card-body" style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0, overflow: 'hidden', padding: '0' }}>
         
         {/* Top Google Workspace Toolbar */}
         <div className="composer-toolbar" style={{ padding: '14px 20px', borderBottom: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
@@ -363,6 +363,7 @@ export default function EntryComposer({ onSaved, onExtractIdeas, initialVoiceAct
             display: 'flex',
             flexDirection: 'column',
             gap: '8px',
+            flexShrink: 0,
           }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -471,7 +472,7 @@ export default function EntryComposer({ onSaved, onExtractIdeas, initialVoiceAct
         )}
 
         {/* Multimodal Input Bar */}
-        <form className="chat-input-bar" onSubmit={handleSend} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <form className="chat-input-bar" onSubmit={handleSend} style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
           <input
             type="file"
             ref={fileInputRef}
@@ -486,7 +487,7 @@ export default function EntryComposer({ onSaved, onExtractIdeas, initialVoiceAct
             className="btn-google-icon"
             onClick={() => fileInputRef.current?.click()}
             title="Attach image or diagram"
-            style={{ color: attachedImage ? '#a8c7fa' : 'var(--text-secondary)' }}
+            style={{ color: attachedImage ? '#a8c7fa' : 'var(--text-secondary)', flexShrink: 0 }}
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
@@ -499,6 +500,7 @@ export default function EntryComposer({ onSaved, onExtractIdeas, initialVoiceAct
             className={`btn-google-icon ${micActive ? 'active-mic' : ''}`}
             onClick={toggleMic}
             title={micActive ? 'Mute microphone' : hasMic ? 'Start voice conversation' : 'Microphone unavailable'}
+            style={{ flexShrink: 0 }}
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
@@ -524,7 +526,7 @@ export default function EntryComposer({ onSaved, onExtractIdeas, initialVoiceAct
             type="submit"
             className="btn-google-primary"
             disabled={(!draft.trim() && !attachedImage) || status === 'speaking'}
-            style={{ padding: '0', width: '40px', height: '40px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            style={{ padding: '0', width: '40px', height: '40px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
             title="Send"
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">

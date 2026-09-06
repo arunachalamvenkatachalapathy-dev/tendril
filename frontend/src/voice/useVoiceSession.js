@@ -20,6 +20,21 @@ const OUTPUT_SAMPLE_RATE = 24000;
 const MAX_RECONNECT_ATTEMPTS = 3;
 
 // PCM audio helpers
+function downsampleTo16k(float32Array, inputSampleRate) {
+  if (!inputSampleRate || inputSampleRate === 16000) return float32Array;
+  const ratio = inputSampleRate / 16000;
+  const newLength = Math.round(float32Array.length / ratio);
+  const result = new Float32Array(newLength);
+  for (let i = 0; i < newLength; i++) {
+    const originIndex = i * ratio;
+    const index1 = Math.floor(originIndex);
+    const index2 = Math.min(index1 + 1, float32Array.length - 1);
+    const weight = originIndex - index1;
+    result[i] = float32Array[index1] * (1 - weight) + float32Array[index2] * weight;
+  }
+  return result;
+}
+
 function floatTo16BitPCM(float32Array) {
   const buffer = new ArrayBuffer(float32Array.length * 2);
   const view = new DataView(buffer);
@@ -33,7 +48,8 @@ function floatTo16BitPCM(float32Array) {
 function bufferToBase64(buffer) {
   let binary = '';
   const bytes = new Uint8Array(buffer);
-  for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
+  const len = bytes.byteLength;
+  for (let i = 0; i < len; i++) binary += String.fromCharCode(bytes[i]);
   return btoa(binary);
 }
 
@@ -43,6 +59,30 @@ function base64ToArrayBuffer(base64) {
   for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
   return bytes.buffer;
 }
+
+const WORKLET_PROCESSOR_CODE = `
+class PcmCaptureProcessor extends AudioWorkletProcessor {
+  constructor() {
+    super();
+    this.bufferSize = 2048;
+    this.buffer = new Float32Array(this.bufferSize);
+    this.offset = 0;
+  }
+  process(inputs) {
+    const channel = inputs[0]?.[0];
+    if (!channel) return true;
+    for (let i = 0; i < channel.length; i++) {
+      this.buffer[this.offset++] = channel[i];
+      if (this.offset >= this.bufferSize) {
+        this.port.postMessage(this.buffer.slice(0, this.bufferSize));
+        this.offset = 0;
+      }
+    }
+    return true;
+  }
+}
+registerProcessor('pcm-capture-processor', PcmCaptureProcessor);
+`;
 
 export function useVoiceSession() {
   const [status, setStatus] = useState('idle');
@@ -59,13 +99,18 @@ export function useVoiceSession() {
   const micActiveRef = useRef(false);
   useEffect(() => { micActiveRef.current = micActive; }, [micActive]);
 
+  const activeEngineRef = useRef('live');
+  useEffect(() => { activeEngineRef.current = activeEngine; }, [activeEngine]);
+
   // WebSocket + audio refs
   const wsRef = useRef(null);
   const playbackCtxRef = useRef(null);
   const nextStartTimeRef = useRef(0);
   const activeSourcesRef = useRef([]);
   const micStreamRef = useRef(null);
-  const mediaRecorderRef = useRef(null);
+  const audioCtxRef = useRef(null);
+  const workletNodeRef = useRef(null);
+  const scriptProcessorRef = useRef(null);
   const audioLevelTimerRef = useRef(null);
   const analyserRef = useRef(null);
   const analyserCtxRef = useRef(null);
@@ -263,84 +308,98 @@ export function useVoiceSession() {
   }, []);
 
   // ─────────────────────────────────────────────────────────────────────────────
-  // MIC CAPTURE — MediaRecorder (universal: iOS Safari 14.5+, Android, Desktop)
+  // MIC CAPTURE — 16kHz Mono 16-bit PCM (AudioWorklet with ScriptProcessor fallback)
   // ─────────────────────────────────────────────────────────────────────────────
 
-  /**
-   * Picks the best MIME type supported by this browser for real-time audio.
-   * audio/webm;codecs=opus – Chrome, Firefox, Android Chrome
-   * audio/mp4;codecs=mp4a.40.2 – iOS Safari
-   * audio/ogg;codecs=opus – Firefox (fallback)
-   * '' – let browser pick (last resort)
-   */
-  function getBestMimeType() {
-    const candidates = [
-      'audio/webm;codecs=opus',
-      'audio/webm',
-      'audio/mp4;codecs=mp4a.40.2',
-      'audio/mp4',
-      'audio/ogg;codecs=opus',
-      'audio/ogg',
-    ];
-    for (const t of candidates) {
-      if (MediaRecorder.isTypeSupported(t)) return t;
+  const stopMicCaptureOnly = useCallback(() => {
+    if (workletNodeRef.current) {
+      try {
+        workletNodeRef.current.disconnect();
+        workletNodeRef.current.port.close();
+      } catch {}
+      workletNodeRef.current = null;
     }
-    return '';
-  }
-
-  const beginMicCapture = useCallback((ws, stream) => {
-    try {
-      // Stop any existing recorder
-      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-        try { mediaRecorderRef.current.stop(); } catch {}
-        mediaRecorderRef.current = null;
-      }
-
-      const mimeType = getBestMimeType();
-      const options = mimeType ? { mimeType, audioBitsPerSecond: 16000 } : {};
-      const recorder = new MediaRecorder(stream, options);
-      mediaRecorderRef.current = recorder;
-
-      // Collect small 100ms chunks and forward as base64 to the relay
-      recorder.ondataavailable = async (event) => {
-        if (!event.data || event.data.size === 0) return;
-        const activeWs = wsRef.current || ws;
-        if (!activeWs || activeWs.readyState !== WebSocket.OPEN) return;
-
-        try {
-          const arrayBuffer = await event.data.arrayBuffer();
-          const base64 = bufferToBase64(arrayBuffer);
-          activeWs.send(JSON.stringify({
-            type: 'audio_chunk',
-            data: base64,
-            mimeType: event.data.type || mimeType || 'audio/webm;codecs=opus',
-          }));
-        } catch (e) {
-          console.warn('[Voice] Failed to send audio chunk:', e.message);
-        }
-      };
-
-      recorder.onerror = (e) => {
-        console.warn('[Voice] MediaRecorder error:', e.error?.message || e);
-      };
-
-      // 100ms slices – low latency, low overhead
-      recorder.start(100);
-      console.log('[Voice] MediaRecorder started with mimeType:', recorder.mimeType);
-    } catch (e) {
-      console.warn('[Voice] MediaRecorder setup error:', e.message);
+    if (scriptProcessorRef.current) {
+      try { scriptProcessorRef.current.disconnect(); } catch {}
+      scriptProcessorRef.current = null;
+    }
+    if (audioCtxRef.current && audioCtxRef.current.state !== 'closed') {
+      try { audioCtxRef.current.close(); } catch {}
+      audioCtxRef.current = null;
     }
   }, []);
 
+  const beginMicCapture = useCallback(async (ws, stream) => {
+    stopMicCaptureOnly();
+
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      const audioCtx = new AudioCtx();
+      audioCtxRef.current = audioCtx;
+      if (audioCtx.state === 'suspended') {
+        await audioCtx.resume().catch(() => {});
+      }
+
+      const source = audioCtx.createMediaStreamSource(stream);
+      const sampleRate = audioCtx.sampleRate;
+
+      const sendPcmChunk = (float32Chunk) => {
+        const activeWs = wsRef.current || ws;
+        if (!activeWs || activeWs.readyState !== WebSocket.OPEN) return;
+        try {
+          const resampled = downsampleTo16k(float32Chunk, sampleRate);
+          const pcm = floatTo16BitPCM(resampled);
+          const base64 = bufferToBase64(pcm);
+          activeWs.send(JSON.stringify({
+            type: 'audio_chunk',
+            data: base64,
+            mimeType: 'audio/pcm;rate=16000',
+          }));
+        } catch (e) {
+          console.warn('[Voice] Failed to send PCM chunk:', e.message);
+        }
+      };
+
+      let workletStarted = false;
+      if (audioCtx.audioWorklet) {
+        try {
+          const blob = new Blob([WORKLET_PROCESSOR_CODE], { type: 'application/javascript' });
+          const workletUrl = URL.createObjectURL(blob);
+          await audioCtx.audioWorklet.addModule(workletUrl);
+          URL.revokeObjectURL(workletUrl);
+
+          const workletNode = new AudioWorkletNode(audioCtx, 'pcm-capture-processor');
+          workletNodeRef.current = workletNode;
+          workletNode.port.onmessage = (event) => {
+            sendPcmChunk(event.data);
+          };
+          source.connect(workletNode);
+          workletStarted = true;
+          console.log('[Voice] AudioWorklet PCM capture running (rate=%d)', sampleRate);
+        } catch (wErr) {
+          console.warn('[Voice] AudioWorklet init failed, using ScriptProcessor fallback:', wErr.message);
+        }
+      }
+
+      if (!workletStarted) {
+        const processor = audioCtx.createScriptProcessor(4096, 1, 1);
+        scriptProcessorRef.current = processor;
+        processor.onaudioprocess = (e) => {
+          const input = e.inputBuffer.getChannelData(0);
+          sendPcmChunk(input);
+        };
+        source.connect(processor);
+        processor.connect(audioCtx.destination);
+        console.log('[Voice] ScriptProcessor PCM capture running (rate=%d)', sampleRate);
+      }
+    } catch (e) {
+      console.warn('[Voice] Mic capture setup error:', e.message);
+    }
+  }, [stopMicCaptureOnly]);
+
   const stopMicCapture = useCallback(() => {
     stopAudioMeter();
-
-    if (mediaRecorderRef.current) {
-      try {
-        if (mediaRecorderRef.current.state !== 'inactive') mediaRecorderRef.current.stop();
-      } catch {}
-      mediaRecorderRef.current = null;
-    }
+    stopMicCaptureOnly();
 
     if (micStreamRef.current) {
       micStreamRef.current.getTracks().forEach((t) => t.stop());
@@ -355,7 +414,7 @@ export function useVoiceSession() {
     stopAudioPlayback();
     setMicActive(false);
     setCurrentSubtitle(null);
-  }, [stopAudioMeter, stopAudioPlayback]);
+  }, [stopAudioMeter, stopAudioPlayback, stopMicCaptureOnly]);
 
   // ─────────────────────────────────────────────────────────────────────────────
   // WEBSOCKET RELAY CONNECTION
@@ -588,7 +647,10 @@ export function useVoiceSession() {
           const userText = (finalSpeechBuffer + ' ' + interim).trim();
           if (!userText || userText.length < 2) return;
           finalSpeechBuffer = '';
-          sendText(userText);
+          // Only dispatch sendText when in HTTP cascade mode — never while Gemini Live WebSocket is active
+          if (activeEngineRef.current !== 'live') {
+            sendText(userText);
+          }
         }, 1300);
       };
 
