@@ -7,16 +7,19 @@ import { GoogleGenerativeAI, SchemaType } from '@google/generative-ai';
 import { getGeminiApiKey } from './secretManager.js';
 
 const CHAT_MODELS_CASCADE = [
-  'gemini-2.0-flash',
-  'gemini-1.5-flash',
-  'gemma-2-9b-it',
-  'gemini-1.5-flash-8b',
+  'gemini-3.5-flash',
+  'gemini-3.5-flash-lite',
+  'gemini-3.7-flash',
+  'gemini-flash-lite-latest',
+  'gemini-3.8-flash',
+  'gemma-4-26b-a4b-it',
 ];
 
 const SUMMARY_MODELS_CASCADE = [
-  'gemini-2.0-flash',
-  'gemini-1.5-flash',
-  'gemini-1.5-flash-8b',
+  'gemini-3.5-flash',
+  'gemini-3.5-flash-lite',
+  'gemini-3.7-flash',
+  'gemini-flash-lite-latest',
 ];
 
 let cachedClient = null;
@@ -177,7 +180,8 @@ it, classify mood and themes, provide a gentle cognitive reframing if distress o
   };
 }
 
-const CHAT_MODEL = 'gemini-2.0-flash';
+const CHAT_MODEL = 'gemini-3.5-flash';
+const JSON_MODELS_CASCADE = ['gemini-3.5-flash', 'gemini-3.5-flash-lite', 'gemini-3.7-flash', 'gemini-flash-lite-latest'];
 
 /**
  * Generic plain-text generation with resilient model cascade.
@@ -205,7 +209,7 @@ export async function generateText(prompt) {
  */
 export async function generateJsonObject(prompt) {
   const client = await getClient();
-  for (const modelName of ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-flash-8b']) {
+  for (const modelName of JSON_MODELS_CASCADE) {
     try {
       const model = client.getGenerativeModel({
         model: modelName,
@@ -225,7 +229,7 @@ export async function generateJsonObject(prompt) {
  */
 export async function generateJsonArray(prompt) {
   const client = await getClient();
-  for (const modelName of ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-flash-8b']) {
+  for (const modelName of JSON_MODELS_CASCADE) {
     try {
       const model = client.getGenerativeModel({
         model: modelName,

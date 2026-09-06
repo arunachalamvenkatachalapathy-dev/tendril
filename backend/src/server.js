@@ -52,7 +52,8 @@ app.get('/', (req, res) => {
 });
 
 // Health check endpoints for uptime probes and monitoring
-app.get(['/health', '/healthz'], (req, res) => res.status(200).json({ status: 'ok', service: 'tendril-api' }));
+app.get('/health', (req, res) => res.status(200).json({ status: 'ok', service: 'tendril-api' }));
+app.get('/healthz', (req, res) => res.status(200).json({ status: 'ok', service: 'tendril-api' }));
 
 // Everything under /api requires a verified Firebase ID token, and is
 // rate-limited per verified uid.
