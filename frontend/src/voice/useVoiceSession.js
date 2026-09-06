@@ -71,6 +71,7 @@ export function useVoiceSession() {
   const [liveTranscript, setLiveTranscript] = useState([]); // Array<{ role, text, isStreaming, timestamp }>
   const [currentSubtitle, setCurrentSubtitle] = useState(null); // { role: 'user'|'assistant', text: string, isLive: boolean }
   const [ideas, setIdeas] = useState([]);
+  const [notice, setNotice] = useState(null);
   const [audioLevel, setAudioLevel] = useState(0); // 0 to 100 for visualizer
   const [hasMic, setHasMic] = useState(true);
   const [micActive, setMicActive] = useState(false);
