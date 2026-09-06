@@ -74,9 +74,11 @@ async function handleConnection(clientSocket) {
       model: LIVE_MODEL,
       config: {
         responseModalities: [Modality.AUDIO],
+        inputAudioTranscription: {},
+        outputAudioTranscription: {},
         systemInstruction: preamble
-          ? `You are a warm, non-judgmental voice journaling companion. ${preamble}`
-          : 'You are a warm, non-judgmental voice journaling companion.',
+          ? `You are Tendril, a thoughtful, empathetic, and authentic voice journaling companion. Keep spoken responses concise (1 to 3 short sentences), natural, conversational, and direct, suitable for real-time spoken dialogue. Never list bullet points or verbose essays. ${preamble}`
+          : 'You are Tendril, a thoughtful, empathetic, and authentic voice journaling companion. Keep spoken responses concise (1 to 3 short sentences), natural, conversational, and direct, suitable for real-time spoken dialogue. Never list bullet points or verbose essays.',
       },
       callbacks: {
         onopen: () => {
@@ -110,25 +112,59 @@ async function handleConnection(clientSocket) {
   }
 
   function onUpstreamMessage(message) {
-    // Relay audio/text back to the browser as-is (base64 audio chunks,
-    // transcription text, turnComplete flags)
+    // Relay raw audio/text back to the browser for streaming playback
     safeSend(clientSocket, { type: 'upstream', message });
 
-    if (message?.serverContent?.modelTurn) {
-      const parts = message.serverContent.modelTurn.parts || [];
-      const text = parts.map((p) => p.text).filter(Boolean).join(' ');
-      if (text) transcriptBuffer.push({ role: 'assistant', text });
+    // Barge-in notification: user spoke while model was responding
+    if (message?.serverContent?.interrupted) {
+      safeSend(clientSocket, { type: 'interrupted' });
     }
 
+    // Spoken output audio transcription delta from Gemini Live
     if (message?.serverContent?.outputTranscription?.text) {
-      transcriptBuffer.push({ role: 'assistant', text: message.serverContent.outputTranscription.text });
+      const text = message.serverContent.outputTranscription.text;
+      safeSend(clientSocket, { type: 'transcription', role: 'assistant', text });
+      
+      const last = transcriptBuffer[transcriptBuffer.length - 1];
+      if (last && last.role === 'assistant') {
+        last.text += text;
+      } else {
+        transcriptBuffer.push({ role: 'assistant', text });
+      }
     }
 
+    // User speech audio transcription delta from Gemini Live ASR
     if (message?.serverContent?.inputTranscription?.text) {
-      transcriptBuffer.push({ role: 'user', text: message.serverContent.inputTranscription.text });
+      const text = message.serverContent.inputTranscription.text;
+      safeSend(clientSocket, { type: 'transcription', role: 'user', text });
+
+      const last = transcriptBuffer[transcriptBuffer.length - 1];
+      if (last && last.role === 'user') {
+        last.text += text;
+      } else {
+        transcriptBuffer.push({ role: 'user', text });
+      }
+    }
+
+    // Filter out internal thought parts (thought === true) to prevent reasoning leakage
+    if (message?.serverContent?.modelTurn?.parts) {
+      const parts = message.serverContent.modelTurn.parts;
+      const nonThoughtText = parts
+        .filter((p) => !p.thought && p.text)
+        .map((p) => p.text)
+        .join(' ');
+      if (nonThoughtText) {
+        const last = transcriptBuffer[transcriptBuffer.length - 1];
+        if (last && last.role === 'assistant' && !last.text.includes(nonThoughtText)) {
+          last.text += ' ' + nonThoughtText;
+        } else if (!last || last.role !== 'assistant') {
+          transcriptBuffer.push({ role: 'assistant', text: nonThoughtText });
+        }
+      }
     }
 
     if (message?.serverContent?.turnComplete) {
+      safeSend(clientSocket, { type: 'turn_complete' });
       modelTurnCount += 1;
       if (modelTurnCount % IDEA_EXTRACTION_TURN_INTERVAL === 0) {
         extractAndSendIdeas();
@@ -159,6 +195,11 @@ words. Return ONLY a JSON array of strings.\n\n${transcriptBuffer
       payload = JSON.parse(raw.toString());
     } catch {
       return; // ignore malformed frames rather than crashing the socket
+    }
+
+    if (payload.type === 'ping') {
+      safeSend(clientSocket, { type: 'pong' });
+      return;
     }
 
     if (payload.type === 'audio_chunk' && payload.data) {

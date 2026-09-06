@@ -120,21 +120,22 @@ export default function EntryComposer({ onSaved, onExtractIdeas, initialVoiceAct
               width: '8px',
               height: '8px',
               borderRadius: '50%',
-              background: micActive ? '#6dd58c' : isSynthesizing ? '#a8c7fa' : 'var(--text-muted)',
+              background: status === 'speaking' ? '#a8c7fa' : micActive ? '#6dd58c' : 'var(--text-muted)',
+              boxShadow: status === 'speaking' ? '0 0 8px #a8c7fa' : micActive ? '0 0 8px #6dd58c' : 'none',
               transition: 'all 0.3s ease'
             }} />
             <span style={{ fontWeight: '600', fontSize: '14px', color: '#e3e3e3' }}>
-              Journal Reflection
+              Gemini Live Voice
             </span>
             <span style={{
               fontSize: '11.5px',
-              color: micActive ? '#a8c7fa' : 'var(--text-secondary)',
+              color: status === 'speaking' ? '#a8c7fa' : micActive ? '#6dd58c' : 'var(--text-secondary)',
               background: 'rgba(255, 255, 255, 0.04)',
               padding: '2px 10px',
               borderRadius: '9999px',
               border: '1px solid var(--border-subtle)'
             }}>
-              {micActive ? 'Listening…' : isSynthesizing ? 'Speaking…' : `${liveTranscript.length} messages`}
+              {status === 'speaking' ? 'Gemini speaking…' : micActive ? 'Listening… (speak anytime to interrupt)' : `${liveTranscript.length} messages`}
             </span>
           </div>
 
@@ -271,7 +272,7 @@ export default function EntryComposer({ onSaved, onExtractIdeas, initialVoiceAct
               <div className="message-meta">
                 <span>{m.role === 'user' ? 'You' : 'Tendril'}</span>
                 <span>•</span>
-                <span>{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                <span>{m.isStreaming ? 'Streaming…' : new Date(m.timestamp || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
               </div>
               <div className={`message-bubble ${m.role === 'user' ? 'user' : 'model'}`}>
                 {m.image && (
@@ -283,7 +284,22 @@ export default function EntryComposer({ onSaved, onExtractIdeas, initialVoiceAct
                     />
                   </div>
                 )}
-                {m.text}
+                <span>{m.text}</span>
+                {m.isStreaming && (
+                  <span
+                    className="streaming-dot"
+                    style={{
+                      display: 'inline-block',
+                      width: '6px',
+                      height: '6px',
+                      borderRadius: '50%',
+                      marginLeft: '6px',
+                      backgroundColor: m.role === 'user' ? '#a8c7fa' : '#c2e7ff',
+                      verticalAlign: 'middle',
+                      boxShadow: '0 0 6px rgba(168, 199, 250, 0.8)',
+                    }}
+                  />
+                )}
               </div>
             </div>
           ))}
@@ -299,7 +315,7 @@ export default function EntryComposer({ onSaved, onExtractIdeas, initialVoiceAct
                 <span className="google-sound-bar" />
                 <span className="google-sound-bar" />
                 <span className="google-sound-bar" />
-                <span>Thinking and reflecting…</span>
+                <span>Reflecting aloud…</span>
               </div>
             </div>
           )}
@@ -332,18 +348,44 @@ export default function EntryComposer({ onSaved, onExtractIdeas, initialVoiceAct
           </div>
         )}
 
-        {/* Google Voice Waveform Indicator */}
-        {micActive && (
-          <div className="google-waveform-strip">
-            <span style={{ fontSize: '11.5px', color: '#a8c7fa', fontWeight: '500', marginRight: '10px' }}>
-              Listening
+        {/* Google Gemini Live Waveform Strip */}
+        {(micActive || status === 'speaking') && (
+          <div className="google-waveform-strip" style={{
+            background: status === 'speaking' ? 'rgba(168, 199, 250, 0.06)' : 'rgba(255, 255, 255, 0.03)',
+            borderTop: '1px solid var(--border-subtle)',
+            padding: '10px 20px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+          }}>
+            <span style={{
+              fontSize: '12px',
+              color: status === 'speaking' ? '#a8c7fa' : '#6dd58c',
+              fontWeight: '500',
+              marginRight: '8px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+            }}>
+              <span style={{
+                width: '6px',
+                height: '6px',
+                borderRadius: '50%',
+                background: status === 'speaking' ? '#a8c7fa' : '#6dd58c',
+                boxShadow: status === 'speaking' ? '0 0 6px #a8c7fa' : '0 0 6px #6dd58c',
+              }} />
+              {status === 'speaking' ? 'Gemini Live' : 'Listening (Speak to interrupt)'}
             </span>
-            {[10, 18, 14, 24, 12, 20, 16, 8].map((h, idx) => (
+            {[10, 18, 14, 24, 12, 20, 16, 8, 14, 22, 12, 18].map((h, idx) => (
               <span
                 key={idx}
                 className="google-wave-bar"
                 style={{
-                  height: `${Math.max(4, Math.min(22, (audioLevel / 100) * h * 1.4))}px`,
+                  height: status === 'speaking'
+                    ? `${Math.max(6, Math.min(22, 10 + (idx % 4) * 3.5))}px`
+                    : `${Math.max(4, Math.min(22, (audioLevel / 100) * h * 1.5))}px`,
+                  backgroundColor: status === 'speaking' ? '#a8c7fa' : '#6dd58c',
+                  transition: 'height 0.1s ease',
                 }}
               />
             ))}
