@@ -75,7 +75,10 @@ export function useVoiceSession() {
   const [hasMic, setHasMic] = useState(true);
   const [micActive, setMicActive] = useState(false);
   const [voiceOutputEnabled, setVoiceOutputEnabled] = useState(true);
-  const [notice, setNotice] = useState(null);
+  const micActiveRef = useRef(false);
+  useEffect(() => {
+    micActiveRef.current = micActive;
+  }, [micActive]);
 
   const wsRef = useRef(null);
   const audioCtxRef = useRef(null);
@@ -540,11 +543,8 @@ export function useVoiceSession() {
     }
   }, [playGoogleLiveAudio, speakReply]);
 
-  // SpeechRecognition fallback ONLY when WebSocket is not connected
-  const startSpeechRecognitionFallback = useCallback((stream) => {
-    // If live WebSocket is already active, DO NOT run SpeechRecognition to prevent collision
-    if (wsRef.current?.readyState === WebSocket.OPEN) return;
-
+  // Real-time zero-latency speech recognition engine with acoustic guard and auto-restart
+  const startSpeechRecognition = useCallback((stream) => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) return;
 
@@ -574,6 +574,12 @@ export function useVoiceSession() {
 
         const userSpoken = (finalSpeechBuffer + ' ' + interim).trim();
         if (userSpoken) {
+          // If assistant is speaking aloud and user starts speaking, trigger barge-in!
+          if (statusRef.current === 'speaking') {
+            stopAudioPlayback();
+            setStatus('listening');
+          }
+          // Real-time subtitle cloud update: words appear immediately as spoken
           setCurrentSubtitle({ role: 'user', text: userSpoken, isLive: true });
         }
 
@@ -584,15 +590,27 @@ export function useVoiceSession() {
 
           finalSpeechBuffer = '';
           sendText(userText);
-        }, 1400);
+        }, 1300);
       };
 
-      recognition.onerror = () => {};
+      recognition.onend = () => {
+        // Automatically restart speech recognition while mic is active
+        if (micActiveRef.current) {
+          try { recognition.start(); } catch {}
+        }
+      };
+
+      recognition.onerror = (e) => {
+        if (e.error !== 'no-speech' && e.error !== 'aborted') {
+          console.warn('SpeechRecognition notice:', e.error);
+        }
+      };
+
       recognition.start();
     } catch (e) {
-      console.warn('SpeechRecognition fallback notice:', e);
+      console.warn('SpeechRecognition initialization notice:', e);
     }
-  }, [sendText]);
+  }, [sendText, stopAudioPlayback]);
 
   // Graceful microphone acquisition
   const acquireMic = useCallback(async () => {
@@ -659,13 +677,11 @@ export function useVoiceSession() {
           beginMicCapture(ws, stream);
         });
 
-        // 4. Fallback if WebSocket fails
-        if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
-          startSpeechRecognitionFallback(stream);
-        }
+        // 4. Start 0ms real-time Speech-to-Text for instant subtitle rendering
+        startSpeechRecognition(stream);
       }
     }
-  }, [acquireMic, beginMicCapture, connectWs, micActive, startAudioMeter, startSpeechRecognitionFallback, stopMicCapture]);
+  }, [acquireMic, beginMicCapture, connectWs, micActive, startAudioMeter, startSpeechRecognition, stopMicCapture]);
 
   const toggleVoiceOutput = useCallback(() => {
     setVoiceOutputEnabled((prev) => {
