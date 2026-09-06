@@ -56,7 +56,19 @@ export default function App() {
   const [mobileTab, setMobileTab] = useState('reflect'); // 'reflect' | 'timeline' | 'sparks'
   const [path, navigate] = usePath();
 
-  useEffect(() => watchAuthState(setUser), []);
+  useEffect(() => {
+    const unsub = watchAuthState((u) => {
+      setUser(u || null);
+    });
+    // Safety guard: prevent infinite "Loading Tendril..." hang on slow networks or blocked storage
+    const timer = setTimeout(() => {
+      setUser((curr) => (curr === undefined ? null : curr));
+    }, 3000);
+    return () => {
+      if (typeof unsub === 'function') unsub();
+      clearTimeout(timer);
+    };
+  }, []);
 
   const refreshEntries = useCallback(async () => {
     setEntriesLoading(true);
@@ -216,10 +228,10 @@ export default function App() {
         <div className="user-profile-chip">
           <div className="google-account-pill">
             <div className="google-user-avatar">
-              {user.email ? user.email.charAt(0).toUpperCase() : 'U'}
+              {user.displayName ? user.displayName.charAt(0).toUpperCase() : user.email ? user.email.charAt(0).toUpperCase() : 'G'}
             </div>
             <span className="user-email-badge desktop-only">
-              {user.email}
+              {user.displayName || user.email || 'Guest Explorer'}
             </span>
           </div>
           <button

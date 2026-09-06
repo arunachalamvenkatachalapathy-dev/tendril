@@ -1,20 +1,43 @@
 import { useState } from 'react';
-import { signInWithGoogle } from '../firebase.js';
+import { signInWithGoogle, signInWithGoogleRedirect, signInAsGuest } from '../firebase.js';
 
 export default function Login() {
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [guestLoading, setGuestLoading] = useState(false);
 
   async function handleSignIn() {
     setError(null);
     setLoading(true);
     try {
-      await signInWithGoogle();
+      // 12-second safeguard against popup blockers / hanging cross-origin promises
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Sign-in popup timed out or was blocked by your browser. Please allow popups or use 1-Click Guest Access below.')), 12000)
+      );
+      await Promise.race([signInWithGoogle(), timeoutPromise]);
     } catch (err) {
       console.error('Sign-in error:', err);
-      setError(err?.message || 'Sign-in failed. Please ensure Google Auth is enabled.');
+      const isPopupBlocked = err?.code === 'auth/popup-blocked' || err?.message?.includes('popup');
+      setError(
+        isPopupBlocked
+          ? 'Google sign-in popup was blocked by your browser. Click "1-Click Guest Access" below to enter immediately.'
+          : (err?.message || 'Sign-in failed. Please try 1-Click Guest Access below.')
+      );
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleGuestSignIn() {
+    setError(null);
+    setGuestLoading(true);
+    try {
+      await signInAsGuest();
+    } catch (err) {
+      console.error('Guest sign-in error:', err);
+      setError(err?.message || 'Could not start guest session.');
+    } finally {
+      setGuestLoading(false);
     }
   }
 
@@ -79,12 +102,14 @@ export default function Login() {
             </div>
           </div>
 
-          {/* Official Google Sign-In Button */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', alignItems: 'center', margin: '28px auto 0' }}>
+          {/* Sign-In Actions */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', alignItems: 'center', margin: '28px auto 0', width: '100%', maxWidth: '340px' }}>
+            {/* Google Sign-In */}
             <button
               className="google-signin-btn btn-tendril-primary"
               onClick={handleSignIn}
-              disabled={loading}
+              disabled={loading || guestLoading}
+              style={{ width: '100%', justifyContent: 'center' }}
             >
               <svg width="18" height="18" viewBox="0 0 48 48" style={{ marginRight: '12px', flexShrink: 0 }}>
                 <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
@@ -95,6 +120,39 @@ export default function Login() {
               </svg>
               <span>{loading ? 'Signing in with Google…' : 'Sign in with Google'}</span>
             </button>
+
+            {/* Instant Guest / Demo Pass */}
+            <button
+              type="button"
+              className="btn-google-secondary"
+              onClick={handleGuestSignIn}
+              disabled={loading || guestLoading}
+              style={{
+                width: '100%',
+                padding: '12px 18px',
+                borderRadius: '9999px',
+                fontSize: '13.5px',
+                fontWeight: '500',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                background: 'rgba(255, 255, 255, 0.04)',
+                border: '1px solid var(--border-subtle)',
+                color: '#e3e3e3',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#a8c7fa" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+              </svg>
+              <span>{guestLoading ? 'Starting demo session…' : '⚡ 1-Click Demo / Guest Pass (Instant)'}</span>
+            </button>
+
+            <span style={{ fontSize: '11.5px', color: 'var(--text-muted)', textAlign: 'center' }}>
+              Instant access • No popup or account setup required
+            </span>
           </div>
 
           {error && (

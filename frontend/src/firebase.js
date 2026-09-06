@@ -12,6 +12,8 @@ import {
   getAuth,
   GoogleAuthProvider,
   signInWithPopup,
+  signInWithRedirect,
+  signInAnonymously,
   signOut as firebaseSignOut,
   onAuthStateChanged,
 } from 'firebase/auth';
@@ -32,6 +34,14 @@ const googleProvider = new GoogleAuthProvider();
 
 export function signInWithGoogle() {
   return signInWithPopup(auth, googleProvider);
+}
+
+export function signInWithGoogleRedirect() {
+  return signInWithRedirect(auth, googleProvider);
+}
+
+export function signInAsGuest() {
+  return signInAnonymously(auth);
 }
 
 export function signOut() {
