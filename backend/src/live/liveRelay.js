@@ -90,6 +90,7 @@ async function handleConnection(clientSocket) {
           safeSend(clientSocket, { type: 'error', error: 'Voice session error.' });
         },
         onclose: () => {
+          console.log('[liveRelay] upstream session closed for uid=%s', uid);
           safeClose(clientSocket, 1000, 'Upstream closed');
         },
       },
@@ -112,15 +113,21 @@ async function handleConnection(clientSocket) {
   }
 
   function onUpstreamMessage(message) {
-    // Relay raw audio/text back to the browser for streaming playback
-    safeSend(clientSocket, { type: 'upstream', message });
-
-    // Barge-in notification: user spoke while model was responding
+    // 1. Barge-in notification: user spoke while model was responding
     if (message?.serverContent?.interrupted) {
       safeSend(clientSocket, { type: 'interrupted' });
     }
 
-    // Spoken output audio transcription delta from Gemini Live
+    // 2. Stream downstream 24kHz PCM audio chunks to the browser
+    if (message?.serverContent?.modelTurn?.parts) {
+      for (const part of message.serverContent.modelTurn.parts) {
+        if (part.inlineData?.data) {
+          safeSend(clientSocket, { type: 'audio_chunk', data: part.inlineData.data });
+        }
+      }
+    }
+
+    // 3. Spoken output audio transcription delta from Gemini Live (model speech)
     if (message?.serverContent?.outputTranscription?.text) {
       const text = message.serverContent.outputTranscription.text;
       safeSend(clientSocket, { type: 'transcription', role: 'assistant', text });
@@ -133,7 +140,7 @@ async function handleConnection(clientSocket) {
       }
     }
 
-    // User speech audio transcription delta from Gemini Live ASR
+    // 4. User speech audio transcription delta from Gemini Live ASR
     if (message?.serverContent?.inputTranscription?.text) {
       const text = message.serverContent.inputTranscription.text;
       safeSend(clientSocket, { type: 'transcription', role: 'user', text });
@@ -146,7 +153,7 @@ async function handleConnection(clientSocket) {
       }
     }
 
-    // Filter out internal thought parts (thought === true) to prevent reasoning leakage
+    // 5. Filter out internal thought parts (thought === true) to prevent reasoning leakage
     if (message?.serverContent?.modelTurn?.parts) {
       const parts = message.serverContent.modelTurn.parts;
       const nonThoughtText = parts
@@ -163,6 +170,7 @@ async function handleConnection(clientSocket) {
       }
     }
 
+    // 6. Turn completion signal
     if (message?.serverContent?.turnComplete) {
       safeSend(clientSocket, { type: 'turn_complete' });
       modelTurnCount += 1;
@@ -223,7 +231,8 @@ words. Return ONLY a JSON array of strings.\n\n${transcriptBuffer
     }
   });
 
-  clientSocket.on('close', () => {
+  clientSocket.on('close', (code, reason) => {
+    console.log('[liveRelay] clientSocket closed code=%s reason=%s for uid=%s', code, reason?.toString(), uid);
     try {
       liveSession?.close();
     } catch {}

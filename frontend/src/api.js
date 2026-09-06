@@ -93,6 +93,9 @@ export function getDashboardInsights(days = 30) {
  * end up in server access logs or browser history.
  */
 export function buildVoiceWsUrl() {
+  if (typeof window !== 'undefined' && window.__WS_VOICE_URL__) {
+    return window.__WS_VOICE_URL__;
+  }
   const wsBase = BASE_URL.replace(/^http/, 'ws');
   return `${wsBase}/ws/voice`;
 }

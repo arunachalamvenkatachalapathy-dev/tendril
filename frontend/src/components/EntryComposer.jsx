@@ -7,6 +7,7 @@ export default function EntryComposer({ onSaved, onExtractIdeas, initialVoiceAct
     status,
     audioLevel,
     liveTranscript,
+    currentSubtitle,
     ideas,
     notice,
     hasMic,
@@ -14,6 +15,7 @@ export default function EntryComposer({ onSaved, onExtractIdeas, initialVoiceAct
     voiceOutputEnabled,
     toggleMic,
     toggleVoiceOutput,
+    stopAudioPlayback,
     start,
     sendText,
     setNotice,
@@ -348,47 +350,123 @@ export default function EntryComposer({ onSaved, onExtractIdeas, initialVoiceAct
           </div>
         )}
 
-        {/* Google Gemini Live Waveform Strip */}
-        {(micActive || status === 'speaking') && (
-          <div className="google-waveform-strip" style={{
-            background: status === 'speaking' ? 'rgba(168, 199, 250, 0.06)' : 'rgba(255, 255, 255, 0.03)',
-            borderTop: '1px solid var(--border-subtle)',
-            padding: '10px 20px',
+        {/* Google Gemini Live Real-time Subtitle / Transcript Cloud Bar */}
+        {(micActive || status === 'speaking' || currentSubtitle) && (
+          <div className="gemini-live-subtitle-cloud" style={{
+            margin: '0 16px 10px 16px',
+            padding: '12px 16px',
+            borderRadius: '16px',
+            background: 'linear-gradient(135deg, rgba(20, 24, 33, 0.95), rgba(12, 15, 22, 0.98))',
+            border: '1px solid rgba(168, 199, 250, 0.25)',
+            boxShadow: '0 6px 24px rgba(0, 0, 0, 0.45)',
+            backdropFilter: 'blur(10px)',
             display: 'flex',
-            alignItems: 'center',
+            flexDirection: 'column',
             gap: '8px',
           }}>
-            <span style={{
-              fontSize: '12px',
-              color: status === 'speaking' ? '#a8c7fa' : '#6dd58c',
-              fontWeight: '500',
-              marginRight: '8px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{
+                  width: '7px',
+                  height: '7px',
+                  borderRadius: '50%',
+                  background: status === 'speaking' ? '#a8c7fa' : '#6dd58c',
+                  boxShadow: status === 'speaking' ? '0 0 8px #a8c7fa' : '0 0 8px #6dd58c',
+                }} />
+                <span style={{ fontSize: '12px', fontWeight: '600', color: status === 'speaking' ? '#a8c7fa' : '#6dd58c' }}>
+                  {status === 'speaking' ? 'Gemini Live' : 'Live Voice Input'}
+                </span>
+                <span style={{
+                  fontSize: '11px',
+                  color: 'rgba(255, 255, 255, 0.5)',
+                  background: 'rgba(255, 255, 255, 0.05)',
+                  padding: '2px 8px',
+                  borderRadius: '999px',
+                }}>
+                  {status === 'speaking' ? 'Speaking aloud…' : 'Listening… (speak anytime)'}
+                </span>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                {/* Waveform sound bars */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '3px', marginRight: '6px' }}>
+                  {[10, 18, 14, 22, 12, 20, 16, 8, 14].map((h, idx) => (
+                    <span
+                      key={idx}
+                      className="google-wave-bar"
+                      style={{
+                        height: status === 'speaking'
+                          ? `${Math.max(6, Math.min(20, 8 + (idx % 3) * 5))}px`
+                          : `${Math.max(4, Math.min(20, (audioLevel / 100) * h * 1.5))}px`,
+                        backgroundColor: status === 'speaking' ? '#a8c7fa' : '#6dd58c',
+                        transition: 'height 0.1s ease',
+                        width: '3px',
+                        borderRadius: '2px',
+                        display: 'inline-block',
+                      }}
+                    />
+                  ))}
+                </div>
+
+                {/* Tap to Interrupt button */}
+                {status === 'speaking' && (
+                  <button
+                    type="button"
+                    onClick={stopAudioPlayback}
+                    style={{
+                      background: 'rgba(242, 139, 130, 0.15)',
+                      border: '1px solid rgba(242, 139, 130, 0.4)',
+                      color: '#f28b82',
+                      fontSize: '11px',
+                      padding: '3px 10px',
+                      borderRadius: '999px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                    }}
+                    title="Tap to interrupt Gemini"
+                  >
+                    <span>⏹</span> Interrupt
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Live Subtitle Content */}
+            <div style={{
+              fontSize: '13.5px',
+              lineHeight: '1.5',
+              color: '#f1f3f4',
+              minHeight: '20px',
             }}>
-              <span style={{
-                width: '6px',
-                height: '6px',
-                borderRadius: '50%',
-                background: status === 'speaking' ? '#a8c7fa' : '#6dd58c',
-                boxShadow: status === 'speaking' ? '0 0 6px #a8c7fa' : '0 0 6px #6dd58c',
-              }} />
-              {status === 'speaking' ? 'Gemini Live' : 'Listening (Speak to interrupt)'}
-            </span>
-            {[10, 18, 14, 24, 12, 20, 16, 8, 14, 22, 12, 18].map((h, idx) => (
-              <span
-                key={idx}
-                className="google-wave-bar"
-                style={{
-                  height: status === 'speaking'
-                    ? `${Math.max(6, Math.min(22, 10 + (idx % 4) * 3.5))}px`
-                    : `${Math.max(4, Math.min(22, (audioLevel / 100) * h * 1.5))}px`,
-                  backgroundColor: status === 'speaking' ? '#a8c7fa' : '#6dd58c',
-                  transition: 'height 0.1s ease',
-                }}
-              />
-            ))}
+              {currentSubtitle ? (
+                <span>
+                  <strong style={{ color: currentSubtitle.role === 'user' ? '#6dd58c' : '#a8c7fa', marginRight: '6px' }}>
+                    {currentSubtitle.role === 'user' ? 'You:' : 'Gemini:'}
+                  </strong>
+                  {currentSubtitle.text}
+                  {currentSubtitle.isLive && (
+                    <span
+                      style={{
+                        display: 'inline-block',
+                        width: '6px',
+                        height: '6px',
+                        borderRadius: '50%',
+                        marginLeft: '6px',
+                        backgroundColor: currentSubtitle.role === 'user' ? '#6dd58c' : '#a8c7fa',
+                        verticalAlign: 'middle',
+                        boxShadow: '0 0 6px #a8c7fa',
+                      }}
+                    />
+                  )}
+                </span>
+              ) : (
+                <span style={{ color: 'var(--text-secondary)', fontStyle: 'italic', fontSize: '12.5px' }}>
+                  Speak naturally — live subtitles and voice stream here in real time.
+                </span>
+              )}
+            </div>
           </div>
         )}
 

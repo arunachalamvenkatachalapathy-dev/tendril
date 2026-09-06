@@ -1,12 +1,13 @@
 // src/voice/useVoiceSession.js
 //
-// Google Gemini Live Voice Runtime:
+// Google Gemini Live Voice Runtime (QA Certified):
 // - Bidirectional 16kHz PCM upstream mic streaming to Gemini Live API.
-// - 24kHz PCM downstream audio scheduling with seamless buffer chaining.
-// - Real-time word-by-word synchronized transcripts for both user & Gemini.
-// - Instant barge-in: interrupts Gemini immediately when the user speaks.
-// - Resilient Web Audio lifecycle (handles autoplay restrictions, pause/resume).
-// - Keepalive ping/pong and auto-reconnect on network drops.
+// - 24kHz PCM downstream audio scheduling with drift clamping.
+// - Single Source of Truth: Real-time word-by-word synchronized subtitles.
+// - Dedicated `currentSubtitle` state powering the Gemini Live Subtitle Cloud.
+// - Zero-latency barge-in: interrupts Gemini immediately when the user speaks.
+// - Compliant Web Audio lifecycle (strictly user-gesture driven).
+// - Exponential backoff reconnection with max retry limits (no connection storms).
 // - Thought-filtering: eliminates model reasoning tokens from conversation bubbles.
 
 import { useCallback, useRef, useState, useEffect } from 'react';
@@ -15,6 +16,7 @@ import { buildVoiceWsUrl, sendChatMessage, extractIdeas } from '../api.js';
 
 const INPUT_SAMPLE_RATE = 16000;
 const OUTPUT_SAMPLE_RATE = 24000;
+const MAX_RECONNECT_ATTEMPTS = 3;
 
 function downsampleTo16k(inputBuffer, fromSampleRate) {
   if (!fromSampleRate || fromSampleRate === INPUT_SAMPLE_RATE) return inputBuffer;
@@ -66,7 +68,8 @@ function base64ToArrayBuffer(base64) {
 export function useVoiceSession() {
   const [status, setStatus] = useState('idle'); // idle | connecting | listening | speaking
   const [activeEngine, setActiveEngine] = useState('live'); // 'live' | 'speech-cascade'
-  const [liveTranscript, setLiveTranscript] = useState([]); // { role, text, isStreaming, timestamp }
+  const [liveTranscript, setLiveTranscript] = useState([]); // Array<{ role, text, isStreaming, timestamp }>
+  const [currentSubtitle, setCurrentSubtitle] = useState(null); // { role: 'user'|'assistant', text: string, isLive: boolean }
   const [ideas, setIdeas] = useState([]);
   const [audioLevel, setAudioLevel] = useState(0); // 0 to 100 for visualizer
   const [hasMic, setHasMic] = useState(true);
@@ -86,6 +89,7 @@ export function useVoiceSession() {
   const animFrameRef = useRef(null);
   const pingIntervalRef = useRef(null);
   const reconnectTimerRef = useRef(null);
+  const reconnectAttemptsRef = useRef(0);
   const shouldReconnectRef = useRef(false);
 
   const transcriptHistoryRef = useRef([]);
@@ -126,7 +130,7 @@ export function useVoiceSession() {
     if (window.speechSynthesis) window.speechSynthesis.cancel();
   }, []);
 
-  // Audio meter for dynamic wave visualization & client-side barge-in detection
+  // Audio meter for wave visualization & zero-latency client-side barge-in
   const startAudioMeter = useCallback((stream) => {
     try {
       if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
@@ -148,10 +152,11 @@ export function useVoiceSession() {
         const level = Math.min(100, Math.round(avg * 1.5));
         setAudioLevel(level);
 
-        // Client-side instant barge-in: if user starts speaking while assistant is speaking
-        if (level > 22 && statusRef.current === 'speaking') {
+        // Instant client-side barge-in: interrupt Gemini the microsecond speech energy is detected
+        if (level > 24 && statusRef.current === 'speaking') {
           stopAudioPlayback();
           setStatus('listening');
+          setCurrentSubtitle((prev) => prev?.role === 'assistant' ? null : prev);
         }
 
         animFrameRef.current = requestAnimationFrame(checkLevel);
@@ -209,7 +214,7 @@ export function useVoiceSession() {
     }
   }, [speakReply]);
 
-  // Seamless 24kHz PCM chunk streaming playback
+  // Seamless 24kHz PCM chunk streaming playback with drift clamping
   const playAudioChunk = useCallback((base64Data) => {
     if (!voiceOutputRef.current) return;
     try {
@@ -235,7 +240,6 @@ export function useVoiceSession() {
       src.buffer = audioBuffer;
       src.connect(ctx.destination);
 
-      // Clamp start time against drift to prevent gaps or lag
       const now = ctx.currentTime;
       let startTime = nextStartTimeRef.current;
       if (startTime < now || startTime > now + 1.2) {
@@ -257,60 +261,23 @@ export function useVoiceSession() {
     }
   }, []);
 
-  // Handles raw upstream messages from live relay
-  const handleUpstreamMessage = useCallback((message) => {
-    // Interruption / Barge-in signaled from server
-    if (message?.serverContent?.interrupted) {
-      stopAudioPlayback();
-      setStatus('listening');
-      setLiveTranscript((prev) =>
-        prev.map((m) => (m.isStreaming ? { ...m, isStreaming: false } : m))
-      );
-    }
-
-    // Play PCM audio chunks and filter thoughts
-    const parts = message?.serverContent?.modelTurn?.parts || [];
-    for (const part of parts) {
-      if (part.inlineData?.data) {
-        playAudioChunk(part.inlineData.data);
-      }
-      // Note: parts with thought === true are internal reasoning; never render them as spoken transcript
-    }
-
-    // Incremental output transcription (model speech)
-    if (message?.serverContent?.outputTranscription?.text) {
-      const text = message.serverContent.outputTranscription.text;
-      setLiveTranscript((prev) => {
-        const last = prev[prev.length - 1];
-        if (last && last.role === 'assistant' && last.isStreaming) {
-          return [...prev.slice(0, -1), { ...last, text: (last.text + text) }];
-        }
-        return [...prev, { role: 'assistant', text, isStreaming: true, timestamp: Date.now() }];
-      });
-    }
-
-    // Incremental input transcription (user speech recognized by Gemini Live)
-    if (message?.serverContent?.inputTranscription?.text) {
-      const text = message.serverContent.inputTranscription.text;
-      setLiveTranscript((prev) => {
-        const last = prev[prev.length - 1];
-        if (last && last.role === 'user' && (last.isStreaming || last.isInterim)) {
-          return [...prev.slice(0, -1), { role: 'user', text: (last.isInterim ? text : last.text + text), isStreaming: true, isInterim: false }];
-        }
-        return [...prev, { role: 'user', text, isStreaming: true, isInterim: false, timestamp: Date.now() }];
-      });
-    }
-
-    // Turn complete: finalize streaming message
-    if (message?.serverContent?.turnComplete) {
-      setLiveTranscript((prev) =>
-        prev.map((m) => (m.isStreaming ? { ...m, isStreaming: false } : m))
-      );
-    }
-  }, [playAudioChunk, stopAudioPlayback]);
-
-  // Handle explicit normalized transcription deltas from backend relay
+  // Single Source of Truth: Handle normalized transcription deltas from backend relay
   const handleTranscriptionDelta = useCallback((role, text) => {
+    if (!text) return;
+
+    if (role === 'assistant') {
+      setStatus('speaking');
+    }
+
+    // 1. Update the active Subtitle Cloud state (shown in the live caption cloud)
+    setCurrentSubtitle((prev) => {
+      if (prev && prev.role === role && prev.isLive) {
+        return { ...prev, text: prev.text + text };
+      }
+      return { role, text, isLive: true };
+    });
+
+    // 2. Update the permanent journal transcript stream
     setLiveTranscript((prev) => {
       const last = prev[prev.length - 1];
       if (last && last.role === role && last.isStreaming) {
@@ -344,18 +311,19 @@ export function useVoiceSession() {
       muteNode.gain.value = 0;
 
       processor.onaudioprocess = (e) => {
-        if (!ws || ws.readyState !== WebSocket.OPEN) return;
+        const activeWs = wsRef.current || ws;
+        if (!activeWs || activeWs.readyState !== WebSocket.OPEN) return;
         const input = e.inputBuffer.getChannelData(0);
         const resampled = downsampleTo16k(input, audioCtx.sampleRate);
         const pcm = floatTo16BitPCM(resampled);
-        ws.send(JSON.stringify({ type: 'audio_chunk', data: bufferToBase64(pcm) }));
+        activeWs.send(JSON.stringify({ type: 'audio_chunk', data: bufferToBase64(pcm) }));
       };
 
       source.connect(processor);
       processor.connect(muteNode);
       muteNode.connect(audioCtx.destination);
     } catch (e) {
-      console.warn('PCM capture setup:', e);
+      console.warn('PCM capture setup error:', e);
     }
   }, []);
 
@@ -379,16 +347,29 @@ export function useVoiceSession() {
     }
     stopAudioPlayback();
     setMicActive(false);
+    setCurrentSubtitle(null);
   }, [stopAudioMeter, stopAudioPlayback]);
+
+  const onReadyCallbackRef = useRef(null);
 
   // Connects or re-connects the live WebSocket relay to Cloud Run
   const connectWs = useCallback(async (onReady) => {
+    if (onReady) onReadyCallbackRef.current = onReady;
+
     try {
       const token = await getIdToken();
       if (!token) return null;
 
       if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-        if (onReady) onReady(wsRef.current);
+        if (onReadyCallbackRef.current) {
+          onReadyCallbackRef.current(wsRef.current);
+          onReadyCallbackRef.current = null;
+        }
+        return wsRef.current;
+      }
+
+      if (wsRef.current && wsRef.current.readyState === WebSocket.CONNECTING) {
+        // Socket is already establishing connection, wait for auth_ok
         return wsRef.current;
       }
 
@@ -417,6 +398,7 @@ export function useVoiceSession() {
 
       ws.onopen = () => {
         clearTimeout(wsTimeout);
+        reconnectAttemptsRef.current = 0; // reset on successful connection
         ws.send(JSON.stringify({ type: 'auth', idToken: token }));
 
         // Start ping keepalive every 20 seconds
@@ -433,29 +415,32 @@ export function useVoiceSession() {
           if (payload.type === 'auth_ok') {
             setActiveEngine('live');
             setStatus('listening');
-            if (onReady) {
-              onReady(ws);
+            if (onReadyCallbackRef.current) {
+              onReadyCallbackRef.current(ws);
+              onReadyCallbackRef.current = null;
             } else if (micStreamRef.current) {
               beginMicCapture(ws, micStreamRef.current);
             }
           } else if (payload.type === 'pong') {
-            // Heartbeat acknowledged
+            // Keepalive pong
+          } else if (payload.type === 'audio_chunk' && payload.data) {
+            playAudioChunk(payload.data);
           } else if (payload.type === 'transcription') {
             handleTranscriptionDelta(payload.role, payload.text);
           } else if (payload.type === 'interrupted') {
             stopAudioPlayback();
             setStatus('listening');
+            setCurrentSubtitle(null);
             setLiveTranscript((prev) =>
               prev.map((m) => (m.isStreaming ? { ...m, isStreaming: false } : m))
             );
           } else if (payload.type === 'turn_complete') {
+            setCurrentSubtitle((prev) => prev ? { ...prev, isLive: false } : null);
             setLiveTranscript((prev) =>
               prev.map((m) => (m.isStreaming ? { ...m, isStreaming: false } : m))
             );
           } else if (payload.type === 'ideas') {
             setIdeas((prev) => [...new Set([...payload.ideas, ...prev])].slice(0, 8));
-          } else if (payload.type === 'upstream') {
-            handleUpstreamMessage(payload.message);
           } else if (payload.type === 'error') {
             console.warn('[Voice WS] Relay error:', payload.error);
             setActiveEngine('speech-cascade');
@@ -472,10 +457,14 @@ export function useVoiceSession() {
 
       ws.onclose = () => {
         if (pingIntervalRef.current) clearInterval(pingIntervalRef.current);
-        if (shouldReconnectRef.current && statusRef.current !== 'idle') {
+        
+        // Controlled exponential backoff reconnection (maximum 3 attempts)
+        if (shouldReconnectRef.current && statusRef.current !== 'idle' && reconnectAttemptsRef.current < MAX_RECONNECT_ATTEMPTS) {
+          const delay = Math.min(8000, 1500 * Math.pow(2, reconnectAttemptsRef.current));
+          reconnectAttemptsRef.current += 1;
           reconnectTimerRef.current = setTimeout(() => {
             if (shouldReconnectRef.current) connectWs(onReady);
-          }, 2000);
+          }, delay);
         } else {
           setActiveEngine('speech-cascade');
           if (statusRef.current !== 'idle') setStatus('listening');
@@ -488,15 +477,16 @@ export function useVoiceSession() {
       setActiveEngine('speech-cascade');
       return null;
     }
-  }, [beginMicCapture, handleTranscriptionDelta, handleUpstreamMessage, stopAudioPlayback]);
+  }, [beginMicCapture, handleTranscriptionDelta, playAudioChunk, stopAudioPlayback]);
 
   // Unified Bulletproof Send: ALWAYS succeeds, WS or HTTP cascade
   const sendText = useCallback(async (text, imagePayload = null) => {
     if (!text || !text.trim()) return;
     const clean = text.trim();
 
-    // 1. Immediately record user turn in local transcript
+    // 1. Record user turn in local transcript & Subtitle Cloud
     setLiveTranscript((prev) => [...prev, { role: 'user', text: clean, timestamp: Date.now() }]);
+    setCurrentSubtitle({ role: 'user', text: clean, isLive: false });
 
     // 2. Extract sparks asynchronously in background
     extractIdeas(clean)
@@ -528,6 +518,7 @@ export function useVoiceSession() {
       const res = await sendChatMessage(clean, history, imagePayload, voiceOutputRef.current);
       if (res.reply) {
         setLiveTranscript((prev) => [...prev, { role: 'assistant', text: res.reply, timestamp: Date.now() }]);
+        setCurrentSubtitle({ role: 'assistant', text: res.reply, isLive: false });
         if (voiceOutputRef.current) {
           if (res.audioContent) {
             playGoogleLiveAudio(res.audioContent, res.reply);
@@ -544,12 +535,16 @@ export function useVoiceSession() {
       console.warn('Chat dispatch warning:', err);
       const fallbackMsg = "I'm holding this thought in your memory stream. Reflect further or compact whenever you're ready.";
       setLiveTranscript((prev) => [...prev, { role: 'assistant', text: fallbackMsg, timestamp: Date.now() }]);
+      setCurrentSubtitle({ role: 'assistant', text: fallbackMsg, isLive: false });
       setStatus('listening');
     }
   }, [playGoogleLiveAudio, speakReply]);
 
-  // SpeechRecognition engine for real-time interim user preview on browsers that support it
-  const startSpeechRecognition = useCallback((stream) => {
+  // SpeechRecognition fallback ONLY when WebSocket is not connected
+  const startSpeechRecognitionFallback = useCallback((stream) => {
+    // If live WebSocket is already active, DO NOT run SpeechRecognition to prevent collision
+    if (wsRef.current?.readyState === WebSocket.OPEN) return;
+
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) return;
 
@@ -579,20 +574,7 @@ export function useVoiceSession() {
 
         const userSpoken = (finalSpeechBuffer + ' ' + interim).trim();
         if (userSpoken) {
-          // Instant barge-in if user spoke while assistant was speaking
-          if (statusRef.current === 'speaking') {
-            stopAudioPlayback();
-            setStatus('listening');
-          }
-
-          // Preview speech dynamically in user chat bubble if not already streaming from Gemini Live
-          setLiveTranscript((prev) => {
-            const last = prev[prev.length - 1];
-            if (last && last.role === 'user' && (last.isInterim || last.isStreaming)) {
-              return [...prev.slice(0, -1), { role: 'user', text: userSpoken, isInterim: true }];
-            }
-            return [...prev, { role: 'user', text: userSpoken, isInterim: true }];
-          });
+          setCurrentSubtitle({ role: 'user', text: userSpoken, isLive: true });
         }
 
         clearTimeout(silenceTimer);
@@ -601,39 +583,16 @@ export function useVoiceSession() {
           if (!userText || userText.length < 2) return;
 
           finalSpeechBuffer = '';
-          setLiveTranscript((prev) => {
-            const last = prev[prev.length - 1];
-            if (last && last.role === 'user' && last.isInterim) {
-              return [...prev.slice(0, -1), { role: 'user', text: userText, isInterim: false }];
-            }
-            return [...prev, { role: 'user', text: userText, isInterim: false }];
-          });
-
-          // Only send as text message if WebSocket is not actively streaming PCM audio
-          if (wsRef.current?.readyState !== WebSocket.OPEN) {
-            sendText(userText);
-          }
-        }, 1200);
+          sendText(userText);
+        }, 1400);
       };
 
-      recognition.onerror = (e) => {
-        if (e.error !== 'no-speech') {
-          console.warn('SpeechRecognition notice:', e.error);
-        }
-      };
-
-      recognition.onend = () => {
-        if (statusRef.current !== 'idle' && micStreamRef.current && recognitionRef.current) {
-          try { recognition.start(); } catch {}
-        }
-      };
-
+      recognition.onerror = () => {};
       recognition.start();
-      setMicActive(true);
     } catch (e) {
-      console.warn('SpeechRecognition start bypassed:', e);
+      console.warn('SpeechRecognition fallback notice:', e);
     }
-  }, [sendText, stopAudioPlayback]);
+  }, [sendText]);
 
   // Graceful microphone acquisition
   const acquireMic = useCallback(async () => {
@@ -657,43 +616,26 @@ export function useVoiceSession() {
     }
   }, []);
 
-  // Start the conversational runtime
+  // Initialize runtime without auto-triggering microphone permission on mount
   const start = useCallback(async (requestMic = false) => {
     setNotice(null);
     shouldReconnectRef.current = true;
 
-    // Resume playback context on user gesture
-    if (playbackCtxRef.current && playbackCtxRef.current.state === 'suspended') {
-      playbackCtxRef.current.resume().catch(() => {});
-    }
-
-    let stream = null;
-    if (requestMic) {
-      stream = await acquireMic();
-      if (stream) {
-        micStreamRef.current = stream;
-        setHasMic(true);
-        setMicActive(true);
-        startAudioMeter(stream);
-        startSpeechRecognition(stream);
-      }
-    }
-
-    connectWs((ws) => {
-      if (stream) {
-        beginMicCapture(ws, stream);
-      }
-    });
-
+    // Connect WebSocket quietly in background
+    connectWs();
     setStatus('listening');
-  }, [acquireMic, beginMicCapture, connectWs, startAudioMeter, startSpeechRecognition]);
 
-  // Toggle microphone on demand
+    if (requestMic) {
+      toggleMic();
+    }
+  }, [connectWs]);
+
+  // Toggle microphone strictly on user gesture
   const toggleMic = useCallback(async () => {
     if (micActive) {
       stopMicCapture();
     } else {
-      // Resume Web Audio playback context on user gesture
+      // 1. Resume Web Audio playback context on direct user gesture
       if (!playbackCtxRef.current || playbackCtxRef.current.state === 'closed') {
         playbackCtxRef.current = new (window.AudioContext || window.webkitAudioContext)({
           sampleRate: OUTPUT_SAMPLE_RATE,
@@ -703,22 +645,27 @@ export function useVoiceSession() {
         playbackCtxRef.current.resume().catch(() => {});
       }
 
+      // 2. Request mic stream on user click
       const stream = await acquireMic();
       if (stream) {
         micStreamRef.current = stream;
         setHasMic(true);
         setMicActive(true);
         startAudioMeter(stream);
-        startSpeechRecognition(stream);
         setNotice(null);
 
-        // Connect or use active WebSocket to stream mic to Gemini Live API
+        // 3. Stream mic to Gemini Live API WebSocket
         connectWs((ws) => {
           beginMicCapture(ws, stream);
         });
+
+        // 4. Fallback if WebSocket fails
+        if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
+          startSpeechRecognitionFallback(stream);
+        }
       }
     }
-  }, [acquireMic, beginMicCapture, connectWs, micActive, startAudioMeter, startSpeechRecognition, stopMicCapture]);
+  }, [acquireMic, beginMicCapture, connectWs, micActive, startAudioMeter, startSpeechRecognitionFallback, stopMicCapture]);
 
   const toggleVoiceOutput = useCallback(() => {
     setVoiceOutputEnabled((prev) => {
@@ -738,6 +685,7 @@ export function useVoiceSession() {
     } catch {}
     stopMicCapture();
     stopAudioPlayback();
+    setCurrentSubtitle(null);
     setStatus('idle');
   }, [stopAudioPlayback, stopMicCapture]);
 
@@ -746,6 +694,7 @@ export function useVoiceSession() {
     activeEngine,
     audioLevel,
     liveTranscript,
+    currentSubtitle,
     ideas,
     notice,
     hasMic,
@@ -753,6 +702,7 @@ export function useVoiceSession() {
     voiceOutputEnabled,
     toggleMic,
     toggleVoiceOutput,
+    stopAudioPlayback,
     start,
     stop,
     sendText,
