@@ -211,10 +211,17 @@ words. Return ONLY a JSON array of strings.\n\n${transcriptBuffer
     }
 
     if (payload.type === 'audio_chunk' && payload.data) {
-      // payload.data: base64 PCM16 audio, 16kHz mono, from the browser.
+      // payload.data: base64-encoded audio from MediaRecorder (webm/mp4/ogg on mobile)
+      // payload.mimeType: MIME type reported by MediaRecorder (e.g. 'audio/webm;codecs=opus')
       if (liveSession) {
+        const mime = payload.mimeType || 'audio/pcm;rate=16000';
+        // Normalize to the base MIME type Gemini Live expects
+        // audio/webm;codecs=opus → audio/webm (Gemini accepts the base type)
+        const baseMime = mime.split(';')[0].trim();
+        const supported = ['audio/pcm', 'audio/webm', 'audio/mp4', 'audio/ogg', 'audio/wav'];
+        const finalMime = supported.find(m => baseMime.startsWith(m)) || 'audio/webm';
         liveSession.sendRealtimeInput({
-          media: { data: payload.data, mimeType: 'audio/pcm;rate=16000' },
+          media: { data: payload.data, mimeType: finalMime },
         });
       }
     } else if (payload.type === 'text_message' && payload.text) {
