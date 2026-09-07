@@ -64,7 +64,8 @@ const WORKLET_PROCESSOR_CODE = `
 class PcmCaptureProcessor extends AudioWorkletProcessor {
   constructor() {
     super();
-    this.bufferSize = 2048;
+    // Buffer ~100ms of audio according to the AudioWorklet sampleRate
+    this.bufferSize = Math.round((typeof sampleRate !== 'undefined' ? sampleRate : 48000) * 0.1);
     this.buffer = new Float32Array(this.bufferSize);
     this.offset = 0;
   }
@@ -105,6 +106,7 @@ export function useVoiceSession() {
   // WebSocket + audio refs
   const wsRef = useRef(null);
   const playbackCtxRef = useRef(null);
+  const playbackGainNodeRef = useRef(null);
   const nextStartTimeRef = useRef(0);
   const activeSourcesRef = useRef([]);
   const micStreamRef = useRef(null);
@@ -116,6 +118,7 @@ export function useVoiceSession() {
   const analyserCtxRef = useRef(null);
   const animFrameRef = useRef(null);
   const recognitionRef = useRef(null);
+  const startSpeechRecognitionRef = useRef(null);
   const pingIntervalRef = useRef(null);
   const reconnectTimerRef = useRef(null);
   const reconnectAttemptsRef = useRef(0);
@@ -146,19 +149,19 @@ export function useVoiceSession() {
   // AUDIO PLAYBACK (24kHz PCM from Gemini Live)
   // ─────────────────────────────────────────────────────────────────────────────
 
-  const stopAudioPlayback = useCallback(() => {
-    activeSourcesRef.current.forEach((s) => { try { s.stop(); } catch {} });
-    activeSourcesRef.current = [];
-    nextStartTimeRef.current = 0;
-    if (window.speechSynthesis) window.speechSynthesis.cancel();
-  }, []);
-
   const ensurePlaybackContext = useCallback(() => {
     if (!playbackCtxRef.current || playbackCtxRef.current.state === 'closed') {
-      playbackCtxRef.current = new (window.AudioContext || window.webkitAudioContext)({
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      const ctx = new AudioCtx({
         sampleRate: OUTPUT_SAMPLE_RATE,
         latencyHint: 'interactive',
       });
+      playbackCtxRef.current = ctx;
+
+      const gain = ctx.createGain();
+      gain.gain.value = 1.0;
+      gain.connect(ctx.destination);
+      playbackGainNodeRef.current = gain;
     }
     const ctx = playbackCtxRef.current;
     if (ctx.state === 'suspended') {
@@ -167,10 +170,40 @@ export function useVoiceSession() {
     return ctx;
   }, []);
 
+  const stopAudioPlayback = useCallback(() => {
+    // Smooth ramp-down to eliminate audible clicks on interruption
+    const ctx = playbackCtxRef.current;
+    const gainNode = playbackGainNodeRef.current;
+    if (ctx && gainNode && ctx.state === 'running') {
+      try {
+        const now = ctx.currentTime;
+        gainNode.gain.cancelScheduledValues(now);
+        gainNode.gain.setValueAtTime(gainNode.gain.value, now);
+        gainNode.gain.linearRampToValueAtTime(0.0001, now + 0.025);
+      } catch {}
+    }
+
+    setTimeout(() => {
+      activeSourcesRef.current.forEach((s) => { try { s.stop(); } catch {} });
+      activeSourcesRef.current = [];
+      nextStartTimeRef.current = 0;
+      if (ctx && gainNode && ctx.state === 'running') {
+        try {
+          const now = ctx.currentTime;
+          gainNode.gain.cancelScheduledValues(now);
+          gainNode.gain.setValueAtTime(1.0, now);
+        } catch {}
+      }
+    }, 30);
+
+    if (window.speechSynthesis) window.speechSynthesis.cancel();
+  }, []);
+
   const playAudioChunk = useCallback((base64Data) => {
     if (!voiceOutputRef.current) return;
     try {
       const ctx = ensurePlaybackContext();
+      const gainNode = playbackGainNodeRef.current;
       const arrayBuffer = base64ToArrayBuffer(base64Data);
       const pcm16 = new Int16Array(arrayBuffer);
       const float32 = new Float32Array(pcm16.length);
@@ -181,11 +214,18 @@ export function useVoiceSession() {
 
       const src = ctx.createBufferSource();
       src.buffer = audioBuffer;
-      src.connect(ctx.destination);
+      if (gainNode) {
+        src.connect(gainNode);
+      } else {
+        src.connect(ctx.destination);
+      }
 
       const now = ctx.currentTime;
       let startTime = nextStartTimeRef.current;
-      if (startTime < now || startTime > now + 1.5) startTime = now;
+      // Initialize a 60ms jitter buffer on playback start or after gap to prevent clicks and stutter
+      if (startTime < now || startTime > now + 2.0) {
+        startTime = now + 0.06;
+      }
       src.start(startTime);
       nextStartTimeRef.current = startTime + audioBuffer.duration;
 
@@ -261,19 +301,15 @@ export function useVoiceSession() {
         const level = Math.min(100, Math.round(avg * 1.5));
         setAudioLevel(level);
 
-        // Instant barge-in: interrupt Gemini the moment the user speaks
-        if (level > 20 && statusRef.current === 'speaking') {
-          stopAudioPlayback();
-          setStatus('listening');
-          setCurrentSubtitle((prev) => (prev?.role === 'assistant' ? null : prev));
-        }
+        // Visual meter tick only — conversational barge-in is handled authoritatively
+        // by Gemini Live server-side VAD ('interrupted' WS event) or manual UI tap
         animFrameRef.current = requestAnimationFrame(tick);
       };
       tick();
     } catch (e) {
       console.warn('[Voice] Audio meter unavailable:', e.message);
     }
-  }, [stopAudioPlayback]);
+  }, []);
 
   const stopAudioMeter = useCallback(() => {
     if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
@@ -401,6 +437,12 @@ export function useVoiceSession() {
     stopAudioMeter();
     stopMicCaptureOnly();
 
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      try {
+        wsRef.current.send(JSON.stringify({ type: 'audio_stream_end' }));
+      } catch {}
+    }
+
     if (micStreamRef.current) {
       micStreamRef.current.getTracks().forEach((t) => t.stop());
       micStreamRef.current = null;
@@ -483,6 +525,11 @@ export function useVoiceSession() {
             case 'auth_ok':
               setActiveEngine('live');
               setStatus('listening');
+              // Ensure browser SpeechRecognition is stopped so Gemini Live is single source of truth
+              if (recognitionRef.current) {
+                try { recognitionRef.current.stop(); } catch {}
+                recognitionRef.current = null;
+              }
               if (onReadyCallbackRef.current) {
                 onReadyCallbackRef.current(ws);
                 onReadyCallbackRef.current = null;
@@ -514,6 +561,9 @@ export function useVoiceSession() {
             case 'error':
               console.warn('[Voice WS] Relay error:', payload.error);
               setActiveEngine('speech-cascade');
+              if (micStreamRef.current && micActiveRef.current) {
+                startSpeechRecognitionRef.current?.(micStreamRef.current);
+              }
               break;
             default:
               break;
@@ -526,6 +576,9 @@ export function useVoiceSession() {
         console.warn('[Voice WS] Connection error — switching to speech-cascade');
         setActiveEngine('speech-cascade');
         setStatus('listening');
+        if (micStreamRef.current && micActiveRef.current) {
+          startSpeechRecognitionRef.current?.(micStreamRef.current);
+        }
       };
 
       ws.onclose = () => {
@@ -538,7 +591,12 @@ export function useVoiceSession() {
           }, delay);
         } else {
           setActiveEngine('speech-cascade');
-          if (statusRef.current !== 'idle') setStatus('listening');
+          if (statusRef.current !== 'idle') {
+            setStatus('listening');
+            if (micStreamRef.current && micActiveRef.current) {
+              startSpeechRecognitionRef.current?.(micStreamRef.current);
+            }
+          }
         }
       };
 
@@ -670,6 +728,10 @@ export function useVoiceSession() {
     }
   }, [sendText, stopAudioPlayback]);
 
+  useEffect(() => {
+    startSpeechRecognitionRef.current = startSpeechRecognition;
+  }, [startSpeechRecognition]);
+
   // ─────────────────────────────────────────────────────────────────────────────
   // MIC ACQUISITION — iOS Safari + Android + Desktop compatible
   // ─────────────────────────────────────────────────────────────────────────────
@@ -742,8 +804,11 @@ export function useVoiceSession() {
       beginMicCapture(ws, stream);
     });
 
-    // Start real-time SpeechRecognition for instant subtitles (works alongside WS)
-    startSpeechRecognition(stream);
+    // Only engage browser SpeechRecognition if currently running in speech-cascade fallback mode.
+    // In Gemini Live mode, Gemini Live ASR is the single authoritative source of truth.
+    if (activeEngineRef.current === 'speech-cascade') {
+      startSpeechRecognition(stream);
+    }
   }, [
     acquireMic,
     beginMicCapture,
@@ -768,6 +833,7 @@ export function useVoiceSession() {
     if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
     if (pingIntervalRef.current) clearInterval(pingIntervalRef.current);
     try {
+      wsRef.current?.send(JSON.stringify({ type: 'audio_stream_end' }));
       wsRef.current?.send(JSON.stringify({ type: 'end_session' }));
       wsRef.current?.close();
     } catch {}

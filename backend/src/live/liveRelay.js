@@ -22,7 +22,7 @@ import { getGeminiApiKey } from '../secretManager.js';
 import { loadMemoryContext, buildSystemPreamble } from '../memory/pipeline.js';
 import { generateJsonArray } from '../gemini.js';
 
-const LIVE_MODEL = process.env.GEMINI_LIVE_MODEL || 'gemini-2.5-flash-native-audio-latest';
+const LIVE_MODEL = process.env.GEMINI_LIVE_MODEL || 'gemini-2.5-flash-native-audio-preview-12-2025';
 const AUTH_TIMEOUT_MS = 10_000;
 const IDEA_EXTRACTION_TURN_INTERVAL = 3; // extract ideas every N model turns
 
@@ -76,6 +76,12 @@ async function handleConnection(clientSocket) {
         responseModalities: [Modality.AUDIO],
         inputAudioTranscription: {},
         outputAudioTranscription: {},
+        realtimeInputConfig: {
+          automaticActivityDetection: {
+            prefixPaddingMs: 300,
+            silenceDurationMs: 600,
+          },
+        },
         systemInstruction: preamble
           ? `You are Tendril, a thoughtful, empathetic, and authentic voice journaling companion. Keep spoken responses concise (1 to 3 short sentences), natural, conversational, and direct, suitable for real-time spoken dialogue. Never list bullet points or verbose essays. Always respond supportively and ask one gentle, insightful follow-up question to help the user reflect deeper on what they shared. ${preamble}`
           : 'You are Tendril, a thoughtful, empathetic, and authentic voice journaling companion. Keep spoken responses concise (1 to 3 short sentences), natural, conversational, and direct, suitable for real-time spoken dialogue. Never list bullet points or verbose essays. Always respond supportively and ask one gentle, insightful follow-up question to help the user reflect deeper on what they shared.',
@@ -213,15 +219,24 @@ words. Return ONLY a JSON array of strings.\n\n${transcriptBuffer
     }
 
     if (payload.type === 'audio_chunk' && payload.data) {
-      // payload.data: base64-encoded 16kHz 16-bit linear PCM audio
+      // payload.data: base64-encoded 16kHz 16-bit linear PCM audio (~100ms chunks)
       // Gemini Live API strictly requires audio/pcm;rate=16000
       if (liveSession) {
         try {
           liveSession.sendRealtimeInput({
-            media: { data: payload.data, mimeType: 'audio/pcm;rate=16000' },
+            audio: { data: payload.data, mimeType: 'audio/pcm;rate=16000' },
           });
         } catch (err) {
           console.warn('[liveRelay] failed to send realtime audio:', err.message);
+        }
+      }
+    } else if (payload.type === 'audio_stream_end') {
+      // Direct signal to Gemini VAD that audio input has paused or finished
+      if (liveSession) {
+        try {
+          liveSession.sendRealtimeInput({ audioStreamEnd: true });
+        } catch (err) {
+          console.warn('[liveRelay] failed to send audioStreamEnd:', err.message);
         }
       }
     } else if (payload.type === 'text_message' && payload.text) {
