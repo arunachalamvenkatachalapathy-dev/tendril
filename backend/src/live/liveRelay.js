@@ -26,6 +26,9 @@ const LIVE_MODEL = process.env.GEMINI_LIVE_MODEL || 'gemini-2.5-flash-native-aud
 const AUTH_TIMEOUT_MS = 10_000;
 const IDEA_EXTRACTION_TURN_INTERVAL = 3; // extract ideas every N model turns
 
+// Ensure at most ONE active Live API session exists per user at any time
+const activeUserSessions = new Map(); // uid -> { clientSocket, liveSession }
+
 export function attachVoiceRelay(httpServer) {
   const wss = new WebSocketServer({ noServer: true });
 
@@ -57,6 +60,15 @@ async function handleConnection(clientSocket) {
   //    No upstream Live API connection is opened before this succeeds.
   const uid = await waitForVerifiedUid(clientSocket);
   if (!uid) return; // waitForVerifiedUid already closed the socket
+
+  // Terminate any previous session for this user to guarantee strictly one live session
+  if (activeUserSessions.has(uid)) {
+    const prev = activeUserSessions.get(uid);
+    console.log('[liveRelay] closing previous duplicate session for uid=%s', uid);
+    try { prev.liveSession?.close(); } catch {}
+    try { prev.clientSocket?.close(1000, 'Superseded by new session'); } catch {}
+    activeUserSessions.delete(uid);
+  }
 
   let transcriptBuffer = [];
   let modelTurnCount = 0;
@@ -97,10 +109,21 @@ async function handleConnection(clientSocket) {
         },
         onclose: () => {
           console.log('[liveRelay] upstream session closed for uid=%s', uid);
+          if (activeUserSessions.get(uid)?.clientSocket === clientSocket) {
+            activeUserSessions.delete(uid);
+          }
           safeClose(clientSocket, 1000, 'Upstream closed');
         },
       },
     });
+
+    if (clientSocket.readyState !== 1) { // 1 = OPEN
+      console.log('[liveRelay] client disconnected before upstream connected for uid=%s', uid);
+      try { liveSession?.close(); } catch {}
+      return;
+    }
+
+    activeUserSessions.set(uid, { clientSocket, liveSession });
 
     // 3. Confirm to client that auth AND upstream live session are ready.
     safeSend(clientSocket, { type: 'auth_ok' });
@@ -122,6 +145,7 @@ async function handleConnection(clientSocket) {
     // 1. Barge-in notification: user spoke while model was responding
     if (message?.serverContent?.interrupted) {
       safeSend(clientSocket, { type: 'interrupted' });
+      return;
     }
 
     // 2. Stream downstream 24kHz PCM audio chunks to the browser
@@ -262,9 +286,13 @@ words. Return ONLY a JSON array of strings.\n\n${transcriptBuffer
 
   clientSocket.on('close', (code, reason) => {
     console.log('[liveRelay] clientSocket closed code=%s reason=%s for uid=%s', code, reason?.toString(), uid);
+    if (activeUserSessions.get(uid)?.clientSocket === clientSocket) {
+      activeUserSessions.delete(uid);
+    }
     try {
       liveSession?.close();
     } catch {}
+    liveSession = null;
   });
 }
 
