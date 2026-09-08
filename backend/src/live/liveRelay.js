@@ -170,6 +170,9 @@ async function handleConnection(clientSocket) {
       // Only append if we haven't already captured output transcription for this turn
       const last = transcriptBuffer[transcriptBuffer.length - 1];
       if (nonThoughtText && (!last || last.role !== 'assistant' || (!last.text && !message?.serverContent?.outputTranscription))) {
+        if (!message?.serverContent?.outputTranscription) {
+          safeSend(clientSocket, { type: 'transcription', role: 'assistant', text: nonThoughtText });
+        }
         if (last && last.role === 'assistant') {
           last.text += ' ' + nonThoughtText;
         } else {

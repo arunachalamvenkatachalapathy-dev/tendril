@@ -453,10 +453,11 @@ export function useVoiceSession() {
       recognitionRef.current = null;
     }
 
-    stopAudioPlayback();
+    // Freeze current user subtitle as finished speaking instead of clearing it,
+    // and DO NOT cut off Gemini's voice playback!
+    setCurrentSubtitle((prev) => (prev ? { ...prev, isLive: false } : null));
     setMicActive(false);
-    setCurrentSubtitle(null);
-  }, [stopAudioMeter, stopAudioPlayback, stopMicCaptureOnly]);
+  }, [stopAudioMeter, stopMicCaptureOnly]);
 
   // ─────────────────────────────────────────────────────────────────────────────
   // WEBSOCKET RELAY CONNECTION
@@ -525,11 +526,6 @@ export function useVoiceSession() {
             case 'auth_ok':
               setActiveEngine('live');
               setStatus('listening');
-              // Ensure browser SpeechRecognition is stopped so Gemini Live is single source of truth
-              if (recognitionRef.current) {
-                try { recognitionRef.current.stop(); } catch {}
-                recognitionRef.current = null;
-              }
               if (onReadyCallbackRef.current) {
                 onReadyCallbackRef.current(ws);
                 onReadyCallbackRef.current = null;
@@ -698,6 +694,13 @@ export function useVoiceSession() {
             setStatus('listening');
           }
           setCurrentSubtitle({ role: 'user', text: userSpoken, isLive: true });
+          setLiveTranscript((prev) => {
+            const last = prev[prev.length - 1];
+            if (last && last.role === 'user' && last.isStreaming) {
+              return [...prev.slice(0, -1), { ...last, text: userSpoken }];
+            }
+            return [...prev, { role: 'user', text: userSpoken, isStreaming: true, timestamp: Date.now() }];
+          });
         }
 
         clearTimeout(silenceTimer);
@@ -705,11 +708,20 @@ export function useVoiceSession() {
           const userText = (finalSpeechBuffer + ' ' + interim).trim();
           if (!userText || userText.length < 2) return;
           finalSpeechBuffer = '';
-          // Only dispatch sendText when in HTTP cascade mode — never while Gemini Live WebSocket is active
           if (activeEngineRef.current !== 'live') {
             sendText(userText);
+          } else {
+            // Commit user utterance to chat history in live mode
+            setLiveTranscript((prev) => {
+              const last = prev[prev.length - 1];
+              if (last && last.role === 'user') {
+                return [...prev.slice(0, -1), { ...last, text: userText, isStreaming: false }];
+              }
+              return [...prev, { role: 'user', text: userText, isStreaming: false, timestamp: Date.now() }];
+            });
+            setCurrentSubtitle({ role: 'user', text: userText, isLive: false });
           }
-        }, 1300);
+        }, 1100);
       };
 
       recognition.onend = () => {
@@ -804,11 +816,8 @@ export function useVoiceSession() {
       beginMicCapture(ws, stream);
     });
 
-    // Only engage browser SpeechRecognition if currently running in speech-cascade fallback mode.
-    // In Gemini Live mode, Gemini Live ASR is the single authoritative source of truth.
-    if (activeEngineRef.current === 'speech-cascade') {
-      startSpeechRecognition(stream);
-    }
+    // Start real-time speech recognition for live on-screen captions while user speaks
+    startSpeechRecognition(stream);
   }, [
     acquireMic,
     beginMicCapture,
