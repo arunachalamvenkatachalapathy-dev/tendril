@@ -34,10 +34,21 @@ export default function EntryComposer({ onSaved, onExtractIdeas, initialVoiceAct
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Forward real-time sparks to parent Idea Vault
+  const forwardedIdeasRef = useRef(new Set());
+
+  // Forward real-time sparks to parent Idea Vault only when genuinely new items arrive
   useEffect(() => {
-    if (ideas && ideas.length > 0 && onExtractIdeas) {
-      onExtractIdeas(ideas.map(t => typeof t === 'string' ? { type: 'spark', text: t } : t));
+    if (!ideas || ideas.length === 0 || !onExtractIdeas) return;
+    const newItems = [];
+    for (const item of ideas) {
+      const text = typeof item === 'string' ? item : item.text;
+      if (text && !forwardedIdeasRef.current.has(text)) {
+        forwardedIdeasRef.current.add(text);
+        newItems.push(typeof item === 'string' ? { type: 'spark', text } : item);
+      }
+    }
+    if (newItems.length > 0) {
+      onExtractIdeas(newItems);
     }
   }, [ideas, onExtractIdeas]);
 

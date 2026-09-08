@@ -152,10 +152,8 @@ export function useVoiceSession() {
   const ensurePlaybackContext = useCallback(() => {
     if (!playbackCtxRef.current || playbackCtxRef.current.state === 'closed') {
       const AudioCtx = window.AudioContext || window.webkitAudioContext;
-      const ctx = new AudioCtx({
-        sampleRate: OUTPUT_SAMPLE_RATE,
-        latencyHint: 'interactive',
-      });
+      // Do not force sampleRate: 24000; native hardware rate prevents NotSupportedError on iOS/Android
+      const ctx = new AudioCtx({ latencyHint: 'interactive' });
       playbackCtxRef.current = ctx;
 
       const gain = ctx.createGain();
@@ -205,10 +203,18 @@ export function useVoiceSession() {
       const ctx = ensurePlaybackContext();
       const gainNode = playbackGainNodeRef.current;
       const arrayBuffer = base64ToArrayBuffer(base64Data);
-      const pcm16 = new Int16Array(arrayBuffer);
+      if (!arrayBuffer || arrayBuffer.byteLength < 2) return;
+
+      const safeLength = arrayBuffer.byteLength - (arrayBuffer.byteLength % 2);
+      if (safeLength === 0) return;
+
+      const pcm16 = new Int16Array(arrayBuffer.slice(0, safeLength));
+      if (pcm16.length === 0) return;
+
       const float32 = new Float32Array(pcm16.length);
       for (let i = 0; i < pcm16.length; i++) float32[i] = pcm16[i] / 0x8000;
 
+      // Web Audio natively resamples 24kHz buffer to hardware context rate
       const audioBuffer = ctx.createBuffer(1, float32.length, OUTPUT_SAMPLE_RATE);
       audioBuffer.copyToChannel(float32, 0);
 
@@ -236,7 +242,9 @@ export function useVoiceSession() {
           setStatus('listening');
         }
       };
-      setStatus('speaking');
+      if (statusRef.current !== 'speaking') {
+        setStatus('speaking');
+      }
     } catch (err) {
       console.warn('[Voice] Audio playback error:', err.message);
     }
@@ -359,18 +367,15 @@ export function useVoiceSession() {
       try { scriptProcessorRef.current.disconnect(); } catch {}
       scriptProcessorRef.current = null;
     }
-    if (audioCtxRef.current && audioCtxRef.current.state !== 'closed') {
-      try { audioCtxRef.current.close(); } catch {}
-      audioCtxRef.current = null;
-    }
   }, []);
 
   const beginMicCapture = useCallback(async (ws, stream) => {
     stopMicCaptureOnly();
 
     try {
-      const AudioCtx = window.AudioContext || window.webkitAudioContext;
-      const audioCtx = new AudioCtx();
+      // Reuse the shared AudioContext from ensurePlaybackContext to guarantee
+      // a single unified audio graph on mobile browsers (prevents HAL collisions)
+      const audioCtx = ensurePlaybackContext();
       audioCtxRef.current = audioCtx;
       if (audioCtx.state === 'suspended') {
         await audioCtx.resume().catch(() => {});
@@ -679,6 +684,12 @@ export function useVoiceSession() {
       let finalSpeechBuffer = '';
 
       recognition.onresult = (event) => {
+        // Prevent speaker acoustic feedback from mistaking Gemini's own voice
+        // as user speech and cutting off playback
+        if (statusRef.current === 'speaking') {
+          return;
+        }
+
         let interim = '';
         for (let i = event.resultIndex; i < event.results.length; ++i) {
           if (event.results[i].isFinal) {
@@ -689,10 +700,6 @@ export function useVoiceSession() {
         }
         const userSpoken = (finalSpeechBuffer + ' ' + interim).trim();
         if (userSpoken) {
-          if (statusRef.current === 'speaking') {
-            stopAudioPlayback();
-            setStatus('listening');
-          }
           setCurrentSubtitle({ role: 'user', text: userSpoken, isLive: true });
           setLiveTranscript((prev) => {
             const last = prev[prev.length - 1];
@@ -725,7 +732,13 @@ export function useVoiceSession() {
       };
 
       recognition.onend = () => {
-        if (micActiveRef.current) { try { recognition.start(); } catch {} }
+        if (micActiveRef.current) {
+          setTimeout(() => {
+            if (micActiveRef.current && recognitionRef.current === recognition) {
+              try { recognition.start(); } catch {}
+            }
+          }, 300);
+        }
       };
 
       recognition.onerror = (e) => {

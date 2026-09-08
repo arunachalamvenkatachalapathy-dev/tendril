@@ -10,6 +10,7 @@ import ModeToggle from './components/ModeToggle.jsx';
 import Dashboard from './components/Dashboard.jsx';
 import IdeaStream from './components/IdeaStream.jsx';
 import MemoryProfileModal from './components/MemoryProfileModal.jsx';
+import ErrorBoundary from './components/ErrorBoundary.jsx';
 
 function usePath() {
   const getSubPath = () => {
@@ -126,6 +127,20 @@ export default function App() {
     refreshMemoryAndIdeas();
     handleNewEntry();
   }
+
+  const handleSurfacedIdeas = useCallback((newIdeas) => {
+    if (newIdeas && newIdeas.length > 0) {
+      setSurfacedIdeas((prev) => {
+        const existingTexts = new Set(prev.map((i) => (typeof i === 'string' ? i : i.text)));
+        const filteredNew = newIdeas.filter((i) => {
+          const text = typeof i === 'string' ? i : i.text;
+          return text && !existingTexts.has(text);
+        });
+        if (filteredNew.length === 0) return prev;
+        return [...filteredNew, ...prev].slice(0, 10);
+      });
+    }
+  }, []);
 
   async function handleSeedDemo() {
     if (!window.confirm('Load a 14-day sample cognitive journey to demonstrate Diurnal Telemetry, Sentiment Heatmap, and Layered Memory?')) return;
@@ -277,22 +292,22 @@ export default function App() {
             {view.mode === 'detail' ? (
               <EntryDetail entry={view.entry} onBack={handleNewEntry} />
             ) : composerMode === 'voice' ? (
-              <VoiceComposer
-                key={composerKey}
-                onSaved={handleSaved}
-                onSwitchToText={() => setComposerMode('text')}
-                onSurfacedIdeas={(newIdeas) => setSurfacedIdeas(prev => [...newIdeas, ...prev].slice(0, 10))}
-              />
+              <ErrorBoundary>
+                <VoiceComposer
+                  key={composerKey}
+                  onSaved={handleSaved}
+                  onSwitchToText={() => setComposerMode('text')}
+                  onSurfacedIdeas={handleSurfacedIdeas}
+                />
+              </ErrorBoundary>
             ) : (
-              <EntryComposer
-                key={composerKey}
-                onSaved={handleSaved}
-                onExtractIdeas={(newIdeas) => {
-                  if (newIdeas && newIdeas.length > 0) {
-                    setSurfacedIdeas(prev => [...newIdeas, ...prev].slice(0, 10));
-                  }
-                }}
-              />
+              <ErrorBoundary>
+                <EntryComposer
+                  key={composerKey}
+                  onSaved={handleSaved}
+                  onExtractIdeas={handleSurfacedIdeas}
+                />
+              </ErrorBoundary>
             )}
           </div>
 
