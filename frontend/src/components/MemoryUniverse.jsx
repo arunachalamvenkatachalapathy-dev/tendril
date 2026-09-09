@@ -285,7 +285,7 @@ export default function MemoryUniverse({ entries = [], memoryData = null, onOpen
     return { backgroundStars: bg, sparklingStars: sparkles };
   }, [W, H]);
 
-  // Constellation filaments connecting planets with shared moods or tags
+  // Constellation filaments connecting planets with shared moods, themes, or narrative flow
   const constellationLines = useMemo(() => {
     const lines = [];
     for (let i = 0; i < livePlanets.length; i++) {
@@ -294,19 +294,20 @@ export default function MemoryUniverse({ entries = [], memoryData = null, onOpen
         const p2 = livePlanets[j];
         const sharedMood = p1.mood === p2.mood;
         const sharedTheme = (p1.entry.themes || []).some((t) => (p2.entry.themes || []).includes(t));
+        const isTemporalSequence = Math.abs(i - j) === 1; // Adjacent in conversation chronology
         
-        if (sharedMood || sharedTheme) {
+        if (sharedMood || sharedTheme || isTemporalSequence) {
           const dx = p1.x - p2.x;
           const dy = p1.y - p2.y;
           const dist = Math.sqrt(dx * dx + dy * dy);
-          if (dist < 260) {
+          if (dist < 380) {
             lines.push({
               x1: p1.x,
               y1: p1.y,
               x2: p2.x,
               y2: p2.y,
-              opacity: Math.max(0.08, (1 - dist / 260) * 0.25),
-              stroke: sharedMood ? p1.palette.fill : '#a8c7fa',
+              opacity: Math.max(0.35, (1 - dist / 380) * 0.75),
+              stroke: sharedMood ? p1.palette.fill : sharedTheme ? '#a8c7fa' : 'rgba(168, 199, 250, 0.7)',
               isHighlighted: hoveredPlanet?.id === p1.id || hoveredPlanet?.id === p2.id,
             });
           }
@@ -424,17 +425,22 @@ export default function MemoryUniverse({ entries = [], memoryData = null, onOpen
       </div>
 
       {/* Main Cosmos SVG Canvas */}
-      <div style={{
-        position: 'relative',
-        width: '100%',
-        aspectRatio: '1 / 1',
-        maxHeight: '560px',
-        background: 'radial-gradient(circle at 50% 50%, #151a24 0%, #0c0e14 70%, #06070a 100%)',
-        borderRadius: '20px',
-        border: '1px solid rgba(168, 199, 250, 0.15)',
-        boxShadow: 'inset 0 0 60px rgba(0, 0, 0, 0.8), 0 12px 36px rgba(0, 0, 0, 0.4)',
-        overflow: 'hidden',
-      }}>
+      <div
+        onClick={() => {
+          setSelectedPlanet(null);
+          setHoveredPlanet(null);
+        }}
+        style={{
+          position: 'relative',
+          width: '100%',
+          aspectRatio: '1 / 1',
+          maxHeight: '560px',
+          background: 'radial-gradient(circle at 50% 50%, #151a24 0%, #0c0e14 70%, #06070a 100%)',
+          borderRadius: '20px',
+          border: '1px solid rgba(168, 199, 250, 0.15)',
+          boxShadow: 'inset 0 0 60px rgba(0, 0, 0, 0.8), 0 12px 36px rgba(0, 0, 0, 0.4)',
+          overflow: 'hidden',
+        }}>
         <svg
           viewBox={`0 0 ${W} ${H}`}
           style={{ width: '100%', height: '100%', display: 'block' }}
@@ -512,19 +518,33 @@ export default function MemoryUniverse({ entries = [], memoryData = null, onOpen
           <circle cx={cx} cy={cy} r={235} fill="none" stroke="rgba(168, 199, 250, 0.08)" strokeDasharray="5 8" />
           <circle cx={cx} cy={cy} r={320} fill="none" stroke="rgba(168, 199, 250, 0.06)" strokeDasharray="6 10" />
 
-          {/* Constellation Filament Lines */}
+          {/* Constellation Filament Lines (Clear, Glowing Dotted Links Between Conversations) */}
           {constellationLines.map((line, idx) => (
-            <line
-              key={`line-${idx}`}
-              x1={line.x1}
-              y1={line.y1}
-              x2={line.x2}
-              y2={line.y2}
-              stroke={line.stroke}
-              strokeWidth={line.isHighlighted ? 2 : 1}
-              opacity={line.isHighlighted ? 0.7 : line.opacity}
-              strokeDasharray={line.isHighlighted ? 'none' : '3 4'}
-            />
+            <g key={`line-${idx}`}>
+              {/* Soft luminous ambient aura for visibility */}
+              <line
+                x1={line.x1}
+                y1={line.y1}
+                x2={line.x2}
+                y2={line.y2}
+                stroke={line.stroke}
+                strokeWidth={line.isHighlighted ? 6 : 3.5}
+                opacity={line.isHighlighted ? 0.4 : 0.18}
+                strokeLinecap="round"
+              />
+              {/* Crisp, clearly visible dotted filament */}
+              <line
+                x1={line.x1}
+                y1={line.y1}
+                x2={line.x2}
+                y2={line.y2}
+                stroke={line.stroke}
+                strokeWidth={line.isHighlighted ? 2.6 : 1.8}
+                opacity={line.isHighlighted ? 0.95 : line.opacity}
+                strokeDasharray={line.isHighlighted ? '6 3' : '4 4'}
+                strokeLinecap="round"
+              />
+            </g>
           ))}
 
           {/* Central Consciousness Core Star */}
@@ -579,7 +599,11 @@ export default function MemoryUniverse({ entries = [], memoryData = null, onOpen
                 key={p.id}
                 transform={`translate(${p.x}, ${p.y})`}
                 style={{ cursor: 'pointer' }}
-                onClick={() => setSelectedPlanet(p)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSelectedPlanet((prev) => (prev?.id === p.id ? null : p));
+                  setHoveredPlanet(p);
+                }}
                 onMouseEnter={() => handlePlanetMouseEnter(p)}
                 onMouseLeave={handlePlanetMouseLeave}
               >
@@ -665,7 +689,7 @@ export default function MemoryUniverse({ entries = [], memoryData = null, onOpen
         </svg>
 
         {/* Rich Interactive Callout Card (HTML overlay, positioned near hovered planet) */}
-        {hoveredPlanet && !selectedPlanet && (() => {
+        {hoveredPlanet && (() => {
           // Convert SVG coords to percentage-based position on the container
           const pctX = (hoveredPlanet.x / W) * 100;
           const pctY = (hoveredPlanet.y / H) * 100;
@@ -812,7 +836,6 @@ export default function MemoryUniverse({ entries = [], memoryData = null, onOpen
                   onClick={(e) => {
                     e.stopPropagation();
                     setSelectedPlanet(hoveredPlanet);
-                    setHoveredPlanet(null);
                   }}
                   style={{
                     flex: 1,

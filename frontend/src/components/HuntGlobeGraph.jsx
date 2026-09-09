@@ -432,8 +432,8 @@ export default function HuntGlobeGraph({
                   y1={branch.y1}
                   x2={branch.x2}
                   y2={branch.y2}
-                  stroke={isHighlighted ? '#6dd58c' : 'rgba(109, 213, 140, 0.25)'}
-                  strokeWidth={isHighlighted ? 2 : 1}
+                  stroke={isHighlighted ? '#6dd58c' : 'rgba(109, 213, 140, 0.4)'}
+                  strokeWidth={isHighlighted ? 2.2 : 1.4}
                   style={{ transition: 'all 0.25s ease' }}
                 />
               );
@@ -450,22 +450,20 @@ export default function HuntGlobeGraph({
 
               return (
                 <g key={link.id}>
-                  {/* Glowing wide backing path on hover */}
-                  {isDirectlyActive && (
-                    <path
-                      d={link.path}
-                      fill="none"
-                      stroke="rgba(192, 132, 252, 0.35)"
-                      strokeWidth={6}
-                      filter="url(#glow-effect)"
-                    />
-                  )}
-                  {/* Active bridge path */}
+                  {/* Glowing wide backing path */}
                   <path
                     d={link.path}
                     fill="none"
-                    stroke={isDirectlyActive ? '#c084fc' : 'rgba(192, 132, 252, 0.45)'}
-                    strokeWidth={isDirectlyActive ? 2.5 : 1.4}
+                    stroke={isDirectlyActive ? 'rgba(192, 132, 252, 0.5)' : 'rgba(192, 132, 252, 0.2)'}
+                    strokeWidth={isDirectlyActive ? 6 : 4}
+                    filter="url(#glow-effect)"
+                  />
+                  {/* Active bridge path with crisp, visible dotted pattern */}
+                  <path
+                    d={link.path}
+                    fill="none"
+                    stroke={isDirectlyActive ? '#d8b4fe' : 'rgba(192, 132, 252, 0.75)'}
+                    strokeWidth={isDirectlyActive ? 2.8 : 1.8}
                     strokeDasharray={isDirectlyActive ? 'none' : '5 4'}
                     style={{ cursor: 'pointer', transition: 'all 0.2s ease' }}
                     onClick={() => setActiveConnection(link)}
