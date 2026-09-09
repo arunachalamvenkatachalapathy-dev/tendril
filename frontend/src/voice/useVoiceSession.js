@@ -592,16 +592,24 @@ export function useVoiceSession() {
           }
         };
 
-        ws.onclose = () => {
+        ws.onclose = (event) => {
           connectingPromiseRef.current = null;
           if (pingIntervalRef.current) clearInterval(pingIntervalRef.current);
-          if (shouldReconnectRef.current && statusRef.current !== 'idle' && reconnectAttemptsRef.current < MAX_RECONNECT_ATTEMPTS) {
+          // Code 1000 = normal/intended close (superseded, component unmount, user stop).
+          // Code 1001 = going away. Never reconnect on these — that would open a 3rd session
+          // while the backend already has a newer one active, causing two voices to speak.
+          const isAbnormal = event.code !== 1000 && event.code !== 1001;
+          if (isAbnormal && shouldReconnectRef.current && statusRef.current !== 'idle' && reconnectAttemptsRef.current < MAX_RECONNECT_ATTEMPTS) {
+            console.warn('[Voice] WS closed abnormally (code=%d), reconnecting…', event.code);
             const delay = Math.min(8000, 1500 * Math.pow(2, reconnectAttemptsRef.current));
             reconnectAttemptsRef.current += 1;
             reconnectTimerRef.current = setTimeout(() => {
               if (shouldReconnectRef.current) connectWs(onReady);
             }, delay);
           } else {
+            if (!isAbnormal) {
+              console.log('[Voice] WS closed normally (code=%d), not reconnecting', event.code);
+            }
             setActiveEngine('speech-cascade');
             if (statusRef.current !== 'idle') {
               setStatus('listening');
