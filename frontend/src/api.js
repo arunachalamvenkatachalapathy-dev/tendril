@@ -93,6 +93,13 @@ export function getDashboardInsights(days = 30) {
   return authedFetch(`/api/dashboard/insights?days=${days}`);
 }
 
+export function huntSearch(query, scope = 'all') {
+  return authedFetch('/api/hunt', {
+    method: 'POST',
+    body: JSON.stringify({ query, scope }),
+  });
+}
+
 /**
  * Builds the voice WebSocket URL from VITE_API_BASE_URL (http(s):// -> ws(s)://).
  * The token itself is sent as the FIRST WebSocket message (see

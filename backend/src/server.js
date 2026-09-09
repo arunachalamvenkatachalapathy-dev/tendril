@@ -7,6 +7,7 @@ import { verifyOidc } from './middleware/verifyOidc.js';
 import { journalRouter } from './routes/journal.js';
 import { memoryRouter } from './routes/memory.js';
 import { dashboardRouter } from './routes/dashboard.js';
+import { huntRouter } from './routes/hunt.js';
 import { internalRouter } from './routes/internal.js';
 import { attachVoiceRelay } from './live/liveRelay.js';
 
@@ -60,6 +61,7 @@ app.get('/healthz', (req, res) => res.status(200).json({ status: 'ok', service: 
 app.use('/api', requireAuth, rateLimitByUid, journalRouter);
 app.use('/api', requireAuth, rateLimitByUid, memoryRouter);
 app.use('/api', requireAuth, rateLimitByUid, dashboardRouter);
+app.use('/api', requireAuth, rateLimitByUid, huntRouter);
 
 // Article 9: separate trust boundary — OIDC from Cloud Scheduler only,
 // never a Firebase user token. Deliberately NOT behind requireAuth.

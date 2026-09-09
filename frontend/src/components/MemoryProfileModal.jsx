@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { getMemoryContext, wipeAllMemory } from '../api.js';
+import MemoryUniverse from './MemoryUniverse.jsx';
 import MemoryGraph from './MemoryGraph.jsx';
 
-export default function MemoryProfileModal({ onClose }) {
-  const [activeTab, setActiveTab] = useState('graph');
+export default function MemoryProfileModal({ onClose, entries = [], onOpenEntry }) {
+  const [activeTab, setActiveTab] = useState('universe');
   const [memoryData, setMemoryData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [wiping, setWiping] = useState(false);
@@ -66,7 +67,7 @@ export default function MemoryProfileModal({ onClose }) {
                 <span>Mindprint</span>
               </div>
               <h2 style={{ fontSize: '22px', fontWeight: '500', color: '#e3e3e3' }}>
-                Your Thought Web &amp; Memory
+                Your Memory Universe &amp; Mindprint
               </h2>
             </div>
             
@@ -81,6 +82,12 @@ export default function MemoryProfileModal({ onClose }) {
 
           {/* Tab Switcher */}
           <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', flexWrap: 'wrap' }}>
+            <button
+              className={`google-pill-tab ${activeTab === 'universe' ? 'active' : ''}`}
+              onClick={() => setActiveTab('universe')}
+            >
+              🌌 Memory Universe
+            </button>
             <button
               className={`google-pill-tab ${activeTab === 'graph' ? 'active' : ''}`}
               onClick={() => setActiveTab('graph')}
@@ -132,6 +139,17 @@ export default function MemoryProfileModal({ onClose }) {
               <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '6px' }}>
                 Your next journal session will begin with a clean context.
               </p>
+            </div>
+          ) : activeTab === 'universe' ? (
+            <div className="google-memory-panel" style={{ padding: '16px' }}>
+              <span className="google-panel-badge" style={{ marginBottom: '14px' }}>
+                Memory Universe — dynamic celestial map of dated conversations
+              </span>
+              <MemoryUniverse
+                entries={entries}
+                memoryData={memoryData}
+                onOpenEntry={onOpenEntry}
+              />
             </div>
           ) : activeTab === 'graph' ? (
             <div className="google-memory-panel">
