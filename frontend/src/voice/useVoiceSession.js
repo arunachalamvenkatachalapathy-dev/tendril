@@ -109,6 +109,7 @@ export function useVoiceSession() {
   const playbackGainNodeRef = useRef(null);
   const nextStartTimeRef = useRef(0);
   const activeSourcesRef = useRef([]);
+  const isPlaybackActiveRef = useRef(false);
   const micStreamRef = useRef(null);
   const audioCtxRef = useRef(null);
   const workletNodeRef = useRef(null);
@@ -158,6 +159,7 @@ export function useVoiceSession() {
   }, []);
 
   const stopAudioPlayback = useCallback(() => {
+    isPlaybackActiveRef.current = false;
     // 1. Immediately cancel any scheduled Web Speech API synthesis
     if (typeof window !== 'undefined' && window.speechSynthesis) {
       try { window.speechSynthesis.cancel(); } catch {}
@@ -206,6 +208,9 @@ export function useVoiceSession() {
       const float32 = new Float32Array(pcm16.length);
       for (let i = 0; i < pcm16.length; i++) float32[i] = pcm16[i] / 0x8000;
 
+      // Mark playback active so mic does not echo Gemini's own words back into the model
+      isPlaybackActiveRef.current = true;
+
       // Web Audio natively resamples 24kHz buffer to hardware context rate
       const audioBuffer = ctx.createBuffer(1, float32.length, OUTPUT_SAMPLE_RATE);
       audioBuffer.copyToChannel(float32, 0);
@@ -230,8 +235,11 @@ export function useVoiceSession() {
       activeSourcesRef.current.push(src);
       src.onended = () => {
         activeSourcesRef.current = activeSourcesRef.current.filter((s) => s !== src);
-        if (activeSourcesRef.current.length === 0 && statusRef.current === 'speaking') {
-          setStatus('listening');
+        if (activeSourcesRef.current.length === 0) {
+          isPlaybackActiveRef.current = false;
+          if (statusRef.current === 'speaking') {
+            setStatus('listening');
+          }
         }
       };
       if (statusRef.current !== 'speaking') {
@@ -379,6 +387,12 @@ export function useVoiceSession() {
       const sendPcmChunk = (float32Chunk) => {
         const activeWs = wsRef.current || ws;
         if (!activeWs || activeWs.readyState !== WebSocket.OPEN) return;
+        // Half-duplex acoustic echo gate: suppress microphone transmission while Gemini
+        // is speaking through the speaker. This prevents speaker output from bleeding
+        // back into the mic, which causes false barge-in interrupts and cuts off Gemini.
+        if (isPlaybackActiveRef.current || statusRef.current === 'speaking') {
+          return;
+        }
         try {
           const resampled = downsampleTo16k(float32Chunk, sampleRate);
           const pcm = floatTo16BitPCM(resampled);
@@ -421,9 +435,13 @@ export function useVoiceSession() {
           const input = e.inputBuffer.getChannelData(0);
           sendPcmChunk(input);
         };
+        // Route through a gain=0 node so browser processes the audio without echoing to speakers
+        const muteGain = audioCtx.createGain();
+        muteGain.gain.value = 0;
         source.connect(processor);
-        processor.connect(audioCtx.destination);
-        console.log('[Voice] ScriptProcessor PCM capture running (rate=%d)', sampleRate);
+        processor.connect(muteGain);
+        muteGain.connect(audioCtx.destination);
+        console.log('[Voice] ScriptProcessor PCM capture running (rate=%d, muted monitor)', sampleRate);
       }
     } catch (e) {
       console.warn('[Voice] Mic capture setup error:', e.message);

@@ -361,127 +361,6 @@ export default function EntryComposer({ onSaved, onExtractIdeas, initialVoiceAct
           </div>
         )}
 
-        {/* Google Gemini Live Real-time Subtitle / Transcript Cloud Bar */}
-        {(micActive || status === 'speaking' || currentSubtitle) && (
-          <div className="gemini-live-subtitle-cloud" style={{
-            margin: '0 16px 10px 16px',
-            padding: '12px 16px',
-            borderRadius: '16px',
-            background: 'linear-gradient(135deg, rgba(20, 24, 33, 0.95), rgba(12, 15, 22, 0.98))',
-            border: '1px solid rgba(168, 199, 250, 0.25)',
-            boxShadow: '0 6px 24px rgba(0, 0, 0, 0.45)',
-            backdropFilter: 'blur(10px)',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '8px',
-            flexShrink: 0,
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{
-                  width: '7px',
-                  height: '7px',
-                  borderRadius: '50%',
-                  background: status === 'speaking' ? '#a8c7fa' : '#6dd58c',
-                  boxShadow: status === 'speaking' ? '0 0 8px #a8c7fa' : '0 0 8px #6dd58c',
-                }} />
-                <span style={{ fontSize: '12px', fontWeight: '600', color: status === 'speaking' ? '#a8c7fa' : '#6dd58c' }}>
-                  {status === 'speaking' ? 'Gemini Live' : 'Live Voice Input'}
-                </span>
-                <span style={{
-                  fontSize: '11px',
-                  color: 'rgba(255, 255, 255, 0.5)',
-                  background: 'rgba(255, 255, 255, 0.05)',
-                  padding: '2px 8px',
-                  borderRadius: '999px',
-                }}>
-                  {status === 'speaking' ? 'Speaking aloud…' : 'Listening… (speak anytime)'}
-                </span>
-              </div>
-
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                {/* Waveform sound bars */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '3px', marginRight: '6px' }}>
-                  {[10, 18, 14, 22, 12, 20, 16, 8, 14].map((h, idx) => (
-                    <span
-                      key={idx}
-                      className="google-wave-bar"
-                      style={{
-                        height: status === 'speaking'
-                          ? `${Math.max(6, Math.min(20, 8 + (idx % 3) * 5))}px`
-                          : `${Math.max(4, Math.min(20, (audioLevel / 100) * h * 1.5))}px`,
-                        backgroundColor: status === 'speaking' ? '#a8c7fa' : '#6dd58c',
-                        transition: 'height 0.1s ease',
-                        width: '3px',
-                        borderRadius: '2px',
-                        display: 'inline-block',
-                      }}
-                    />
-                  ))}
-                </div>
-
-                {/* Tap to Interrupt button */}
-                {status === 'speaking' && (
-                  <button
-                    type="button"
-                    onClick={stopAudioPlayback}
-                    style={{
-                      background: 'rgba(242, 139, 130, 0.15)',
-                      border: '1px solid rgba(242, 139, 130, 0.4)',
-                      color: '#f28b82',
-                      fontSize: '11px',
-                      padding: '3px 10px',
-                      borderRadius: '999px',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '4px',
-                    }}
-                    title="Tap to interrupt Gemini"
-                  >
-                    <span>⏹</span> Interrupt
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {/* Live Subtitle Content */}
-            <div style={{
-              fontSize: '13.5px',
-              lineHeight: '1.5',
-              color: '#f1f3f4',
-              minHeight: '20px',
-            }}>
-              {currentSubtitle ? (
-                <span>
-                  <strong style={{ color: currentSubtitle.role === 'user' ? '#6dd58c' : '#a8c7fa', marginRight: '6px' }}>
-                    {currentSubtitle.role === 'user' ? 'You:' : 'Gemini:'}
-                  </strong>
-                  {currentSubtitle.text}
-                  {currentSubtitle.isLive && (
-                    <span
-                      style={{
-                        display: 'inline-block',
-                        width: '6px',
-                        height: '6px',
-                        borderRadius: '50%',
-                        marginLeft: '6px',
-                        backgroundColor: currentSubtitle.role === 'user' ? '#6dd58c' : '#a8c7fa',
-                        verticalAlign: 'middle',
-                        boxShadow: '0 0 6px #a8c7fa',
-                      }}
-                    />
-                  )}
-                </span>
-              ) : (
-                <span style={{ color: 'var(--text-secondary)', fontStyle: 'italic', fontSize: '12.5px' }}>
-                  Speak naturally — live subtitles and voice stream here in real time.
-                </span>
-              )}
-            </div>
-          </div>
-        )}
-
         {/* Multimodal Input Bar */}
         <form className="chat-input-bar" onSubmit={handleSend} style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
           <input
@@ -509,16 +388,22 @@ export default function EntryComposer({ onSaved, onExtractIdeas, initialVoiceAct
           <button
             type="button"
             className={`btn-google-icon ${micActive ? 'active-mic' : ''}`}
-            onClick={toggleMic}
-            title={micActive ? 'Mute microphone' : hasMic ? 'Start voice conversation' : 'Microphone unavailable'}
+            onClick={status === 'speaking' ? stopAudioPlayback : toggleMic}
+            title={status === 'speaking' ? 'Interrupt Gemini speech' : micActive ? 'Mute microphone' : hasMic ? 'Start voice conversation' : 'Microphone unavailable'}
             style={{ flexShrink: 0 }}
           >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
-              <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
-              <line x1="12" y1="19" x2="12" y2="23"></line>
-              <line x1="8" y1="23" x2="16" y2="23"></line>
-            </svg>
+            {status === 'speaking' ? (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style={{ color: '#f28b82' }}>
+                <rect x="6" y="6" width="12" height="12" rx="2" />
+              </svg>
+            ) : (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                <line x1="12" y1="19" x2="12" y2="23"></line>
+                <line x1="8" y1="23" x2="16" y2="23"></line>
+              </svg>
+            )}
           </button>
 
           {/* Text Input Field */}
@@ -527,7 +412,7 @@ export default function EntryComposer({ onSaved, onExtractIdeas, initialVoiceAct
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={micActive ? "Listening… (or type a message)" : "Type a note or tap mic to speak…"}
+            placeholder={status === 'speaking' ? "Gemini is speaking…" : micActive ? "Listening… (or type a message)" : "Type a note or tap mic to speak…"}
             rows={1}
             style={{ resize: 'none', minHeight: '44px', maxHeight: '120px', flex: 1 }}
           />
