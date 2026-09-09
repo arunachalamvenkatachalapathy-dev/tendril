@@ -203,7 +203,7 @@ export default function App() {
               <path d="M12 20h9"/>
               <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
             </svg>
-            <span>Journal</span>
+            <span>Reflect</span>
           </button>
           <button
             className={`nav-tab-btn ${path === '/dashboard' ? 'active' : ''}`}
@@ -214,7 +214,7 @@ export default function App() {
               <line x1="12" y1="20" x2="12" y2="4"/>
               <line x1="6" y1="20" x2="6" y2="14"/>
             </svg>
-            <span>Activity</span>
+            <span>Pulse</span>
           </button>
           <button
             className="nav-tab-btn"
@@ -224,7 +224,7 @@ export default function App() {
               <circle cx="12" cy="12" r="10"/>
               <path d="M12 6v6l4 2"/>
             </svg>
-            <span>Memory</span>
+            <span>Mindprint</span>
           </button>
           <button
             className="nav-tab-btn nav-tab-demo"
@@ -235,7 +235,7 @@ export default function App() {
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '5px' }}>
               <path d="M10 2v7.31M14 2v7.31M8.5 2h7M14 9.3a6.5 6.5 0 1 1-4 0"/>
             </svg>
-            <span>{seedingDemo ? 'Loading sample…' : 'Sample entries'}</span>
+            <span>{seedingDemo ? 'Loading…' : 'Try Demo'}</span>
           </button>
         </nav>
 
@@ -333,7 +333,7 @@ export default function App() {
               <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
             </svg>
           </div>
-          <span className="mobile-nav-label">Journal</span>
+          <span className="mobile-nav-label">Reflect</span>
         </button>
 
         <button
@@ -354,7 +354,7 @@ export default function App() {
             </svg>
             {entries.length > 0 && <span className="mobile-nav-badge">{entries.length}</span>}
           </div>
-          <span className="mobile-nav-label">Notes</span>
+          <span className="mobile-nav-label">Stream</span>
         </button>
 
         <button
@@ -370,7 +370,7 @@ export default function App() {
             </svg>
             {surfacedIdeas.length > 0 && <span className="mobile-nav-badge">{surfacedIdeas.length}</span>}
           </div>
-          <span className="mobile-nav-label">Insights</span>
+          <span className="mobile-nav-label">Sparks</span>
         </button>
 
         <button
@@ -384,7 +384,7 @@ export default function App() {
               <line x1="6" y1="20" x2="6" y2="14"/>
             </svg>
           </div>
-          <span className="mobile-nav-label">Activity</span>
+          <span className="mobile-nav-label">Pulse</span>
         </button>
 
         <button
@@ -397,7 +397,7 @@ export default function App() {
               <path d="M12 6v6l4 2"/>
             </svg>
           </div>
-          <span className="mobile-nav-label">Memory</span>
+          <span className="mobile-nav-label">Mindprint</span>
         </button>
       </nav>
 

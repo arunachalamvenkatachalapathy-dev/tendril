@@ -9,7 +9,7 @@ export default function ModeToggle({ mode, onChange }) {
           <path d="M12 20h9"/>
           <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
         </svg>
-        <span>Write</span>
+        <span>Quill</span>
       </button>
       <button
         className={`google-mode-btn ${mode === 'voice' ? 'active' : ''}`}
@@ -21,7 +21,7 @@ export default function ModeToggle({ mode, onChange }) {
           <line x1="12" y1="19" x2="12" y2="23"></line>
           <line x1="8" y1="23" x2="16" y2="23"></line>
         </svg>
-        <span>Voice with Gemini</span>
+        <span>Narrate</span>
       </button>
     </div>
   );

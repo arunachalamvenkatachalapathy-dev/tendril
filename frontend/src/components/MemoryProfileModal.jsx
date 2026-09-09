@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { getMemoryContext, wipeAllMemory } from '../api.js';
+import MemoryGraph from './MemoryGraph.jsx';
 
 export default function MemoryProfileModal({ onClose }) {
-  const [activeTab, setActiveTab] = useState('recent');
+  const [activeTab, setActiveTab] = useState('graph');
   const [memoryData, setMemoryData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [wiping, setWiping] = useState(false);
@@ -62,10 +63,10 @@ export default function MemoryProfileModal({ onClose }) {
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style={{ color: '#a8c7fa' }}>
                   <path d="M12 2L14.4 9.6L22 12L14.4 14.4L12 22L9.6 14.4L2 12L9.6 9.6Z" />
                 </svg>
-                <span>Gemini Memory Bank</span>
+                <span>Mindprint</span>
               </div>
               <h2 style={{ fontSize: '22px', fontWeight: '500', color: '#e3e3e3' }}>
-                Journal Memory & Context
+                Your Thought Web &amp; Memory
               </h2>
             </div>
             
@@ -81,22 +82,28 @@ export default function MemoryProfileModal({ onClose }) {
           {/* Tab Switcher */}
           <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', flexWrap: 'wrap' }}>
             <button
+              className={`google-pill-tab ${activeTab === 'graph' ? 'active' : ''}`}
+              onClick={() => setActiveTab('graph')}
+            >
+              Thought Web
+            </button>
+            <button
               className={`google-pill-tab ${activeTab === 'recent' ? 'active' : ''}`}
               onClick={() => setActiveTab('recent')}
             >
-              Recent Context (7 Days)
+              7-Day Context
             </button>
             <button
               className={`google-pill-tab ${activeTab === 'archive' ? 'active' : ''}`}
               onClick={() => setActiveTab('archive')}
             >
-              Long-Term Themes
+              Core Themes
             </button>
             <button
               className={`google-pill-tab ${activeTab === 'now' ? 'active' : ''}`}
               onClick={() => setActiveTab('now')}
             >
-              Today's Reflections
+              Today's Sparks
             </button>
           </div>
 
@@ -125,6 +132,11 @@ export default function MemoryProfileModal({ onClose }) {
               <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '6px' }}>
                 Your next journal session will begin with a clean context.
               </p>
+            </div>
+          ) : activeTab === 'graph' ? (
+            <div className="google-memory-panel">
+              <span className="google-panel-badge">Thought Web — your memory as a graph</span>
+              <MemoryGraph memoryData={memoryData} />
             </div>
           ) : activeTab === 'recent' ? (
             <div className="google-memory-panel">
