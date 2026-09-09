@@ -225,24 +225,15 @@ export default function App() {
             <span>Actions</span>
           </button>
           <button
-            className={`nav-tab-btn ${path === '/hunt' ? 'active' : ''}`}
-            onClick={() => navigate('/hunt')}
+            className={`nav-tab-btn ${(path === '/universe' || path === '/hunt') ? 'active' : ''}`}
+            onClick={() => navigate('/universe')}
           >
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '6px' }}>
-              <circle cx="11" cy="11" r="8"/>
-              <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              <circle cx="12" cy="12" r="10" />
+              <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+              <path d="M2 12h20" />
             </svg>
-            <span>Hunt</span>
-          </button>
-          <button
-            className="nav-tab-btn"
-            onClick={() => setShowMemoryModal(true)}
-          >
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '6px' }}>
-              <circle cx="12" cy="12" r="10"/>
-              <path d="M12 6v6l4 2"/>
-            </svg>
-            <span>Mindprint</span>
+            <span>Universe</span>
           </button>
           <button
             className="nav-tab-btn nav-tab-demo"
@@ -286,8 +277,13 @@ export default function App() {
       {/* Main Workspace */}
       {path === '/dashboard' ? (
         <Dashboard uid={user.uid} onBack={() => { navigate('/'); setMobileTab('reflect'); }} onSeedRefresh={refreshEntries} entries={entries} />
-      ) : path === '/hunt' ? (
-        <HuntView onOpenEntry={handleOpenEntry} onBack={() => { navigate('/'); setMobileTab('reflect'); }} />
+      ) : (path === '/universe' || path === '/hunt') ? (
+        <HuntView
+          entries={entries}
+          ideas={surfacedIdeas}
+          onOpenEntry={handleOpenEntry}
+          onBack={() => { navigate('/'); setMobileTab('reflect'); }}
+        />
       ) : (
         <div className={`workspace-grid mobile-tab-${mobileTab}`}>
           {/* Column 1: Journal Stream List */}
@@ -407,29 +403,17 @@ export default function App() {
         </button>
 
         <button
-          className={`mobile-nav-item ${path === '/hunt' ? 'active' : ''}`}
-          onClick={() => navigate('/hunt')}
+          className={`mobile-nav-item ${(path === '/universe' || path === '/hunt') ? 'active' : ''}`}
+          onClick={() => navigate('/universe')}
         >
           <div className="mobile-nav-icon-wrap">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="11" cy="11" r="8"/>
-              <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              <circle cx="12" cy="12" r="10" />
+              <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+              <path d="M2 12h20" />
             </svg>
           </div>
-          <span className="mobile-nav-label">Hunt</span>
-        </button>
-
-        <button
-          className="mobile-nav-item"
-          onClick={() => setShowMemoryModal(true)}
-        >
-          <div className="mobile-nav-icon-wrap">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="10"/>
-              <path d="M12 6v6l4 2"/>
-            </svg>
-          </div>
-          <span className="mobile-nav-label">Mindprint</span>
+          <span className="mobile-nav-label">Universe</span>
         </button>
       </nav>
 

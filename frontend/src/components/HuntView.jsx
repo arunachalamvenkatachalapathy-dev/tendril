@@ -1,9 +1,12 @@
 import { useState } from 'react';
 import { huntSearch } from '../api.js';
+import HuntGlobeGraph from './HuntGlobeGraph.jsx';
+import MemoryUniverse from './MemoryUniverse.jsx';
 
-export default function HuntView({ onOpenEntry, onBack }) {
+export default function HuntView({ onOpenEntry, onBack, entries = [], ideas = [] }) {
   const [query, setQuery] = useState('');
   const [scope, setScope] = useState('all'); // 'all' | 'ideas' | 'context'
+  const [cosmosMode, setCosmosMode] = useState('constellation'); // 'constellation' | 'planetary'
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
@@ -47,14 +50,13 @@ export default function HuntView({ onOpenEntry, onBack }) {
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '14px', marginBottom: '20px' }}>
             <div>
               <div className="google-eyebrow" style={{ marginBottom: '6px' }}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#a8c7fa' }}>
-                  <circle cx="11" cy="11" r="8"/>
-                  <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style={{ color: '#a8c7fa' }}>
+                  <circle cx="12" cy="12" r="10" />
                 </svg>
-                <span>AI Search &amp; Discovery</span>
+                <span>Universe &amp; AI Hunt</span>
               </div>
               <h1 style={{ fontSize: '26px', fontWeight: '500', color: '#e3e3e3', margin: 0 }}>
-                Hunt
+                Universe
               </h1>
             </div>
             {onBack && (
@@ -73,7 +75,7 @@ export default function HuntView({ onOpenEntry, onBack }) {
           </div>
 
           <p style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '20px', lineHeight: '1.5' }}>
-            Hunt through your ideas, memories, and conversational reflections with Gemini Intelligence.
+            Explore your dynamic memory universe and hunt through ideas, memories, and conversational reflections with Gemini Intelligence.
           </p>
 
           {/* Search Bar */}
@@ -190,6 +192,43 @@ export default function HuntView({ onOpenEntry, onBack }) {
 
         </div>
       </div>
+
+      {/* Cosmos View Mode Toggle */}
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', alignItems: 'center', flexWrap: 'wrap' }}>
+        <button
+          className={`google-pill-tab ${cosmosMode === 'constellation' ? 'active' : ''}`}
+          onClick={() => setCosmosMode('constellation')}
+        >
+          🌐 Idea Constellation &amp; Cross-Day Links
+        </button>
+        <button
+          className={`google-pill-tab ${cosmosMode === 'planetary' ? 'active' : ''}`}
+          onClick={() => setCosmosMode('planetary')}
+        >
+          🌌 Planetary System
+        </button>
+      </div>
+
+      {/* Interactive Cosmos Visualization */}
+      {cosmosMode === 'constellation' ? (
+        <HuntGlobeGraph
+          entries={entries}
+          ideas={ideas}
+          searchQuery={query}
+          onOpenEntry={onOpenEntry}
+          onSelectQuery={(q) => {
+            setQuery(q);
+            handleSearch(q);
+          }}
+        />
+      ) : (
+        <div className="google-surface-card" style={{ marginBottom: '24px', padding: '20px' }}>
+          <MemoryUniverse
+            entries={entries}
+            onOpenEntry={onOpenEntry}
+          />
+        </div>
+      )}
 
       {/* Loading state */}
       {loading && (

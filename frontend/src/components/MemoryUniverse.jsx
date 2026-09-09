@@ -89,32 +89,11 @@ function formatFullDate(dateInput) {
 export default function MemoryUniverse({ entries = [], memoryData = null, onOpenEntry }) {
   const [selectedPlanet, setSelectedPlanet] = useState(null);
   const [hoveredPlanet, setHoveredPlanet] = useState(null);
-  const [isAnimating, setIsAnimating] = useState(true);
   const [timeFilter, setTimeFilter] = useState('all'); // 'all' | '7days' | 'today'
   const [searchFilter, setSearchFilter] = useState('');
   
-  // Animation angle offset in radians
-  const [rotationAngle, setRotationAngle] = useState(0);
-  const animationFrameRef = useRef(null);
-
-  // Smooth orbital rotation loop
-  useEffect(() => {
-    if (!isAnimating) return;
-    let lastTime = performance.now();
-
-    const animate = (currentTime) => {
-      const delta = (currentTime - lastTime) / 1000;
-      lastTime = currentTime;
-      // Gently rotate orbits: ~0.035 radians per second
-      setRotationAngle((prev) => (prev + delta * 0.035) % (Math.PI * 2));
-      animationFrameRef.current = requestAnimationFrame(animate);
-    };
-
-    animationFrameRef.current = requestAnimationFrame(animate);
-    return () => {
-      if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
-    };
-  }, [isAnimating]);
+  // Static celestial layout (no rotation, stays steady and glowing)
+  const rotationAngle = 0;
 
   // Universe Dimensions
   const W = 760;
@@ -304,11 +283,11 @@ export default function MemoryUniverse({ entries = [], memoryData = null, onOpen
           ))}
         </div>
 
-        {/* Orbit Motion Toggle & Search */}
+        {/* Search */}
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
           <input
             type="text"
-            placeholder="Search universe…"
+            placeholder="Filter planets…"
             value={searchFilter}
             onChange={(e) => setSearchFilter(e.target.value)}
             style={{
@@ -322,32 +301,6 @@ export default function MemoryUniverse({ entries = [], memoryData = null, onOpen
               outline: 'none',
             }}
           />
-          <button
-            onClick={() => setIsAnimating(!isAnimating)}
-            className="btn-google-secondary"
-            title={isAnimating ? 'Pause cosmic rotation' : 'Resume cosmic rotation'}
-            style={{
-              padding: '4px 10px',
-              fontSize: '11.5px',
-              borderRadius: '9999px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px',
-              color: isAnimating ? '#a8c7fa' : 'var(--text-secondary)',
-            }}
-          >
-            {isAnimating ? (
-              <>
-                <span style={{ fontSize: '10px' }}>⏸</span>
-                <span>Pause</span>
-              </>
-            ) : (
-              <>
-                <span style={{ fontSize: '10px' }}>▶</span>
-                <span>Orbit</span>
-              </>
-            )}
-          </button>
         </div>
       </div>
 

@@ -62,12 +62,12 @@ export default function MemoryProfileModal({ onClose, entries = [], onOpenEntry 
             <div>
               <div className="google-eyebrow" style={{ marginBottom: '8px' }}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style={{ color: '#a8c7fa' }}>
-                  <path d="M12 2L14.4 9.6L22 12L14.4 14.4L12 22L9.6 14.4L2 12L9.6 9.6Z" />
+                  <circle cx="12" cy="12" r="10" />
                 </svg>
-                <span>Mindprint</span>
+                <span>Universe</span>
               </div>
               <h2 style={{ fontSize: '22px', fontWeight: '500', color: '#e3e3e3' }}>
-                Your Memory Universe &amp; Mindprint
+                Your Memory Universe
               </h2>
             </div>
             
