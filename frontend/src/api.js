@@ -51,10 +51,10 @@ export function extractIdeas(text) {
   });
 }
 
-export function saveEntry(messages) {
+export function saveEntry(messages, entryId = null) {
   return authedFetch('/api/entries', {
     method: 'POST',
-    body: JSON.stringify({ messages }),
+    body: JSON.stringify({ messages, ...(entryId ? { entryId } : {}) }),
   });
 }
 

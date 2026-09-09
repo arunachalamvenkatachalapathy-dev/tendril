@@ -22,10 +22,10 @@ export default function Dashboard({ uid, onBack, onSeedRefresh, entries = [] }) 
     : [];
 
   function fetchInsights() {
-    setLoading(true);
+    if (!data) setLoading(true);
     loadWithCache(uid, `dashboard-${rangeDays}`, () => getDashboardInsights(rangeDays), {
       onCacheHit: (cached) => {
-        setData(cached);
+        if (!data) setData(cached);
         setLoading(false);
       },
       onFresh: (fresh) => {
@@ -37,7 +37,7 @@ export default function Dashboard({ uid, onBack, onSeedRefresh, entries = [] }) 
 
   useEffect(() => {
     fetchInsights();
-  }, [uid, rangeDays]);
+  }, [uid, rangeDays, entries.length]);
 
   async function handleSeedDemoOnDemand() {
     if (!window.confirm('Seed a 14-day sample cognitive journey to demonstrate Diurnal Telemetry and Sentiment Matrix?')) return;

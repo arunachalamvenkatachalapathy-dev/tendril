@@ -27,6 +27,22 @@ export default function EntryComposer({ onSaved, onExtractIdeas, initialVoiceAct
   const [error, setError] = useState(null);
   const scrollRef = useRef(null);
   const fileInputRef = useRef(null);
+  const sessionIdRef = useRef('entry_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7));
+  const liveTranscriptRef = useRef(liveTranscript);
+  useEffect(() => { liveTranscriptRef.current = liveTranscript; }, [liveTranscript]);
+
+  // Auto-save on unmount / navigation if speech or messages exist
+  useEffect(() => {
+    return () => {
+      const transcript = liveTranscriptRef.current;
+      const hasSpeech = transcript.some((m) => m.role === 'user' && m.text?.trim());
+      if (hasSpeech) {
+        saveEntry(transcript, sessionIdRef.current)
+          .then(() => onSaved?.())
+          .catch(() => {});
+      }
+    };
+  }, [onSaved]);
 
   // Initialize runtime on mount
   useEffect(() => {
@@ -96,7 +112,7 @@ export default function EntryComposer({ onSaved, onExtractIdeas, initialVoiceAct
     setSaving(true);
     setError(null);
     try {
-      await saveEntry(liveTranscript);
+      await saveEntry(liveTranscript, sessionIdRef.current);
       onSaved?.();
     } catch (err) {
       setError(err.message || 'Could not compact and save this entry.');

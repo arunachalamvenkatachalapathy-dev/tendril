@@ -104,6 +104,14 @@ export default function App() {
     }
   }, [user, refreshEntries, refreshMemoryAndIdeas]);
 
+  // Always refresh entries when viewing Actions/Activity so recent speech is immediately visible
+  useEffect(() => {
+    if (user && path === '/dashboard') {
+      refreshEntries();
+      refreshMemoryAndIdeas();
+    }
+  }, [user, path, refreshEntries, refreshMemoryAndIdeas]);
+
   function handleNewEntry() {
     setView({ mode: 'compose' });
     setComposerKey((k) => k + 1);

@@ -17,10 +17,10 @@
 
 import { WebSocketServer } from 'ws';
 import { GoogleGenAI, Modality } from '@google/genai';
-import { verifyToken } from '../firebaseAdmin.js';
+import { verifyToken, db, FieldValue } from '../firebaseAdmin.js';
 import { getGeminiApiKey } from '../secretManager.js';
-import { loadMemoryContext, buildSystemPreamble } from '../memory/pipeline.js';
-import { generateJsonArray } from '../gemini.js';
+import { loadMemoryContext, buildSystemPreamble, appendIdeasForEntry } from '../memory/pipeline.js';
+import { generateJsonArray, summarizeConversation } from '../gemini.js';
 
 const LIVE_MODEL = process.env.GEMINI_LIVE_MODEL || 'gemini-2.5-flash-native-audio-preview-12-2025';
 const AUTH_TIMEOUT_MS = 10_000;
@@ -73,6 +73,8 @@ async function handleConnection(clientSocket) {
   let transcriptBuffer = [];
   let modelTurnCount = 0;
   let liveSession = null;
+  const sessionId = 'voice_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
+  let hasSaved = false;
 
   try {
     // 2. Load this uid's own layered memory — never another user's.
@@ -218,6 +220,52 @@ ${preamble ? `Personalized Context:\n${preamble}` : ''}`,
       if (modelTurnCount % IDEA_EXTRACTION_TURN_INTERVAL === 0) {
         extractAndSendIdeas();
       }
+      // Auto-persist entry to Firestore so Activity & Stream immediately include the speech
+      persistLiveVoiceEntry().catch(() => {});
+    }
+  }
+
+  async function persistLiveVoiceEntry() {
+    if (transcriptBuffer.length === 0) return;
+    const hasUserSpeech = transcriptBuffer.some((m) => m.role === 'user' && m.text?.trim());
+    if (!hasUserSpeech) return;
+
+    try {
+      const cleanMessages = transcriptBuffer.filter((m) => m.text?.trim());
+      if (cleanMessages.length === 0) return;
+
+      const summaryObj = await summarizeConversation(cleanMessages);
+      const entryRef = db.collection('users').doc(uid).collection('entries').doc(sessionId);
+
+      const entryData = {
+        title: summaryObj.title || 'Voice Reflection',
+        summary: summaryObj.summary || 'Spoken reflection with Gemini.',
+        mood: summaryObj.mood || 'neutral',
+        themes: summaryObj.themes || [],
+        cognitiveReframing: summaryObj.cognitiveReframing || '',
+        actionItems: summaryObj.actionItems || [],
+        messages: cleanMessages,
+        source: 'gemini-live',
+        updatedAt: FieldValue.serverTimestamp(),
+      };
+
+      if (!hasSaved) {
+        entryData.createdAt = FieldValue.serverTimestamp();
+      }
+
+      await entryRef.set(entryData, { merge: true });
+      hasSaved = true;
+
+      appendIdeasForEntry(uid, {
+        title: entryData.title,
+        summary: entryData.summary,
+        mood: entryData.mood,
+        messages: cleanMessages,
+      });
+
+      console.log('[liveRelay] Successfully auto-saved voice entry uid=%s doc=%s (turns=%d)', uid, sessionId, cleanMessages.length);
+    } catch (err) {
+      console.warn('[liveRelay] Auto-save voice entry failed:', err.message);
     }
   }
 
@@ -286,12 +334,14 @@ words. Return ONLY a JSON array of strings.\n\n${transcriptBuffer
         }
       }
     } else if (payload.type === 'end_session') {
+      persistLiveVoiceEntry().catch(() => {});
       clientSocket.close(1000, 'Client ended session');
     }
   });
 
   clientSocket.on('close', (code, reason) => {
     console.log('[liveRelay] clientSocket closed code=%s reason=%s for uid=%s', code, reason?.toString(), uid);
+    persistLiveVoiceEntry().catch(() => {});
     if (activeUserSessions.get(uid)?.clientSocket === clientSocket) {
       activeUserSessions.delete(uid);
     }

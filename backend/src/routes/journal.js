@@ -85,15 +85,13 @@ journalRouter.post('/entries', async (req, res) => {
   }
 
   try {
-    const { messages } = req.body;
+    const { messages, entryId } = req.body;
     const summaryObj = await summarizeConversation(messages);
     const { title, summary, mood, themes, cognitiveReframing = '', actionItems = [] } = summaryObj;
 
-    const entryRef = db
-      .collection('users')
-      .doc(req.uid) // <-- verified uid, never from the client
-      .collection('entries')
-      .doc();
+    const entryRef = entryId
+      ? db.collection('users').doc(req.uid).collection('entries').doc(entryId)
+      : db.collection('users').doc(req.uid).collection('entries').doc();
 
     const entry = {
       title,
@@ -103,10 +101,10 @@ journalRouter.post('/entries', async (req, res) => {
       cognitiveReframing,
       actionItems,
       messages,
-      createdAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
     };
 
-    await entryRef.set(entry);
+    await entryRef.set({ ...entry, createdAt: FieldValue.serverTimestamp() }, { merge: true });
 
     // Requirement 6a: extract idea bullets immediately, don't wait for the
     // nightly job. Fire-and-forget — appendIdeasForEntry never throws and
