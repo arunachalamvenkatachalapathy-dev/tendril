@@ -224,11 +224,15 @@ export function useVoiceSession() {
       }
 
       const now = ctx.currentTime;
-      let startTime = nextStartTimeRef.current;
-      // Initialize a 60ms jitter buffer on playback start or after gap to prevent clicks and stutter
-      if (startTime < now || startTime > now + 2.0) {
-        startTime = now + 0.06;
+      // If nextStartTime is in the past (first chunk of turn or gap after silence),
+      // schedule smoothly starting 50ms ahead of current hardware time.
+      // NEVER clamp with (startTime > now + 2.0) because streaming network chunks
+      // naturally arrive faster than real-time and must queue sequentially into the future.
+      // Clamping was resetting startTime mid-turn, causing sentences to overlap and play on top of each other!
+      if (nextStartTimeRef.current < now) {
+        nextStartTimeRef.current = now + 0.05;
       }
+      const startTime = nextStartTimeRef.current;
       src.start(startTime);
       nextStartTimeRef.current = startTime + audioBuffer.duration;
 
@@ -237,6 +241,7 @@ export function useVoiceSession() {
         activeSourcesRef.current = activeSourcesRef.current.filter((s) => s !== src);
         if (activeSourcesRef.current.length === 0) {
           isPlaybackActiveRef.current = false;
+          nextStartTimeRef.current = 0;
           if (statusRef.current === 'speaking') {
             setStatus('listening');
           }
