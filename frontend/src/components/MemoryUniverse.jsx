@@ -285,38 +285,6 @@ export default function MemoryUniverse({ entries = [], memoryData = null, onOpen
     return { backgroundStars: bg, sparklingStars: sparkles };
   }, [W, H]);
 
-  // Constellation filaments connecting planets with shared moods, themes, or narrative flow
-  const constellationLines = useMemo(() => {
-    const lines = [];
-    for (let i = 0; i < livePlanets.length; i++) {
-      for (let j = i + 1; j < livePlanets.length; j++) {
-        const p1 = livePlanets[i];
-        const p2 = livePlanets[j];
-        const sharedMood = p1.mood === p2.mood;
-        const sharedTheme = (p1.entry.themes || []).some((t) => (p2.entry.themes || []).includes(t));
-        const isTemporalSequence = Math.abs(i - j) === 1; // Adjacent in conversation chronology
-        
-        if (sharedMood || sharedTheme || isTemporalSequence) {
-          const dx = p1.x - p2.x;
-          const dy = p1.y - p2.y;
-          const dist = Math.sqrt(dx * dx + dy * dy);
-          if (dist < 380) {
-            lines.push({
-              x1: p1.x,
-              y1: p1.y,
-              x2: p2.x,
-              y2: p2.y,
-              opacity: Math.max(0.35, (1 - dist / 380) * 0.75),
-              stroke: sharedMood ? p1.palette.fill : sharedTheme ? '#a8c7fa' : 'rgba(168, 199, 250, 0.7)',
-              isHighlighted: hoveredPlanet?.id === p1.id || hoveredPlanet?.id === p2.id,
-            });
-          }
-        }
-      }
-    }
-    return lines;
-  }, [livePlanets, hoveredPlanet]);
-
   return (
     <div className="memory-universe-wrapper" style={{ position: 'relative', width: '100%', userSelect: 'none' }}>
       
@@ -517,35 +485,6 @@ export default function MemoryUniverse({ entries = [], memoryData = null, onOpen
           <circle cx={cx} cy={cy} r={150} fill="none" stroke="rgba(168, 199, 250, 0.1)" strokeDasharray="4 6" />
           <circle cx={cx} cy={cy} r={235} fill="none" stroke="rgba(168, 199, 250, 0.08)" strokeDasharray="5 8" />
           <circle cx={cx} cy={cy} r={320} fill="none" stroke="rgba(168, 199, 250, 0.06)" strokeDasharray="6 10" />
-
-          {/* Constellation Filament Lines (Clear, Glowing Dotted Links Between Conversations) */}
-          {constellationLines.map((line, idx) => (
-            <g key={`line-${idx}`}>
-              {/* Soft luminous ambient aura for visibility */}
-              <line
-                x1={line.x1}
-                y1={line.y1}
-                x2={line.x2}
-                y2={line.y2}
-                stroke={line.stroke}
-                strokeWidth={line.isHighlighted ? 6 : 3.5}
-                opacity={line.isHighlighted ? 0.4 : 0.18}
-                strokeLinecap="round"
-              />
-              {/* Crisp, clearly visible dotted filament */}
-              <line
-                x1={line.x1}
-                y1={line.y1}
-                x2={line.x2}
-                y2={line.y2}
-                stroke={line.stroke}
-                strokeWidth={line.isHighlighted ? 2.6 : 1.8}
-                opacity={line.isHighlighted ? 0.95 : line.opacity}
-                strokeDasharray={line.isHighlighted ? '6 3' : '4 4'}
-                strokeLinecap="round"
-              />
-            </g>
-          ))}
 
           {/* Central Consciousness Core Star */}
           <g>
