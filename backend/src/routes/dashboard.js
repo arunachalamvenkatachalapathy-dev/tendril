@@ -8,8 +8,8 @@
 import { Router } from 'express';
 import { db } from '../firebaseAdmin.js';
 import { loadMemoryContext } from '../memory/pipeline.js';
-import { generateJsonObject } from '../gemini.js';
-import { recommendationPrompt } from '../memory/dashboardPrompts.js';
+import { generateJsonObject, generateJsonArray } from '../gemini.js';
+import { recommendationPrompt, actionItemsPrompt } from '../memory/dashboardPrompts.js';
 
 export const dashboardRouter = Router();
 
@@ -91,10 +91,19 @@ dashboardRouter.get('/dashboard/insights', async (req, res) => {
         ? `${memoryContext.recent} ${memoryContext.archive}`.trim()
         : "You haven't journaled enough yet for a pattern summary — a few more entries and this will fill in.";
 
-    // --- Recommendation: best-effort, never blocks the rest of the dashboard
+    // --- Recommendation + Action items: run in parallel, both best-effort
     let recommendation = null;
+    let actions = [];
     if (entries.length > 0) {
-      const rec = await generateJsonObject(recommendationPrompt(dominantMood, topThemes));
+      const recentSummary = typeof memoryContext.recent === 'string'
+        ? memoryContext.recent
+        : (memoryContext.recent?.summary || '');
+
+      const [rec, acts] = await Promise.all([
+        generateJsonObject(recommendationPrompt(dominantMood, topThemes)).catch(() => null),
+        generateJsonArray(actionItemsPrompt(dominantMood, topThemes, recentSummary)).catch(() => []),
+      ]);
+
       if (rec) {
         recommendation = {
           message: rec.message,
@@ -111,17 +120,30 @@ dashboardRouter.get('/dashboard/insights', async (req, res) => {
           },
         };
       }
+
+      actions = (Array.isArray(acts) ? acts : []).slice(0, 5).map(a => ({
+        title: a.title || '',
+        description: a.description || '',
+        category: a.category || 'reflect',
+        calendarLink: a.calendarText
+          ? `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(a.calendarText)}&details=Action+from+Tendril`
+          : null,
+        searchLink: a.searchQuery
+          ? `https://www.google.com/search?q=${encodeURIComponent(a.searchQuery)}`
+          : null,
+      }));
     }
 
     res.json({
       rangeDays,
       entryCount: entries.length,
-      hourly, // [{worry,happy,neutral} x24] for the clock-face
-      heatmap, // [{date, dominant, counts}] for the calendar heatmap
+      hourly,
+      heatmap,
       topThemes,
       dominantMood,
       blurb,
       recommendation,
+      actions,
     });
   } catch (err) {
     console.error('[GET /api/dashboard/insights] failed for uid=%s:', req.uid, err.message);

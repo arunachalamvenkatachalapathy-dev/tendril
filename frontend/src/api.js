@@ -82,6 +82,13 @@ export function getMemoryContext() {
   return authedFetch('/api/memory/context');
 }
 
+export function synthesizeSparks(ideas) {
+  return authedFetch('/api/sparks/synthesize', {
+    method: 'POST',
+    body: JSON.stringify({ ideas }),
+  });
+}
+
 export function getDashboardInsights(days = 30) {
   return authedFetch(`/api/dashboard/insights?days=${days}`);
 }

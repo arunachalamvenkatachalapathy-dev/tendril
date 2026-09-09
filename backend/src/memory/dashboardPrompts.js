@@ -21,3 +21,24 @@ Return ONLY a JSON object with exactly these fields:
 }
 Use null for any field that doesn't apply — don't force all three.`;
 }
+
+export function actionItemsPrompt(dominantMood, topThemes, recentSummary) {
+  return `You are a thoughtful journaling coach analyzing someone's journal patterns.
+
+Dominant mood: "${dominantMood}"
+Recurring themes: ${topThemes.join(', ') || '(none)'}
+Recent context: ${recentSummary || '(none)'}
+
+Generate 3-5 concrete, specific action items this person could actually take
+based on their real journal patterns — not generic wellness advice.
+Each action must be clearly motivated by something from their themes/context.
+
+Return ONLY a JSON array (no wrapper object), each item:
+{
+  "title": "Actionable verb phrase, max 7 words",
+  "description": "One specific sentence (max 18 words) grounded in their context",
+  "category": one of "reflect" | "schedule" | "move" | "connect" | "explore" | "rest",
+  "calendarText": "Short Google Calendar event text if it's schedulable, else null",
+  "searchQuery": "Google search query if it's an explore action, else null"
+}`;
+}

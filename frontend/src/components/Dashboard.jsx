@@ -4,6 +4,7 @@ import { loadWithCache } from '../lib/localCache.js';
 import ClockChart from './ClockChart.jsx';
 import HeatmapCalendar from './HeatmapCalendar.jsx';
 import RecommendationCard from './RecommendationCard.jsx';
+import { ActionCard } from './IdeaStream.jsx';
 
 export default function Dashboard({ uid, onBack, onSeedRefresh, entries = [] }) {
   const [data, setData] = useState(null);
@@ -64,10 +65,10 @@ export default function Dashboard({ uid, onBack, onSeedRefresh, entries = [] }) 
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style={{ color: '#a8c7fa' }}>
                   <path d="M12 2L14.4 9.6L22 12L14.4 14.4L12 22L9.6 14.4L2 12L9.6 9.6Z" />
                 </svg>
-                <span>Activity & Reflection Insights</span>
+                <span>Actions &amp; Insights</span>
               </div>
               <h1 style={{ fontSize: '26px', fontWeight: '500', color: '#e3e3e3' }}>
-                Journal Activity
+                Actions &amp; Activity
               </h1>
             </div>
 
@@ -118,12 +119,40 @@ export default function Dashboard({ uid, onBack, onSeedRefresh, entries = [] }) 
 
       {loading && !data && (
         <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-          Loading insights…
+          Loading actions &amp; insights…
         </div>
       )}
 
       {data && (
         <>
+          {/* Gemini Action Plan Cards */}
+          {data.actions && data.actions.length > 0 && (
+            <div className="google-surface-card">
+              <div className="google-card-body" style={{ padding: '24px 28px' }}>
+                <div className="panel-title" style={{ marginBottom: '6px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '500', fontSize: '16px', color: '#e3e3e3' }}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#a8c7fa' }}>
+                      <polyline points="9 11 12 14 22 4"/>
+                      <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+                    </svg>
+                    <span>Suggested Actions</span>
+                  </div>
+                  <span style={{ fontSize: '11.5px', color: '#a8c7fa', background: 'rgba(168,199,250,0.1)', padding: '3px 10px', borderRadius: '9999px', border: '1px solid rgba(168,199,250,0.2)' }}>
+                    Gemini Synthesized
+                  </span>
+                </div>
+                <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '18px' }}>
+                  Concrete, personalized action steps derived from your recurring patterns, themes, and emotional trajectory.
+                </p>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '14px' }}>
+                  {data.actions.map((act, i) => (
+                    <ActionCard key={i} action={act} />
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Gemini Mood Recommendation Pill */}
           <div className="google-surface-card">
             <div className="google-card-body" style={{ padding: '20px 24px' }}>
