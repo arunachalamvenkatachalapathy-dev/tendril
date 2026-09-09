@@ -91,9 +91,87 @@ export default function MemoryUniverse({ entries = [], memoryData = null, onOpen
   const [hoveredPlanet, setHoveredPlanet] = useState(null);
   const [timeFilter, setTimeFilter] = useState('all'); // 'all' | '7days' | 'today'
   const [searchFilter, setSearchFilter] = useState('');
-  
-  // Static celestial layout (no rotation, stays steady and glowing)
-  const rotationAngle = 0;
+  const [isAnimating, setIsAnimating] = useState(true);
+
+  // Live orbital rotation angle (animated)
+  const [rotationAngle, setRotationAngle] = useState(0);
+  const animationFrameRef = useRef(null);
+  const lastTimeRef = useRef(null);
+
+  // Smooth orbital animation loop — gentle, serene, meditative cosmic drift
+  useEffect(() => {
+    if (!isAnimating) return;
+    const animate = (timestamp) => {
+      if (lastTimeRef.current !== null) {
+        const delta = timestamp - lastTimeRef.current;
+        // 0.000018 rad/ms → ~1 full revolution every ~95 minutes: peaceful, readable, zero jitter
+        setRotationAngle((prev) => prev + delta * 0.000018);
+      }
+      lastTimeRef.current = timestamp;
+      animationFrameRef.current = requestAnimationFrame(animate);
+    };
+    animationFrameRef.current = requestAnimationFrame(animate);
+    return () => {
+      if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
+      lastTimeRef.current = null;
+    };
+  }, [isAnimating]);
+
+  // Slow meteorite drifting across the cosmos
+  const [meteor, setMeteor] = useState({ active: true, progress: 0 });
+  const meteorStartRef = useRef(null);
+  const meteorPauseStartRef = useRef(null);
+  const METEOR_DURATION = 9500; // 9.5s slow celestial glide across universe
+  const METEOR_PAUSE = 5500;    // 5.5s calm pause before next meteorite
+
+  useEffect(() => {
+    let raf;
+    let isActive = true;
+    const tick = (ts) => {
+      if (isActive) {
+        if (!meteorStartRef.current) meteorStartRef.current = ts;
+        const progress = Math.min((ts - meteorStartRef.current) / METEOR_DURATION, 1);
+        setMeteor({ active: true, progress });
+        if (progress >= 1) {
+          isActive = false;
+          meteorStartRef.current = null;
+          meteorPauseStartRef.current = ts;
+        }
+      } else {
+        if (!meteorPauseStartRef.current) meteorPauseStartRef.current = ts;
+        if (ts - meteorPauseStartRef.current >= METEOR_PAUSE) {
+          isActive = true;
+          meteorPauseStartRef.current = null;
+          setMeteor({ active: true, progress: 0 });
+        }
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, []);
+
+  // Hover timeout management for smooth interactive callout
+  const hoverTimeoutRef = useRef(null);
+  const handlePlanetMouseEnter = (p) => {
+    if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+    setHoveredPlanet(p);
+  };
+  const handlePlanetMouseLeave = () => {
+    if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+    hoverTimeoutRef.current = setTimeout(() => {
+      setHoveredPlanet(null);
+    }, 280);
+  };
+  const handleCalloutMouseEnter = () => {
+    if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+  };
+  const handleCalloutMouseLeave = () => {
+    if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+    hoverTimeoutRef.current = setTimeout(() => {
+      setHoveredPlanet(null);
+    }, 200);
+  };
 
   // Universe Dimensions
   const W = 760;
@@ -283,7 +361,7 @@ export default function MemoryUniverse({ entries = [], memoryData = null, onOpen
           ))}
         </div>
 
-        {/* Search */}
+        {/* Search + Orbit Toggle */}
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
           <input
             type="text"
@@ -301,6 +379,25 @@ export default function MemoryUniverse({ entries = [], memoryData = null, onOpen
               outline: 'none',
             }}
           />
+          <button
+            onClick={() => setIsAnimating((v) => !v)}
+            title={isAnimating ? 'Pause orbit' : 'Resume orbit'}
+            style={{
+              background: isAnimating ? 'rgba(168, 199, 250, 0.12)' : 'rgba(255,255,255,0.04)',
+              border: `1px solid ${isAnimating ? 'rgba(168,199,250,0.4)' : 'var(--border-subtle)'}`,
+              borderRadius: '9999px',
+              padding: '4px 11px',
+              fontSize: '12px',
+              color: isAnimating ? '#a8c7fa' : 'var(--text-secondary)',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '5px',
+              transition: 'all 0.15s ease',
+            }}
+          >
+            {isAnimating ? '⏸ Pause' : '⟳ Orbit'}
+          </button>
         </div>
       </div>
 
@@ -393,6 +490,69 @@ export default function MemoryUniverse({ entries = [], memoryData = null, onOpen
           <circle cx={cx} cy={cy} r={235} fill="none" stroke="rgba(168, 199, 250, 0.08)" strokeDasharray="5 8" />
           <circle cx={cx} cy={cy} r={320} fill="none" stroke="rgba(168, 199, 250, 0.06)" strokeDasharray="6 10" />
 
+          {/* Slow Drifting Meteorite — crosses from upper-left to lower-right */}
+          {meteor.active && meteor.progress > 0 && meteor.progress < 1 && (() => {
+            const startX = -70;
+            const startY = 80;
+            const endX = W + 90;
+            const endY = H - 110;
+            const mx = startX + meteor.progress * (endX - startX);
+            const my = startY + meteor.progress * (endY - startY);
+            const angle = Math.atan2(endY - startY, endX - startX);
+            const tailLen = 135;
+            const tailX = mx - Math.cos(angle) * tailLen;
+            const tailY = my - Math.sin(angle) * tailLen;
+
+            // Fade smoothly in and out at ends
+            const fade = meteor.progress < 0.12
+              ? meteor.progress / 0.12
+              : meteor.progress > 0.88
+              ? (1 - meteor.progress) / 0.12
+              : 1;
+
+            return (
+              <g opacity={fade} style={{ pointerEvents: 'none' }}>
+                <defs>
+                  <linearGradient id="meteorite-tail-glow" x1={tailX} y1={tailY} x2={mx} y2={my} gradientUnits="userSpaceOnUse">
+                    <stop offset="0%" stopColor="#7baaf7" stopOpacity="0" />
+                    <stop offset="35%" stopColor="#a8c7fa" stopOpacity="0.25" />
+                    <stop offset="75%" stopColor="#c58af9" stopOpacity="0.55" />
+                    <stop offset="100%" stopColor="#ffffff" stopOpacity="0.95" />
+                  </linearGradient>
+                </defs>
+                {/* Luminous Tail Core */}
+                <line
+                  x1={tailX}
+                  y1={tailY}
+                  x2={mx}
+                  y2={my}
+                  stroke="url(#meteorite-tail-glow)"
+                  strokeWidth={2.4}
+                  strokeLinecap="round"
+                />
+                {/* Soft atmospheric ion glow */}
+                <line
+                  x1={tailX + Math.cos(angle) * 35}
+                  y1={tailY + Math.sin(angle) * 35}
+                  x2={mx}
+                  y2={my}
+                  stroke="#a8c7fa"
+                  strokeWidth={6.5}
+                  strokeOpacity={0.16}
+                  strokeLinecap="round"
+                />
+                {/* Trailing cosmic sparkles */}
+                <circle cx={mx - Math.cos(angle) * 28} cy={my - Math.sin(angle) * 28} r={1.5} fill="#ffffff" opacity={0.7} />
+                <circle cx={mx - Math.cos(angle) * 58} cy={my - Math.sin(angle) * 58} r={1.2} fill="#a8c7fa" opacity={0.55} />
+                <circle cx={mx - Math.cos(angle) * 92} cy={my - Math.sin(angle) * 92} r={1} fill="#d3e3fd" opacity={0.4} />
+                {/* Meteorite Head */}
+                <circle cx={mx} cy={my} r={8.5} fill="rgba(168, 199, 250, 0.3)" />
+                <circle cx={mx} cy={my} r={4.5} fill="#a8c7fa" opacity={0.9} />
+                <circle cx={mx} cy={my} r={2.5} fill="#ffffff" />
+              </g>
+            );
+          })()}
+
           {/* Constellation Filament Lines */}
           {constellationLines.map((line, idx) => (
             <line
@@ -405,7 +565,6 @@ export default function MemoryUniverse({ entries = [], memoryData = null, onOpen
               strokeWidth={line.isHighlighted ? 2 : 1}
               opacity={line.isHighlighted ? 0.7 : line.opacity}
               strokeDasharray={line.isHighlighted ? 'none' : '3 4'}
-              style={{ transition: 'all 0.3s ease' }}
             />
           ))}
 
@@ -451,7 +610,7 @@ export default function MemoryUniverse({ entries = [], memoryData = null, onOpen
             </g>
           ))}
 
-          {/* Conversation Planets */}
+          {/* Conversation Planets — all child elements rigidly locked via transform translate so aura/shadow and date never lag */}
           {livePlanets.map((p) => {
             const isHovered = hoveredPlanet?.id === p.id;
             const isSelected = selectedPlanet?.id === p.id;
@@ -459,64 +618,63 @@ export default function MemoryUniverse({ entries = [], memoryData = null, onOpen
             return (
               <g
                 key={p.id}
-                style={{ cursor: 'pointer', transition: 'transform 0.2s ease' }}
+                transform={`translate(${p.x}, ${p.y})`}
+                style={{ cursor: 'pointer' }}
                 onClick={() => setSelectedPlanet(p)}
-                onMouseEnter={() => setHoveredPlanet(p)}
-                onMouseLeave={() => setHoveredPlanet(null)}
+                onMouseEnter={() => handlePlanetMouseEnter(p)}
+                onMouseLeave={handlePlanetMouseLeave}
               >
-                {/* Atmospheric Glow Aura */}
+                {/* Atmospheric Glow Aura — centered at (0,0), perfectly locked to planet body */}
                 <circle
-                  cx={p.x}
-                  cy={p.y}
+                  cx={0}
+                  cy={0}
                   r={p.radius + (isHovered || isSelected ? 12 : 5)}
                   fill={p.palette.aura}
                   opacity={isHovered || isSelected ? 0.9 : 0.4}
-                  style={{ transition: 'all 0.25s ease' }}
                 />
 
                 {/* Planetary Ring (For Gas Giants / Long Conversations) */}
                 {p.hasRing && (
                   <ellipse
-                    cx={p.x}
-                    cy={p.y}
+                    cx={0}
+                    cy={0}
                     rx={p.radius * 1.75}
                     ry={p.radius * 0.48}
                     fill="none"
                     stroke={p.palette.ring}
                     strokeWidth={isHovered ? 2.5 : 1.8}
                     strokeDasharray="4 2"
-                    transform={`rotate(-22, ${p.x}, ${p.y})`}
+                    transform="rotate(-22)"
                     opacity={0.75}
                   />
                 )}
 
                 {/* Main Planetary Body */}
                 <circle
-                  cx={p.x}
-                  cy={p.y}
+                  cx={0}
+                  cy={0}
                   r={p.radius}
                   fill={`url(#grad-${p.id})`}
                   stroke={isSelected ? '#ffffff' : isHovered ? p.palette.fill : 'rgba(255, 255, 255, 0.25)'}
                   strokeWidth={isSelected ? 2.5 : isHovered ? 2 : 1}
-                  style={{ transition: 'all 0.2s ease' }}
                 />
 
-                {/* DATED Pill Tag & Title Beneath Planet */}
+                {/* DATED Pill Tag & Title Beneath Planet — rigidly locked at (0, y) */}
                 <g style={{ pointerEvents: 'none' }}>
                   {/* Date Badge Pill */}
                   <rect
-                    x={p.x - 26}
-                    y={p.y + p.radius + 6}
+                    x={-26}
+                    y={p.radius + 6}
                     width={52}
                     height={16}
                     rx={8}
-                    fill="rgba(12, 14, 20, 0.85)"
+                    fill="rgba(12, 14, 20, 0.88)"
                     stroke="rgba(168, 199, 250, 0.35)"
                     strokeWidth={0.8}
                   />
                   <text
-                    x={p.x}
-                    y={p.y + p.radius + 18}
+                    x={0}
+                    y={p.radius + 18}
                     textAnchor="middle"
                     fill="#e3e3e3"
                     fontSize="10"
@@ -528,8 +686,8 @@ export default function MemoryUniverse({ entries = [], memoryData = null, onOpen
                   {/* Title Preview if hovered or large */}
                   {(isHovered || isSelected || p.radius >= 32) && (
                     <text
-                      x={p.x}
-                      y={p.y + p.radius + 32}
+                      x={0}
+                      y={p.radius + 32}
                       textAnchor="middle"
                       fill="#a8c7fa"
                       fontSize="10.5"
@@ -546,6 +704,183 @@ export default function MemoryUniverse({ entries = [], memoryData = null, onOpen
             );
           })}
         </svg>
+
+        {/* Rich Interactive Callout Card (HTML overlay, positioned near hovered planet) */}
+        {hoveredPlanet && !selectedPlanet && (() => {
+          // Convert SVG coords to percentage-based position on the container
+          const pctX = (hoveredPlanet.x / W) * 100;
+          const pctY = (hoveredPlanet.y / H) * 100;
+          const showLeft = pctX > 58;
+          const showAbove = pctY > 58;
+
+          return (
+            <div
+              onMouseEnter={handleCalloutMouseEnter}
+              onMouseLeave={handleCalloutMouseLeave}
+              style={{
+                position: 'absolute',
+                left: showLeft ? 'auto' : `calc(${pctX}% + ${hoveredPlanet.radius + 12}px)`,
+                right: showLeft ? `calc(${100 - pctX}% + ${hoveredPlanet.radius + 12}px)` : 'auto',
+                top: showAbove ? 'auto' : `calc(${pctY}% - 30px)`,
+                bottom: showAbove ? `calc(${100 - pctY}% - 30px)` : 'auto',
+                width: '235px',
+                background: 'rgba(15, 18, 28, 0.96)',
+                border: `1.5px solid ${hoveredPlanet.palette.fill}55`,
+                borderRadius: '16px',
+                padding: '14px 16px',
+                boxShadow: `0 12px 36px rgba(0, 0, 0, 0.65), 0 0 0 1px ${hoveredPlanet.palette.fill}25`,
+                pointerEvents: 'auto',
+                zIndex: 25,
+                animation: 'fade-up 0.18s ease-out',
+                backdropFilter: 'blur(14px)',
+              }}
+            >
+              {/* Header: Date + Mood + Dismiss Button */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px', marginBottom: '8px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span style={{
+                    width: '8px',
+                    height: '8px',
+                    borderRadius: '50%',
+                    background: hoveredPlanet.palette.fill,
+                    boxShadow: `0 0 8px ${hoveredPlanet.palette.fill}`,
+                    flexShrink: 0,
+                  }} />
+                  <span style={{ fontSize: '11px', color: '#a8c7fa', fontWeight: '600' }}>
+                    📅 {hoveredPlanet.dateStr}
+                  </span>
+                  <span style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'capitalize' }}>
+                    • {hoveredPlanet.mood}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setHoveredPlanet(null)}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: 'var(--text-muted)',
+                    cursor: 'pointer',
+                    fontSize: '13px',
+                    padding: '2px 4px',
+                    lineHeight: 1,
+                  }}
+                  title="Close callout"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Planet Title */}
+              <div style={{
+                fontSize: '13.5px',
+                fontWeight: '600',
+                color: '#f0f4f9',
+                marginBottom: '7px',
+                lineHeight: '1.35',
+              }}>
+                {hoveredPlanet.title}
+              </div>
+
+              {/* Summary excerpt */}
+              {hoveredPlanet.entry.summary && (
+                <div style={{
+                  fontSize: '11.5px',
+                  color: 'var(--text-secondary)',
+                  lineHeight: '1.5',
+                  marginBottom: '10px',
+                  padding: '6px 8px',
+                  background: 'rgba(255, 255, 255, 0.03)',
+                  borderRadius: '8px',
+                  borderLeft: `2px solid ${hoveredPlanet.palette.fill}`,
+                }}>
+                  {hoveredPlanet.entry.summary.slice(0, 85)}{hoveredPlanet.entry.summary.length > 85 ? '…' : ''}
+                </div>
+              )}
+
+              {/* Metrics row */}
+              <div style={{
+                display: 'flex',
+                gap: '8px',
+                fontSize: '10.5px',
+                color: 'var(--text-muted)',
+                marginBottom: '12px',
+                flexWrap: 'wrap',
+              }}>
+                <span style={{ background: 'rgba(255,255,255,0.04)', padding: '2px 6px', borderRadius: '4px' }}>
+                  💬 {hoveredPlanet.msgCount} turns
+                </span>
+                <span style={{ background: 'rgba(255,255,255,0.04)', padding: '2px 6px', borderRadius: '4px' }}>
+                  🪐 {hoveredPlanet.classification}
+                </span>
+              </div>
+
+              {/* Interactive Action Buttons */}
+              <div style={{ display: 'flex', gap: '6px', marginTop: '4px' }}>
+                {onOpenEntry && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onOpenEntry(hoveredPlanet.id);
+                    }}
+                    style={{
+                      flex: 1,
+                      background: 'linear-gradient(135deg, #a8c7fa 0%, #7baaf7 100%)',
+                      border: 'none',
+                      borderRadius: '8px',
+                      padding: '6px 10px',
+                      fontSize: '11.5px',
+                      fontWeight: '600',
+                      color: '#0a0d14',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '4px',
+                      transition: 'opacity 0.15s ease',
+                    }}
+                  >
+                    <span>Open</span>
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                      <line x1="5" y1="12" x2="19" y2="12"></line>
+                      <polyline points="12 5 19 12 12 19"></polyline>
+                    </svg>
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedPlanet(hoveredPlanet);
+                    setHoveredPlanet(null);
+                  }}
+                  style={{
+                    flex: 1,
+                    background: 'rgba(255, 255, 255, 0.06)',
+                    border: '1px solid var(--border-subtle)',
+                    borderRadius: '8px',
+                    padding: '6px 10px',
+                    fontSize: '11.5px',
+                    color: '#e3e3e3',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '4px',
+                    transition: 'background 0.15s ease',
+                  }}
+                >
+                  <span>Inspect</span>
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                  </svg>
+                </button>
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Empty State Overlay */}
         {livePlanets.length === 0 && (

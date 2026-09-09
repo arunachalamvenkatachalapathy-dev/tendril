@@ -6,7 +6,7 @@ import MemoryUniverse from './MemoryUniverse.jsx';
 export default function HuntView({ onOpenEntry, onBack, entries = [], ideas = [] }) {
   const [query, setQuery] = useState('');
   const [scope, setScope] = useState('all'); // 'all' | 'ideas' | 'context'
-  const [cosmosMode, setCosmosMode] = useState('constellation'); // 'constellation' | 'planetary'
+  const [cosmosMode, setCosmosMode] = useState('planetary'); // 'planetary' | 'constellation'
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
@@ -44,38 +44,85 @@ export default function HuntView({ onOpenEntry, onBack, entries = [], ideas = []
   return (
     <div className="dashboard-container" style={{ maxWidth: '960px', margin: '0 auto', padding: '24px 16px' }}>
       
-      {/* Header & Search Bar Card */}
+      {/* Top Header */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '14px', marginBottom: '16px' }}>
+        <div>
+          <div className="google-eyebrow" style={{ marginBottom: '4px' }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style={{ color: '#a8c7fa' }}>
+              <circle cx="12" cy="12" r="10" />
+            </svg>
+            <span>Universe &amp; AI Hunt</span>
+          </div>
+          <h1 style={{ fontSize: '26px', fontWeight: '500', color: '#e3e3e3', margin: 0 }}>
+            Universe
+          </h1>
+        </div>
+        {onBack && (
+          <button
+            className="btn-google-secondary"
+            onClick={onBack}
+            style={{ display: 'flex', alignItems: 'center', gap: '6px', borderRadius: '9999px', padding: '6px 14px', fontSize: '13px' }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <line x1="19" y1="12" x2="5" y2="12"></line>
+              <polyline points="12 19 5 12 12 5"></polyline>
+            </svg>
+            <span>Back</span>
+          </button>
+        )}
+      </div>
+
+      {/* 1. FIRST: Cosmos View Mode Toggle & Universe Map */}
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '14px', alignItems: 'center', flexWrap: 'wrap' }}>
+        <button
+          className={`google-pill-tab ${cosmosMode === 'planetary' ? 'active' : ''}`}
+          onClick={() => setCosmosMode('planetary')}
+        >
+          🌌 Universe Map
+        </button>
+        <button
+          className={`google-pill-tab ${cosmosMode === 'constellation' ? 'active' : ''}`}
+          onClick={() => setCosmosMode('constellation')}
+        >
+          🌐 Idea Constellation &amp; Cross-Day Links
+        </button>
+      </div>
+
+      {/* Interactive Cosmos Map */}
+      {cosmosMode === 'planetary' ? (
+        <div className="google-surface-card" style={{ marginBottom: '24px', padding: '20px' }}>
+          <MemoryUniverse
+            entries={entries}
+            onOpenEntry={onOpenEntry}
+          />
+        </div>
+      ) : (
+        <HuntGlobeGraph
+          entries={entries}
+          ideas={ideas}
+          searchQuery={query}
+          onOpenEntry={onOpenEntry}
+          onSelectQuery={(q) => {
+            setQuery(q);
+            handleSearch(q);
+          }}
+        />
+      )}
+
+      {/* 2. SECOND: Hunt Search Card */}
       <div className="google-surface-card" style={{ marginBottom: '20px' }}>
-        <div className="google-card-body" style={{ padding: '28px 32px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '14px', marginBottom: '20px' }}>
-            <div>
-              <div className="google-eyebrow" style={{ marginBottom: '6px' }}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style={{ color: '#a8c7fa' }}>
-                  <circle cx="12" cy="12" r="10" />
-                </svg>
-                <span>Universe &amp; AI Hunt</span>
-              </div>
-              <h1 style={{ fontSize: '26px', fontWeight: '500', color: '#e3e3e3', margin: 0 }}>
-                Universe
-              </h1>
-            </div>
-            {onBack && (
-              <button
-                className="btn-google-secondary"
-                onClick={onBack}
-                style={{ display: 'flex', alignItems: 'center', gap: '6px', borderRadius: '9999px', padding: '6px 14px', fontSize: '13px' }}
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <line x1="19" y1="12" x2="5" y2="12"></line>
-                  <polyline points="12 19 5 12 12 5"></polyline>
-                </svg>
-                <span>Back</span>
-              </button>
-            )}
+        <div className="google-card-body" style={{ padding: '24px 28px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style={{ color: '#a8c7fa' }}>
+              <path d="M12 2L14.4 9.6L22 12L14.4 14.4L12 22L9.6 14.4L2 12L9.6 9.6Z"/>
+            </svg>
+            <h2 style={{ fontSize: '18px', fontWeight: '500', color: '#e3e3e3', margin: 0 }}>
+              Hunt Ideas &amp; Reflections
+            </h2>
           </div>
 
-          <p style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '20px', lineHeight: '1.5' }}>
-            Explore your dynamic memory universe and hunt through ideas, memories, and conversational reflections with Gemini Intelligence.
+          <p style={{ fontSize: '13.5px', color: 'var(--text-secondary)', marginBottom: '16px', lineHeight: '1.5' }}>
+            Search your journal memories, recurring thoughts, and conversational reflections with Gemini Intelligence.
           </p>
 
           {/* Search Bar */}
@@ -171,7 +218,7 @@ export default function HuntView({ onOpenEntry, onBack, entries = [], ideas = []
           </form>
 
           {/* Quick Hunt suggestions */}
-          <div style={{ marginTop: '18px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+          <div style={{ marginTop: '16px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
             <span style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>Try hunting:</span>
             {SUGGESTIONS.map((s, idx) => (
               <button
@@ -192,43 +239,6 @@ export default function HuntView({ onOpenEntry, onBack, entries = [], ideas = []
 
         </div>
       </div>
-
-      {/* Cosmos View Mode Toggle */}
-      <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', alignItems: 'center', flexWrap: 'wrap' }}>
-        <button
-          className={`google-pill-tab ${cosmosMode === 'constellation' ? 'active' : ''}`}
-          onClick={() => setCosmosMode('constellation')}
-        >
-          🌐 Idea Constellation &amp; Cross-Day Links
-        </button>
-        <button
-          className={`google-pill-tab ${cosmosMode === 'planetary' ? 'active' : ''}`}
-          onClick={() => setCosmosMode('planetary')}
-        >
-          🌌 Planetary System
-        </button>
-      </div>
-
-      {/* Interactive Cosmos Visualization */}
-      {cosmosMode === 'constellation' ? (
-        <HuntGlobeGraph
-          entries={entries}
-          ideas={ideas}
-          searchQuery={query}
-          onOpenEntry={onOpenEntry}
-          onSelectQuery={(q) => {
-            setQuery(q);
-            handleSearch(q);
-          }}
-        />
-      ) : (
-        <div className="google-surface-card" style={{ marginBottom: '24px', padding: '20px' }}>
-          <MemoryUniverse
-            entries={entries}
-            onOpenEntry={onOpenEntry}
-          />
-        </div>
-      )}
 
       {/* Loading state */}
       {loading && (

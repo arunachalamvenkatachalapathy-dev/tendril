@@ -500,7 +500,7 @@ export default function HuntGlobeGraph({
               );
             })}
 
-            {/* 4. Center Globe (Mind Origin / Hunt Core) */}
+            {/* 4. Center Globe (Consciousness / Universe Core) */}
             <g
               style={{ cursor: 'pointer' }}
               onClick={() => setSelectedNode({ type: 'center' })}
@@ -519,7 +519,7 @@ export default function HuntGlobeGraph({
                 fontWeight="600"
                 style={{ pointerEvents: 'none', textShadow: '0 2px 4px rgba(0,0,0,0.9)' }}
               >
-                Hunt Origin
+                Consciousness
               </text>
             </g>
 
