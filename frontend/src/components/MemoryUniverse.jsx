@@ -117,40 +117,6 @@ export default function MemoryUniverse({ entries = [], memoryData = null, onOpen
     };
   }, [isAnimating]);
 
-  // Slow meteorite drifting across the cosmos
-  const [meteor, setMeteor] = useState({ active: true, progress: 0 });
-  const meteorStartRef = useRef(null);
-  const meteorPauseStartRef = useRef(null);
-  const METEOR_DURATION = 9500; // 9.5s slow celestial glide across universe
-  const METEOR_PAUSE = 5500;    // 5.5s calm pause before next meteorite
-
-  useEffect(() => {
-    let raf;
-    let isActive = true;
-    const tick = (ts) => {
-      if (isActive) {
-        if (!meteorStartRef.current) meteorStartRef.current = ts;
-        const progress = Math.min((ts - meteorStartRef.current) / METEOR_DURATION, 1);
-        setMeteor({ active: true, progress });
-        if (progress >= 1) {
-          isActive = false;
-          meteorStartRef.current = null;
-          meteorPauseStartRef.current = ts;
-        }
-      } else {
-        if (!meteorPauseStartRef.current) meteorPauseStartRef.current = ts;
-        if (ts - meteorPauseStartRef.current >= METEOR_PAUSE) {
-          isActive = true;
-          meteorPauseStartRef.current = null;
-          setMeteor({ active: true, progress: 0 });
-        }
-      }
-      raf = requestAnimationFrame(tick);
-    };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-  }, []);
-
   // Hover timeout management for smooth interactive callout
   const hoverTimeoutRef = useRef(null);
   const handlePlanetMouseEnter = (p) => {
@@ -285,18 +251,38 @@ export default function MemoryUniverse({ entries = [], memoryData = null, onOpen
     };
   });
 
-  // Background random fixed stars
-  const fixedStars = useMemo(() => {
-    const stars = [];
-    for (let i = 0; i < 70; i++) {
-      stars.push({
+  // Tastefully balanced stars: faint background dust + 14 gentle sparkling stars (no overcrowding)
+  const { backgroundStars, sparklingStars } = useMemo(() => {
+    // 36 subtle, tiny background dust stars
+    const bg = [];
+    for (let i = 0; i < 36; i++) {
+      bg.push({
         x: (Math.sin(i * 991) * 0.5 + 0.5) * W,
         y: (Math.cos(i * 337) * 0.5 + 0.5) * H,
-        r: (i % 3 === 0 ? 1.5 : 1),
-        opacity: 0.25 + ((i % 5) * 0.15),
+        r: i % 4 === 0 ? 1.2 : 0.8,
+        opacity: 0.16 + ((i % 5) * 0.05),
       });
     }
-    return stars;
+
+    // 14 delicate sparkling diamond stars placed sparsely in open spaces
+    const sparkles = [
+      { id: 's1',  x: 85,  y: 95,  arm: 3.5, glowR: 7, color: '#ffffff', delay: 0.2, duration: 3.2 },
+      { id: 's2',  x: 210, y: 65,  arm: 2.8, glowR: 6, color: '#a8c7fa', delay: 1.5, duration: 4.1 },
+      { id: 's3',  x: 570, y: 75,  arm: 3.2, glowR: 7, color: '#ffffff', delay: 0.8, duration: 3.6 },
+      { id: 's4',  x: 675, y: 115, arm: 4.0, glowR: 8, color: '#d3e3fd', delay: 2.1, duration: 4.4 },
+      { id: 's5',  x: 65,  y: 270, arm: 2.6, glowR: 5, color: '#fdd663', delay: 1.1, duration: 3.0 },
+      { id: 's6',  x: 695, y: 290, arm: 3.4, glowR: 7, color: '#ffffff', delay: 2.7, duration: 3.8 },
+      { id: 's7',  x: 55,  y: 480, arm: 3.0, glowR: 6, color: '#a8c7fa', delay: 0.5, duration: 4.0 },
+      { id: 's8',  x: 705, y: 470, arm: 3.2, glowR: 7, color: '#c58af9', delay: 1.8, duration: 3.5 },
+      { id: 's9',  x: 110, y: 645, arm: 3.8, glowR: 8, color: '#ffffff', delay: 2.4, duration: 4.2 },
+      { id: 's10', x: 235, y: 695, arm: 2.6, glowR: 5, color: '#d3e3fd', delay: 0.9, duration: 3.3 },
+      { id: 's11', x: 540, y: 685, arm: 3.0, glowR: 6, color: '#ffffff', delay: 1.6, duration: 3.9 },
+      { id: 's12', x: 660, y: 630, arm: 3.5, glowR: 7, color: '#fdd663', delay: 2.9, duration: 4.5 },
+      { id: 's13', x: 380, y: 45,  arm: 2.8, glowR: 6, color: '#a8c7fa', delay: 0.4, duration: 3.7 },
+      { id: 's14', x: 380, y: 715, arm: 2.8, glowR: 6, color: '#ffffff', delay: 2.0, duration: 3.4 },
+    ];
+
+    return { backgroundStars: bg, sparklingStars: sparkles };
   }, [W, H]);
 
   // Constellation filaments connecting planets with shared moods or tags
@@ -470,12 +456,25 @@ export default function MemoryUniverse({ entries = [], memoryData = null, onOpen
                 <stop offset="100%" stopColor="#0a0c10" stopOpacity="0.9" />
               </radialGradient>
             ))}
+            {/* Star Sparkle Keyframes */}
+            <style>{`
+              @keyframes cosmicSparkle {
+                0%, 100% {
+                  opacity: 0.18;
+                  transform: scale(0.65);
+                }
+                50% {
+                  opacity: 0.95;
+                  transform: scale(1.2);
+                }
+              }
+            `}</style>
           </defs>
 
-          {/* Twinkling Fixed Stars */}
-          {fixedStars.map((s, idx) => (
+          {/* Subtle Background Dust Stars */}
+          {backgroundStars.map((s, idx) => (
             <circle
-              key={`star-${idx}`}
+              key={`bg-star-${idx}`}
               cx={s.x}
               cy={s.y}
               r={s.r}
@@ -484,74 +483,34 @@ export default function MemoryUniverse({ entries = [], memoryData = null, onOpen
             />
           ))}
 
+          {/* Gentle Sparkling Stars (Uncrowded, Tasteful Diamond Twinkle) */}
+          {sparklingStars.map((s) => (
+            <g
+              key={s.id}
+              style={{
+                animation: `cosmicSparkle ${s.duration}s ease-in-out ${s.delay}s infinite`,
+                transformOrigin: `${s.x}px ${s.y}px`,
+                pointerEvents: 'none',
+              }}
+            >
+              {/* Soft corona glow */}
+              <circle cx={s.x} cy={s.y} r={s.glowR} fill={s.color} opacity={0.22} />
+              {/* 4-pointed micro flare */}
+              <path
+                d={`M ${s.x},${s.y - s.arm} Q ${s.x},${s.y} ${s.x + s.arm},${s.y} Q ${s.x},${s.y} ${s.x},${s.y + s.arm} Q ${s.x},${s.y} ${s.x - s.arm},${s.y} Q ${s.x},${s.y} ${s.x},${s.y - s.arm}`}
+                fill={s.color}
+                opacity={0.88}
+              />
+              {/* Bright center pinpoint */}
+              <circle cx={s.x} cy={s.y} r={1.1} fill="#ffffff" />
+            </g>
+          ))}
+
           {/* Orbital Track Rings */}
           <circle cx={cx} cy={cy} r={85} fill="none" stroke="rgba(168, 199, 250, 0.08)" strokeDasharray="3 5" />
           <circle cx={cx} cy={cy} r={150} fill="none" stroke="rgba(168, 199, 250, 0.1)" strokeDasharray="4 6" />
           <circle cx={cx} cy={cy} r={235} fill="none" stroke="rgba(168, 199, 250, 0.08)" strokeDasharray="5 8" />
           <circle cx={cx} cy={cy} r={320} fill="none" stroke="rgba(168, 199, 250, 0.06)" strokeDasharray="6 10" />
-
-          {/* Slow Drifting Meteorite — crosses from upper-left to lower-right */}
-          {meteor.active && meteor.progress > 0 && meteor.progress < 1 && (() => {
-            const startX = -70;
-            const startY = 80;
-            const endX = W + 90;
-            const endY = H - 110;
-            const mx = startX + meteor.progress * (endX - startX);
-            const my = startY + meteor.progress * (endY - startY);
-            const angle = Math.atan2(endY - startY, endX - startX);
-            const tailLen = 135;
-            const tailX = mx - Math.cos(angle) * tailLen;
-            const tailY = my - Math.sin(angle) * tailLen;
-
-            // Fade smoothly in and out at ends
-            const fade = meteor.progress < 0.12
-              ? meteor.progress / 0.12
-              : meteor.progress > 0.88
-              ? (1 - meteor.progress) / 0.12
-              : 1;
-
-            return (
-              <g opacity={fade} style={{ pointerEvents: 'none' }}>
-                <defs>
-                  <linearGradient id="meteorite-tail-glow" x1={tailX} y1={tailY} x2={mx} y2={my} gradientUnits="userSpaceOnUse">
-                    <stop offset="0%" stopColor="#7baaf7" stopOpacity="0" />
-                    <stop offset="35%" stopColor="#a8c7fa" stopOpacity="0.25" />
-                    <stop offset="75%" stopColor="#c58af9" stopOpacity="0.55" />
-                    <stop offset="100%" stopColor="#ffffff" stopOpacity="0.95" />
-                  </linearGradient>
-                </defs>
-                {/* Luminous Tail Core */}
-                <line
-                  x1={tailX}
-                  y1={tailY}
-                  x2={mx}
-                  y2={my}
-                  stroke="url(#meteorite-tail-glow)"
-                  strokeWidth={2.4}
-                  strokeLinecap="round"
-                />
-                {/* Soft atmospheric ion glow */}
-                <line
-                  x1={tailX + Math.cos(angle) * 35}
-                  y1={tailY + Math.sin(angle) * 35}
-                  x2={mx}
-                  y2={my}
-                  stroke="#a8c7fa"
-                  strokeWidth={6.5}
-                  strokeOpacity={0.16}
-                  strokeLinecap="round"
-                />
-                {/* Trailing cosmic sparkles */}
-                <circle cx={mx - Math.cos(angle) * 28} cy={my - Math.sin(angle) * 28} r={1.5} fill="#ffffff" opacity={0.7} />
-                <circle cx={mx - Math.cos(angle) * 58} cy={my - Math.sin(angle) * 58} r={1.2} fill="#a8c7fa" opacity={0.55} />
-                <circle cx={mx - Math.cos(angle) * 92} cy={my - Math.sin(angle) * 92} r={1} fill="#d3e3fd" opacity={0.4} />
-                {/* Meteorite Head */}
-                <circle cx={mx} cy={my} r={8.5} fill="rgba(168, 199, 250, 0.3)" />
-                <circle cx={mx} cy={my} r={4.5} fill="#a8c7fa" opacity={0.9} />
-                <circle cx={mx} cy={my} r={2.5} fill="#ffffff" />
-              </g>
-            );
-          })()}
 
           {/* Constellation Filament Lines */}
           {constellationLines.map((line, idx) => (
