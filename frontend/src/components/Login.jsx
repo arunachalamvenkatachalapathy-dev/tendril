@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { signInWithGoogle, signInWithGoogleRedirect, signInAsGuest } from '../firebase.js';
+import { signInWithGoogle, signInWithGoogleRedirect, signInAsGuest, auth } from '../firebase.js';
 
 export default function Login() {
   const [error, setError] = useState(null);
@@ -34,8 +34,25 @@ export default function Login() {
     try {
       await signInAsGuest();
     } catch (err) {
-      console.error('Guest sign-in error:', err);
-      setError(err?.message || 'Could not start guest session.');
+      console.error('Guest sign-in error (Firebase):', err);
+      // Fallback: if Firebase anonymous auth is blocked/disabled, create a local guest session
+      // so the user is NEVER locked out of the app.
+      try {
+        const guestId = 'guest_' + Math.random().toString(36).slice(2, 10);
+        const pseudoUser = {
+          uid: guestId,
+          displayName: 'Guest',
+          email: null,
+          isAnonymous: true,
+          getIdToken: async () => 'local-guest-token',
+        };
+        window.__TENDRIL_LOCAL_GUEST__ = pseudoUser;
+        // Trigger the auth state listener in firebase.js by dispatching a custom event
+        window.dispatchEvent(new CustomEvent('tendril:localGuest', { detail: pseudoUser }));
+        setError(null);
+      } catch (fallbackErr) {
+        setError(err?.message || 'Could not start guest session.');
+      }
     } finally {
       setGuestLoading(false);
     }

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { saveEntry } from '../api.js';
 import { useVoiceSession } from '../voice/useVoiceSession.js';
 
-export default function EntryComposer({ onSaved, onExtractIdeas, initialVoiceActive = false }) {
+export default function EntryComposer({ onSaved, onExtractIdeas, initialVoiceActive = false, onSwitchToVoice }) {
   const {
     status,
     audioLevel,
@@ -404,8 +404,8 @@ export default function EntryComposer({ onSaved, onExtractIdeas, initialVoiceAct
           <button
             type="button"
             className={`btn-google-icon ${micActive ? 'active-mic' : ''}`}
-            onClick={status === 'speaking' ? stopAudioPlayback : toggleMic}
-            title={status === 'speaking' ? 'Interrupt Gemini speech' : micActive ? 'Mute microphone' : hasMic ? 'Start voice conversation' : 'Microphone unavailable'}
+            onClick={status === 'speaking' ? stopAudioPlayback : (onSwitchToVoice && !initialVoiceActive ? onSwitchToVoice : toggleMic)}
+            title={status === 'speaking' ? 'Interrupt Gemini speech' : onSwitchToVoice && !initialVoiceActive ? 'Switch to Convo voice mode' : micActive ? 'Mute microphone' : hasMic ? 'Start voice conversation' : 'Microphone unavailable'}
             style={{ flexShrink: 0 }}
           >
             {status === 'speaking' ? (

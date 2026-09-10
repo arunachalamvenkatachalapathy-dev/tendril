@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import MoodTrend from './MoodTrend.jsx';
 
 const MOOD_COLOR = {
@@ -12,23 +13,120 @@ const MOOD_COLOR = {
   anxious: '#fdd663',
 };
 
-export default function EntryList({ entries, loading, onNewEntry, onOpenEntry, selectedId, onSeedDemo, seeding }) {
+export default function EntryList({ entries, loading, onNewEntry, onOpenEntry, selectedId, onSeedDemo, seeding, onDeleteEntry, onRemoveDuplicates }) {
+  const [showOptions, setShowOptions] = useState(false);
+  const [groupByDay, setGroupByDay] = useState(false);
+
   return (
     <div className="google-surface-card sidebar-panel">
       <div className="google-card-body" style={{ display: 'flex', flexDirection: 'column', height: '100%', padding: '0' }}>
         
         {/* Header & New Note CTA */}
-        <div className="sidebar-header" style={{ padding: '16px 20px', borderBottom: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div className="panel-title" style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '600', fontSize: '15px' }}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#a8c7fa' }}>
-              <line x1="8" y1="6" x2="21" y2="6"/>
-              <line x1="8" y1="12" x2="21" y2="12"/>
-              <line x1="8" y1="18" x2="21" y2="18"/>
-              <line x1="3" y1="6" x2="3.01" y2="6"/>
-              <line x1="3" y1="12" x2="3.01" y2="12"/>
-              <line x1="3" y1="18" x2="3.01" y2="18"/>
-            </svg>
-            <span>Notes</span>
+        <div className="sidebar-header" style={{ padding: '16px 20px', borderBottom: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'relative' }}>
+          <div style={{ position: 'relative' }}>
+            <div
+              className="panel-title"
+              style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '600', fontSize: '15px', cursor: 'pointer', userSelect: 'none' }}
+              onClick={() => setShowOptions(v => !v)}
+              title="Click for note options"
+            >
+              <button
+                type="button"
+                style={{
+                  background: showOptions ? 'rgba(168, 199, 250, 0.16)' : 'transparent',
+                  border: showOptions ? '1px solid rgba(168, 199, 250, 0.4)' : '1px solid transparent',
+                  borderRadius: '6px',
+                  padding: '4px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  cursor: 'pointer',
+                  color: '#a8c7fa',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="8" y1="6" x2="21" y2="6"/>
+                  <line x1="8" y1="12" x2="21" y2="12"/>
+                  <line x1="8" y1="18" x2="21" y2="18"/>
+                  <line x1="3" y1="6" x2="3.01" y2="6"/>
+                  <line x1="3" y1="12" x2="3.01" y2="12"/>
+                  <line x1="3" y1="18" x2="3.01" y2="18"/>
+                </svg>
+              </button>
+              <span>Notes</span>
+              <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>▾</span>
+            </div>
+
+            {/* Options Dropdown Menu */}
+            {showOptions && (
+              <div
+                style={{
+                  position: 'absolute',
+                  top: '100%',
+                  left: 0,
+                  marginTop: '8px',
+                  zIndex: 100,
+                  background: '#1a1f2c',
+                  border: '1px solid var(--border-subtle)',
+                  borderRadius: '12px',
+                  boxShadow: '0 8px 24px rgba(0,0,0,0.6)',
+                  padding: '6px',
+                  minWidth: '210px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '2px'
+                }}
+                onClick={() => setShowOptions(false)}
+              >
+                {onRemoveDuplicates && (
+                  <button
+                    onClick={() => { setShowOptions(false); onRemoveDuplicates(); }}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: '8px',
+                      padding: '8px 12px', borderRadius: '8px',
+                      background: 'transparent', border: 'none',
+                      color: '#e3e3e3', fontSize: '12.5px', textAlign: 'left',
+                      cursor: 'pointer'
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.06)'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                  >
+                    <span>🧹</span>
+                    <span>Remove duplicate notes</span>
+                  </button>
+                )}
+                <button
+                  onClick={() => { setShowOptions(false); setGroupByDay(v => !v); }}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: '8px',
+                    padding: '8px 12px', borderRadius: '8px',
+                    background: 'transparent', border: 'none',
+                    color: '#e3e3e3', fontSize: '12.5px', textAlign: 'left',
+                    cursor: 'pointer'
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.06)'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                >
+                  <span>🗓️</span>
+                  <span>{groupByDay ? 'Show simple list' : 'Group notes by day'}</span>
+                </button>
+                <button
+                  onClick={() => { setShowOptions(false); onNewEntry(); }}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: '8px',
+                    padding: '8px 12px', borderRadius: '8px',
+                    background: 'transparent', border: 'none',
+                    color: '#a8c7fa', fontSize: '12.5px', textAlign: 'left',
+                    cursor: 'pointer'
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = 'rgba(168,199,250,0.1)'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                >
+                  <span>✍️</span>
+                  <span>+ New reflection</span>
+                </button>
+              </div>
+            )}
           </div>
           <button
             className="btn-google-primary"
@@ -89,6 +187,7 @@ export default function EntryList({ entries, loading, onNewEntry, onOpenEntry, s
                 key={e.id}
                 className={`entry-card-item ${isSelected ? 'selected' : ''}`}
                 onClick={() => onOpenEntry(e.id)}
+                style={{ position: 'relative' }}
               >
                 <div className="entry-card-date">
                   <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -100,8 +199,37 @@ export default function EntryList({ entries, loading, onNewEntry, onOpenEntry, s
                     }} />
                     <span style={{ textTransform: 'capitalize', color: 'var(--text-secondary)', fontSize: '11.5px' }}>{e.mood || 'note'}</span>
                   </span>
-                  <span style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>
-                    {e.createdAt ? new Date(e.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : ''}
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>
+                      {e.createdAt ? new Date(e.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : ''}
+                    </span>
+                    {onDeleteEntry && (
+                      <button
+                        onClick={(ev) => { ev.stopPropagation(); onDeleteEntry(e.id); }}
+                        title="Delete note"
+                        style={{
+                          background: 'transparent',
+                          border: 'none',
+                          cursor: 'pointer',
+                          color: 'var(--text-muted)',
+                          padding: '2px',
+                          borderRadius: '4px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          opacity: 0.6,
+                          transition: 'opacity 0.15s, color 0.15s',
+                        }}
+                        onMouseEnter={e2 => { e2.currentTarget.style.opacity = '1'; e2.currentTarget.style.color = '#f28b82'; }}
+                        onMouseLeave={e2 => { e2.currentTarget.style.opacity = '0.6'; e2.currentTarget.style.color = 'var(--text-muted)'; }}
+                      >
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="3 6 5 6 21 6"/>
+                          <path d="M19 6l-1 14H6L5 6"/>
+                          <path d="M10 11v6M14 11v6"/>
+                          <path d="M9 6V4h6v2"/>
+                        </svg>
+                      </button>
+                    )}
                   </span>
                 </div>
 

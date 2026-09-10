@@ -78,6 +78,12 @@ export function getEntry(id) {
   return authedFetch(`/api/entries/${id}`);
 }
 
+export function deleteEntry(id) {
+  return authedFetch(`/api/entries/${id}`, {
+    method: 'DELETE',
+  });
+}
+
 export function getMemoryContext() {
   return authedFetch('/api/memory/context');
 }

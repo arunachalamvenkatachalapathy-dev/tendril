@@ -2,8 +2,9 @@ import { useState } from 'react';
 import { huntSearch } from '../api.js';
 import HuntGlobeGraph from './HuntGlobeGraph.jsx';
 import MemoryUniverse from './MemoryUniverse.jsx';
+import GeminiSprinkleLoader from './GeminiSprinkleLoader.jsx';
 
-export default function HuntView({ onOpenEntry, onBack, entries = [], ideas = [] }) {
+export default function HuntView({ onOpenEntry, onDeleteEntry, onBack, entries = [], ideas = [] }) {
   const [query, setQuery] = useState('');
   const [scope, setScope] = useState('all'); // 'all' | 'ideas' | 'context'
   const [cosmosMode, setCosmosMode] = useState('planetary'); // 'planetary' | 'constellation'
@@ -94,6 +95,7 @@ export default function HuntView({ onOpenEntry, onBack, entries = [], ideas = []
           <MemoryUniverse
             entries={entries}
             onOpenEntry={onOpenEntry}
+            onDeleteEntry={onDeleteEntry}
           />
         </div>
       ) : (
@@ -201,9 +203,7 @@ export default function HuntView({ onOpenEntry, onBack, entries = [], ideas = []
             >
               {loading ? (
                 <>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style={{ animation: 'spin 1s linear infinite' }}>
-                    <path d="M12 2L14.4 9.6L22 12L14.4 14.4L12 22L9.6 14.4L2 12L9.6 9.6Z"/>
-                  </svg>
+                  <GeminiSprinkleLoader size={18} inline={true} />
                   <span>Hunting…</span>
                 </>
               ) : (
@@ -240,18 +240,14 @@ export default function HuntView({ onOpenEntry, onBack, entries = [], ideas = []
         </div>
       </div>
 
-      {/* Loading state */}
+      {/* Loading state with Gemini Sprinkle & Rotate Animation */}
       {loading && (
-        <div className="google-surface-card" style={{ marginBottom: '20px', padding: '32px', textAlign: 'center' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', color: '#a8c7fa', fontSize: '14.5px', fontWeight: '500' }}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style={{ animation: 'spin 1.5s linear infinite' }}>
-              <path d="M12 2L14.4 9.6L22 12L14.4 14.4L12 22L9.6 14.4L2 12L9.6 9.6Z"/>
-            </svg>
-            <span>Gemini Intelligence is hunting across your journal memory…</span>
-          </div>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '13px', marginTop: '8px' }}>
-            Cross-referencing conversations, recurring patterns, and extracted sparks.
-          </p>
+        <div className="google-surface-card" style={{ marginBottom: '20px', padding: '38px 24px', textAlign: 'center' }}>
+          <GeminiSprinkleLoader
+            size={42}
+            label="Gemini Intelligence is hunting across your journal memory…"
+            sublabel="Cross-referencing conversations, recurring patterns, and extracted sparks."
+          />
         </div>
       )}
 

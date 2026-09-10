@@ -1,4 +1,4 @@
-export default function EntryDetail({ entry, onBack }) {
+export default function EntryDetail({ entry, onBack, onDeleteEntry }) {
   if (!entry) return null;
 
   return (
@@ -21,14 +21,44 @@ export default function EntryDetail({ entry, onBack }) {
               {entry.title || 'Note Details'}
             </h2>
           </div>
-          <button
-            className="btn-google-primary"
-            onClick={onBack}
-            style={{ padding: '6px 14px', borderRadius: '9999px', fontSize: '13px' }}
-          >
-            + New note
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            {onDeleteEntry && (
+              <button
+                onClick={() => onDeleteEntry(entry.id)}
+                title="Delete this note"
+                style={{
+                  background: 'rgba(242, 139, 130, 0.1)',
+                  border: '1px solid rgba(242, 139, 130, 0.3)',
+                  color: '#f28b82',
+                  borderRadius: '9999px',
+                  padding: '6px 14px',
+                  fontSize: '13px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  transition: 'background 0.15s',
+                }}
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="3 6 5 6 21 6"/>
+                  <path d="M19 6l-1 14H6L5 6"/>
+                  <path d="M10 11v6M14 11v6"/>
+                  <path d="M9 6V4h6v2"/>
+                </svg>
+                Delete
+              </button>
+            )}
+            <button
+              className="btn-google-primary"
+              onClick={onBack}
+              style={{ padding: '6px 14px', borderRadius: '9999px', fontSize: '13px' }}
+            >
+              + New note
+            </button>
+          </div>
         </div>
+
 
         <div style={{ padding: '24px', overflowY: 'auto', flex: 1 }}>
           <div style={{ padding: '16px', background: 'rgba(255, 255, 255, 0.03)', borderRadius: '12px', border: '1px solid var(--border-subtle)', marginBottom: '20px' }}>

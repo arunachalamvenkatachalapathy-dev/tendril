@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { watchAuthState, signOut } from './firebase.js';
-import { listEntries, getEntry, seedDemoData, getMemoryContext } from './api.js';
+import { listEntries, getEntry, seedDemoData, getMemoryContext, deleteEntry } from './api.js';
 import Login from './components/Login.jsx';
 import EntryList from './components/EntryList.jsx';
 import EntryComposer from './components/EntryComposer.jsx';
@@ -12,15 +12,17 @@ import IdeaStream from './components/IdeaStream.jsx';
 import MemoryProfileModal from './components/MemoryProfileModal.jsx';
 import HuntView from './components/HuntView.jsx';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
+import GeminiSprinkleLoader from './components/GeminiSprinkleLoader.jsx';
 
 function usePath() {
   const getSubPath = () => {
     if (window.location.hash) {
-      return window.location.hash.replace(/^#/, '') || '/';
+      return window.location.hash.replace(/^#/, '') || '/universe';
     }
     const full = window.location.pathname;
     const stripped = full.replace(/^\/tendril\/?/, '/');
-    return stripped || '/';
+    if (!stripped || stripped === '/') return '/universe';
+    return stripped;
   };
 
   const [path, setPath] = useState(getSubPath());
@@ -137,6 +139,50 @@ export default function App() {
     handleNewEntry();
   }
 
+  async function handleDeleteEntry(id) {
+    if (!window.confirm('Delete this note? This cannot be undone.')) return;
+    try {
+      await deleteEntry(id);
+      await refreshEntries();
+      await refreshMemoryAndIdeas();
+      // If the deleted entry was currently open in detail view, close it
+      if (view.mode === 'detail' && view.entry?.id === id) {
+        handleNewEntry();
+      }
+    } catch (err) {
+      alert('Could not delete note: ' + err.message);
+    }
+  }
+
+  async function handleRemoveDuplicates() {
+    const seenTitles = new Map();
+    const toDelete = [];
+    for (const e of entries) {
+      const key = (e.title || '').trim().toLowerCase();
+      if (!key) continue;
+      if (seenTitles.has(key)) {
+        toDelete.push(e.id);
+      } else {
+        seenTitles.set(key, e.id);
+      }
+    }
+    if (toDelete.length === 0) {
+      alert('No duplicate notes found in your stream!');
+      return;
+    }
+    if (!window.confirm(`Found ${toDelete.length} duplicate note(s). Remove them now?`)) return;
+    try {
+      for (const id of toDelete) {
+        await deleteEntry(id);
+      }
+      await refreshEntries();
+      await refreshMemoryAndIdeas();
+      alert(`Removed ${toDelete.length} duplicate note(s)!`);
+    } catch (err) {
+      alert('Failed removing duplicates: ' + err.message);
+    }
+  }
+
   const handleSurfacedIdeas = useCallback((newIdeas) => {
     if (newIdeas && newIdeas.length > 0) {
       setSurfacedIdeas((prev) => {
@@ -170,10 +216,11 @@ export default function App() {
     return (
       <div className="tendril-shell" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div className="google-loading-wrap">
-          <svg className="google-spinner" width="32" height="32" viewBox="0 0 50 50">
-            <circle className="google-spinner-path" cx="25" cy="25" r="20" fill="none" strokeWidth="4" />
-          </svg>
-          <span style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>Loading Tendril…</span>
+          <GeminiSprinkleLoader
+            size={48}
+            label="Loading Tendril…"
+            sublabel="Setting up your journal space"
+          />
         </div>
       </div>
     );
@@ -188,7 +235,7 @@ export default function App() {
   }
 
   return (
-    <div className="tendril-shell">
+    <div className={`tendril-shell ${path === '/' ? 'shell-reflect-fixed' : ''}`}>
       {/* Google App Header Bar */}
       <header className="google-app-header">
         <div className="brand-wrapper" onClick={() => { navigate('/'); setMobileTab('reflect'); }}>
@@ -204,16 +251,53 @@ export default function App() {
 
         {/* Center Desktop Navigation Tabs */}
         <nav className="nav-tabs desktop-only">
-          <button
-            className={`nav-tab-btn ${path === '/' && mobileTab === 'reflect' ? 'active' : ''}`}
-            onClick={() => { navigate('/'); setMobileTab('reflect'); }}
-          >
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '6px' }}>
-              <path d="M12 20h9"/>
-              <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
-            </svg>
-            <span>Reflect</span>
-          </button>
+          <div style={{ position: 'relative' }}>
+            <button
+              className={`nav-tab-btn ${path === '/' && mobileTab === 'reflect' ? 'active' : ''}`}
+              onClick={() => { navigate('/'); setMobileTab('reflect'); }}
+              style={(path === '/universe' || path === '/hunt') ? {
+                border: '1px solid rgba(168, 199, 250, 0.45)',
+                color: '#a8c7fa',
+                background: 'rgba(168, 199, 250, 0.12)',
+              } : undefined}
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '6px' }}>
+                <path d="M12 20h9"/>
+                <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+              </svg>
+              <span>Reflect</span>
+            </button>
+            {/* Arrow callout placed just below the reflect button */}
+            {(path === '/universe' || path === '/hunt') && (
+              <div
+                onClick={() => { navigate('/'); setMobileTab('reflect'); }}
+                style={{
+                  position: 'absolute',
+                  top: 'calc(100% + 6px)',
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  background: 'linear-gradient(135deg, rgba(26, 115, 232, 0.95), rgba(66, 133, 244, 0.95))',
+                  color: '#ffffff',
+                  fontSize: '11px',
+                  fontWeight: '600',
+                  padding: '3px 10px',
+                  borderRadius: '9999px',
+                  whiteSpace: 'nowrap',
+                  boxShadow: '0 4px 14px rgba(0,0,0,0.5), 0 0 12px rgba(168, 199, 250, 0.4)',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  zIndex: 100,
+                  animation: 'fade-up 0.3s ease-out',
+                }}
+                title="Click to switch to Reflect"
+              >
+                <span>↑</span>
+                <span>Reflect</span>
+              </div>
+            )}
+          </div>
           <button
             className={`nav-tab-btn ${path === '/dashboard' ? 'active' : ''}`}
             onClick={() => navigate('/dashboard')}
@@ -225,7 +309,7 @@ export default function App() {
             <span>Actions</span>
           </button>
           <button
-            className={`nav-tab-btn ${(path === '/universe' || path === '/hunt') ? 'active' : ''}`}
+            className={`nav-tab-btn nav-tab-universe ${(path === '/universe' || path === '/hunt') ? 'active' : ''}`}
             onClick={() => navigate('/universe')}
           >
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '6px' }}>
@@ -282,6 +366,7 @@ export default function App() {
           entries={entries}
           ideas={surfacedIdeas}
           onOpenEntry={handleOpenEntry}
+          onDeleteEntry={handleDeleteEntry}
           onBack={() => { navigate('/'); setMobileTab('reflect'); }}
         />
       ) : (
@@ -293,6 +378,8 @@ export default function App() {
               loading={entriesLoading}
               onNewEntry={handleNewEntry}
               onOpenEntry={handleOpenEntry}
+              onDeleteEntry={handleDeleteEntry}
+              onRemoveDuplicates={handleRemoveDuplicates}
               onSeedDemo={handleSeedDemo}
               seeding={seedingDemo}
               selectedId={view.mode === 'detail' ? view.entry?.id : null}
@@ -306,7 +393,7 @@ export default function App() {
             )}
 
             {view.mode === 'detail' ? (
-              <EntryDetail entry={view.entry} onBack={handleNewEntry} />
+              <EntryDetail entry={view.entry} onBack={handleNewEntry} onDeleteEntry={handleDeleteEntry} />
             ) : composerMode === 'voice' ? (
               <ErrorBoundary>
                 <VoiceComposer
@@ -322,6 +409,7 @@ export default function App() {
                   key={composerKey}
                   onSaved={handleSaved}
                   onExtractIdeas={handleSurfacedIdeas}
+                  onSwitchToVoice={() => setComposerMode('voice')}
                 />
               </ErrorBoundary>
             )}
@@ -333,6 +421,7 @@ export default function App() {
           </div>
         </div>
       )}
+
 
       {/* Material Design 3 Mobile Navigation Dock */}
       <nav className="mobile-bottom-nav">

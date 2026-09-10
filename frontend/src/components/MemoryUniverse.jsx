@@ -86,12 +86,20 @@ function formatFullDate(dateInput) {
   }
 }
 
-export default function MemoryUniverse({ entries = [], memoryData = null, onOpenEntry }) {
+export default function MemoryUniverse({ entries = [], memoryData = null, onOpenEntry, onDeleteEntry }) {
   const [selectedPlanet, setSelectedPlanet] = useState(null);
   const [hoveredPlanet, setHoveredPlanet] = useState(null);
   const [timeFilter, setTimeFilter] = useState('all'); // 'all' | '7days' | 'today'
   const [searchFilter, setSearchFilter] = useState('');
   const [isAnimating, setIsAnimating] = useState(true);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  // Escape key exits fullscreen
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') setIsFullscreen(false); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   // Live orbital rotation angle (animated)
   const [rotationAngle, setRotationAngle] = useState(0);
@@ -145,7 +153,7 @@ export default function MemoryUniverse({ entries = [], memoryData = null, onOpen
   const cx = W / 2;
   const cy = H / 2;
 
-  // Filter entries based on time tab
+  // Filter entries based on time tab and de-duplicate by title
   const filteredEntries = useMemo(() => {
     let list = [...(entries || [])];
     const now = Date.now();
@@ -169,6 +177,15 @@ export default function MemoryUniverse({ entries = [], memoryData = null, onOpen
       );
     }
 
+    // De-duplicate by normalized title to prevent stacked planets from demo data
+    const seenTitles = new Set();
+    list = list.filter((e) => {
+      const key = (e.title || '').trim().toLowerCase();
+      if (seenTitles.has(key)) return false;
+      seenTitles.add(key);
+      return true;
+    });
+
     return list;
   }, [entries, timeFilter, searchFilter]);
 
@@ -176,7 +193,7 @@ export default function MemoryUniverse({ entries = [], memoryData = null, onOpen
   const nowBullets = memoryData?.now?.bullets || memoryData?.todaysIdeas || [];
   const archiveValues = memoryData?.archive?.values || [];
 
-  // Generate celestial planetary objects with orbital tracks & dates
+  // Generate celestial planetary objects with orbital tracks & dates (Old Universe)
   const planets = useMemo(() => {
     const list = [];
     const count = filteredEntries.length;
@@ -198,9 +215,11 @@ export default function MemoryUniverse({ entries = [], memoryData = null, onOpen
       // Speed multiplier: inner orbits revolve slightly faster
       const speedMultiplier = trackIdx === 0 ? 1.2 : trackIdx === 1 ? 0.9 : 0.65;
       const sizeInfo = computePlanetSize(entry);
+      const cleanId = String(entry.id || idx).replace(/[^a-zA-Z0-9_-]/g, '_');
 
       list.push({
         id: entry.id,
+        cleanId,
         entry,
         title: entry.title || 'Untitled Reflection',
         dateStr: formatDate(entry.createdAt),
@@ -286,8 +305,20 @@ export default function MemoryUniverse({ entries = [], memoryData = null, onOpen
   }, [W, H]);
 
   return (
-    <div className="memory-universe-wrapper" style={{ position: 'relative', width: '100%', userSelect: 'none' }}>
-      
+    <div
+      className="memory-universe-wrapper"
+      style={{
+        position: isFullscreen ? 'fixed' : 'relative',
+        inset: isFullscreen ? '0' : undefined,
+        zIndex: isFullscreen ? 99999 : undefined,
+        background: isFullscreen ? '#07090e' : undefined,
+        padding: isFullscreen ? '20px' : undefined,
+        overflowY: isFullscreen ? 'auto' : undefined,
+        width: '100%',
+        userSelect: 'none',
+      }}
+    >
+
       {/* Top Controls Toolbar */}
       <div style={{
         display: 'flex',
@@ -316,7 +347,7 @@ export default function MemoryUniverse({ entries = [], memoryData = null, onOpen
           ))}
         </div>
 
-        {/* Search + Orbit Toggle */}
+        {/* Search + Orbit + Fullscreen Toggles */}
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
           <input
             type="text"
@@ -338,12 +369,12 @@ export default function MemoryUniverse({ entries = [], memoryData = null, onOpen
             onClick={() => setIsAnimating((v) => !v)}
             title={isAnimating ? 'Pause orbit' : 'Resume orbit'}
             style={{
-              background: isAnimating ? 'rgba(168, 199, 250, 0.12)' : 'rgba(255,255,255,0.04)',
-              border: `1px solid ${isAnimating ? 'rgba(168,199,250,0.4)' : 'var(--border-subtle)'}`,
+              background: 'rgba(255, 255, 255, 0.04)',
+              border: '1px solid var(--border-subtle)',
               borderRadius: '9999px',
               padding: '4px 11px',
               fontSize: '12px',
-              color: isAnimating ? '#a8c7fa' : 'var(--text-secondary)',
+              color: 'var(--text-secondary)',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
@@ -352,6 +383,37 @@ export default function MemoryUniverse({ entries = [], memoryData = null, onOpen
             }}
           >
             {isAnimating ? '⏸ Pause' : '⟳ Orbit'}
+          </button>
+          <button
+            onClick={() => setIsFullscreen((v) => !v)}
+            title={isFullscreen ? 'Exit fullscreen (Esc)' : 'Enter fullscreen'}
+            style={{
+              background: 'linear-gradient(135deg, rgba(168, 199, 250, 0.25), rgba(197, 138, 249, 0.25))',
+              border: '1px solid rgba(168, 199, 250, 0.7)',
+              boxShadow: '0 0 16px rgba(168, 199, 250, 0.4)',
+              borderRadius: '9999px',
+              padding: '4px 13px',
+              fontSize: '12px',
+              fontWeight: '600',
+              color: '#c7d8ff',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              transition: 'all 0.2s ease',
+            }}
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              {isFullscreen ? (
+                <>
+                  <line x1="18" y1="6" x2="6" y2="18"/>
+                  <line x1="6" y1="6" x2="18" y2="18"/>
+                </>
+              ) : (
+                <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
+              )}
+            </svg>
+            <span>{isFullscreen ? 'Exit' : 'Fullscreen'}</span>
           </button>
         </div>
       </div>
@@ -423,13 +485,16 @@ export default function MemoryUniverse({ entries = [], memoryData = null, onOpen
             </radialGradient>
 
             {/* Planet Gradients */}
-            {livePlanets.map((p) => (
-              <radialGradient key={`grad-${p.id}`} id={`grad-${p.id}`} cx="35%" cy="35%" r="65%">
-                <stop offset="0%" stopColor="#ffffff" stopOpacity="0.85" />
-                <stop offset="45%" stopColor={p.palette.fill} stopOpacity="1" />
-                <stop offset="100%" stopColor="#0a0c10" stopOpacity="0.9" />
-              </radialGradient>
-            ))}
+            {livePlanets.map((p) => {
+              const gid = `grad-${p.cleanId || String(p.id).replace(/[^a-zA-Z0-9_-]/g, '_')}`;
+              return (
+                <radialGradient key={gid} id={gid} cx="35%" cy="35%" r="65%">
+                  <stop offset="0%" stopColor="#ffffff" stopOpacity="0.85" />
+                  <stop offset="45%" stopColor={p.palette.fill} stopOpacity="1" />
+                  <stop offset="100%" stopColor="#0a0c10" stopOpacity="0.9" />
+                </radialGradient>
+              );
+            })}
             {/* Star Sparkle Keyframes */}
             <style>{`
               @keyframes cosmicSparkle {
@@ -448,7 +513,7 @@ export default function MemoryUniverse({ entries = [], memoryData = null, onOpen
           {/* Subtle Background Dust Stars */}
           {backgroundStars.map((s, idx) => (
             <circle
-              key={`bg-star-${idx}`}
+              key={`dust-${idx}`}
               cx={s.x}
               cy={s.y}
               r={s.r}
@@ -488,7 +553,6 @@ export default function MemoryUniverse({ entries = [], memoryData = null, onOpen
 
           {/* Central Consciousness Core Star */}
           <g>
-            {/* Outer corona aura */}
             <circle cx={cx} cy={cy} r={46} fill="url(#sun-glow)" opacity={0.65} />
             <circle cx={cx} cy={cy} r={22} fill="url(#sun-glow)" />
             <circle cx={cx} cy={cy} r={12} fill="#ffffff" />
@@ -555,7 +619,7 @@ export default function MemoryUniverse({ entries = [], memoryData = null, onOpen
                   opacity={isHovered || isSelected ? 0.9 : 0.4}
                 />
 
-                {/* Planetary Ring (For Gas Giants / Long Conversations) */}
+                {/* Planetary Ring (For Gas Giants / Longer Conversations) */}
                 {p.hasRing && (
                   <ellipse
                     cx={0}
@@ -576,7 +640,7 @@ export default function MemoryUniverse({ entries = [], memoryData = null, onOpen
                   cx={0}
                   cy={0}
                   r={p.radius}
-                  fill={`url(#grad-${p.id})`}
+                  fill={`url(#grad-${p.cleanId || String(p.id).replace(/[^a-zA-Z0-9_-]/g, '_')})`}
                   stroke={isSelected ? '#ffffff' : isHovered ? p.palette.fill : 'rgba(255, 255, 255, 0.25)'}
                   strokeWidth={isSelected ? 2.5 : isHovered ? 2 : 1}
                 />
@@ -826,58 +890,69 @@ export default function MemoryUniverse({ entries = [], memoryData = null, onOpen
         )}
       </div>
 
+
+
       {/* Selected Planet HUD Inspection Drawer */}
-      {selectedPlanet && (
-        <div style={{
-          marginTop: '16px',
-          background: 'rgba(255, 255, 255, 0.03)',
-          border: '1px solid rgba(168, 199, 250, 0.3)',
-          borderRadius: '16px',
-          padding: '20px',
-          boxShadow: '0 8px 24px rgba(0, 0, 0, 0.35)',
-          animation: 'fade-up 0.25s ease-out',
-        }}>
-          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '12px' }}>
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px', flexWrap: 'wrap' }}>
-                <span className="google-chip" style={{
-                  background: 'rgba(168, 199, 250, 0.12)',
-                  borderColor: 'rgba(168, 199, 250, 0.3)',
-                  color: '#a8c7fa',
-                  fontSize: '11px',
-                  fontWeight: '600',
-                }}>
-                  📅 {selectedPlanet.fullDateStr}
-                </span>
-                <span className="google-chip" style={{
-                  background: 'rgba(255, 255, 255, 0.05)',
-                  fontSize: '11px',
-                  color: selectedPlanet.palette.fill,
-                  textTransform: 'capitalize',
-                }}>
-                  ● {selectedPlanet.mood}
-                </span>
-                <span className="google-chip" style={{
-                  background: 'rgba(255, 255, 255, 0.03)',
-                  fontSize: '11px',
-                  color: 'var(--text-secondary)',
-                }}>
-                  🪐 {selectedPlanet.classification}
-                </span>
+      {selectedPlanet && (() => {
+        const entry = selectedPlanet.entry || selectedPlanet;
+        const mood = selectedPlanet.mood || entry.mood || 'calm';
+        const palette = selectedPlanet.palette || getPalette(mood);
+        const title = selectedPlanet.title || entry.title || 'Untitled Reflection';
+        const fullDate = selectedPlanet.fullDateStr || formatFullDate(entry.createdAt);
+        const classification = selectedPlanet.classification || (entry.themes?.length > 0 ? `#${entry.themes[0]} Note` : 'Reflection Globe');
+        const entryId = entry.id || selectedPlanet.id;
+
+        return (
+          <div style={{
+            marginTop: '16px',
+            background: 'rgba(255, 255, 255, 0.03)',
+            border: '1px solid rgba(168, 199, 250, 0.3)',
+            borderRadius: '16px',
+            padding: '20px',
+            boxShadow: '0 8px 24px rgba(0, 0, 0, 0.35)',
+            animation: 'fade-up 0.25s ease-out',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '12px' }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px', flexWrap: 'wrap' }}>
+                  <span className="google-chip" style={{
+                    background: 'rgba(168, 199, 250, 0.12)',
+                    borderColor: 'rgba(168, 199, 250, 0.3)',
+                    color: '#a8c7fa',
+                    fontSize: '11px',
+                    fontWeight: '600',
+                  }}>
+                    📅 {fullDate}
+                  </span>
+                  <span className="google-chip" style={{
+                    background: 'rgba(255, 255, 255, 0.05)',
+                    fontSize: '11px',
+                    color: palette.fill,
+                    textTransform: 'capitalize',
+                  }}>
+                    ● {mood}
+                  </span>
+                  <span className="google-chip" style={{
+                    background: 'rgba(255, 255, 255, 0.03)',
+                    fontSize: '11px',
+                    color: 'var(--text-secondary)',
+                  }}>
+                    🪐 {classification}
+                  </span>
+                </div>
+                <h3 style={{ fontSize: '17px', fontWeight: '500', color: '#e3e3e3', margin: '4px 0 6px' }}>
+                  {title}
+                </h3>
               </div>
-              <h3 style={{ fontSize: '17px', fontWeight: '500', color: '#e3e3e3', margin: '4px 0 6px' }}>
-                {selectedPlanet.title}
-              </h3>
+              
+              <button
+                onClick={() => setSelectedPlanet(null)}
+                className="btn-google-icon"
+                style={{ width: '28px', height: '28px', fontSize: '13px' }}
+              >
+                ✕
+              </button>
             </div>
-            
-            <button
-              onClick={() => setSelectedPlanet(null)}
-              className="btn-google-icon"
-              style={{ width: '28px', height: '28px', fontSize: '13px' }}
-            >
-              ✕
-            </button>
-          </div>
 
           {/* Conversation Dimensions (Length Metrics) */}
           <div style={{
@@ -907,11 +982,11 @@ export default function MemoryUniverse({ entries = [], memoryData = null, onOpen
 
           {/* Summary Excerpt */}
           <p style={{ fontSize: '13.5px', color: 'var(--text-secondary)', lineHeight: '1.6', marginBottom: '14px' }}>
-            {selectedPlanet.entry.summary || 'Click below to review the full transcript and conversation turns.'}
+            {entry.summary || 'Click below to review the full transcript and conversation turns.'}
           </p>
 
           {/* Cognitive Reframing if available */}
-          {selectedPlanet.entry.cognitiveReframing && (
+          {entry.cognitiveReframing && (
             <div style={{
               padding: '10px 14px',
               background: 'rgba(168, 199, 250, 0.05)',
@@ -923,14 +998,14 @@ export default function MemoryUniverse({ entries = [], memoryData = null, onOpen
               lineHeight: '1.5',
             }}>
               <strong>Reframing: </strong>
-              <span>{selectedPlanet.entry.cognitiveReframing}</span>
+              <span>{entry.cognitiveReframing}</span>
             </div>
           )}
 
           {/* Themes / Tags */}
-          {selectedPlanet.entry.themes && selectedPlanet.entry.themes.length > 0 && (
+          {entry.themes && entry.themes.length > 0 && (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '16px' }}>
-              {selectedPlanet.entry.themes.map((t, idx) => (
+              {entry.themes.map((t, idx) => (
                 <span key={idx} className="google-chip" style={{ fontSize: '11px', color: '#a8c7fa' }}>
                   #{t}
                 </span>
@@ -938,12 +1013,40 @@ export default function MemoryUniverse({ entries = [], memoryData = null, onOpen
             </div>
           )}
 
-          {/* Action to Open Full Conversation */}
-          {onOpenEntry && (
-            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+          {/* Action Buttons: Delete + Open Conversation */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+            {onDeleteEntry && (
+              <button
+                onClick={() => {
+                  onDeleteEntry(entryId);
+                  setSelectedPlanet(null);
+                }}
+                style={{
+                  background: 'rgba(242, 139, 130, 0.1)',
+                  border: '1px solid rgba(242, 139, 130, 0.3)',
+                  color: '#f28b82',
+                  borderRadius: '9999px',
+                  padding: '8px 16px',
+                  fontSize: '12.5px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                }}
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="3 6 5 6 21 6"/>
+                  <path d="M19 6l-1 14H6L5 6"/>
+                  <path d="M10 11v6M14 11v6"/>
+                  <path d="M9 6V4h6v2"/>
+                </svg>
+                Delete
+              </button>
+            )}
+            {onOpenEntry && (
               <button
                 className="btn-google-primary"
-                onClick={() => onOpenEntry(selectedPlanet.id)}
+                onClick={() => onOpenEntry(entryId)}
                 style={{
                   padding: '8px 18px',
                   borderRadius: '9999px',
@@ -951,6 +1054,7 @@ export default function MemoryUniverse({ entries = [], memoryData = null, onOpen
                   display: 'flex',
                   alignItems: 'center',
                   gap: '8px',
+                  marginLeft: 'auto',
                 }}
               >
                 <span>Open Conversation</span>
@@ -959,10 +1063,12 @@ export default function MemoryUniverse({ entries = [], memoryData = null, onOpen
                   <polyline points="12 5 19 12 12 19"></polyline>
                 </svg>
               </button>
-            </div>
-          )}
+            )}
+          </div>
+
         </div>
-      )}
+      );
+    })()}
 
     </div>
   );

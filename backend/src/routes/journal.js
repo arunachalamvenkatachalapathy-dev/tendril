@@ -346,3 +346,25 @@ journalRouter.get('/entries/:id', async (req, res) => {
     res.status(500).json({ error: 'Could not load this entry right now.' });
   }
 });
+
+// DELETE /api/entries/:id — delete a single entry owned by the caller
+journalRouter.delete('/entries/:id', async (req, res) => {
+  try {
+    const docRef = db
+      .collection('users')
+      .doc(req.uid)
+      .collection('entries')
+      .doc(req.params.id);
+
+    const doc = await docRef.get();
+    if (!doc.exists) {
+      return res.status(404).json({ error: 'Entry not found.' });
+    }
+
+    await docRef.delete();
+    res.json({ success: true, id: req.params.id });
+  } catch (err) {
+    console.error('[DELETE /api/entries/:id] failed for uid=%s:', req.uid, err.message);
+    res.status(500).json({ error: 'Could not delete this entry right now.' });
+  }
+});
