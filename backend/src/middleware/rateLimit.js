@@ -6,7 +6,7 @@
 // multiple instances and need it enforced globally.
 
 const WINDOW_MS = 60 * 1000; // 1 minute window
-const MAX_REQUESTS_PER_WINDOW = 20; // generous for a journaling app
+const MAX_REQUESTS_PER_WINDOW = 60; // generous for active exploration and demo seeding
 
 const hits = new Map(); // uid -> [timestamps]
 

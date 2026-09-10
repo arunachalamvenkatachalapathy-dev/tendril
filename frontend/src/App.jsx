@@ -13,6 +13,7 @@ import MemoryProfileModal from './components/MemoryProfileModal.jsx';
 import HuntView from './components/HuntView.jsx';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
 import GeminiSprinkleLoader from './components/GeminiSprinkleLoader.jsx';
+import { InAppMusicPlayer } from './components/FeelSongsPlayer.jsx';
 
 function usePath() {
   const getSubPath = () => {
@@ -59,6 +60,13 @@ export default function App() {
   const [seedingDemo, setSeedingDemo] = useState(false);
   const [mobileTab, setMobileTab] = useState('reflect'); // 'reflect' | 'timeline' | 'sparks'
   const [path, navigate] = usePath();
+  const [musicTrack, setMusicTrack] = useState(null);
+
+  useEffect(() => {
+    const onPlay = (e) => setMusicTrack(e.detail);
+    window.addEventListener('tendril:playMusic', onPlay);
+    return () => window.removeEventListener('tendril:playMusic', onPlay);
+  }, []);
 
   useEffect(() => {
     const unsub = watchAuthState((u) => {
@@ -141,15 +149,18 @@ export default function App() {
 
   async function handleDeleteEntry(id) {
     if (!window.confirm('Delete this note? This cannot be undone.')) return;
+    // Optimistically remove from state so the UI responds immediately
+    setEntries((prev) => prev.filter((e) => e.id !== id));
+    if (view.mode === 'detail' && view.entry?.id === id) {
+      handleNewEntry();
+    }
     try {
       await deleteEntry(id);
-      await refreshEntries();
       await refreshMemoryAndIdeas();
-      // If the deleted entry was currently open in detail view, close it
-      if (view.mode === 'detail' && view.entry?.id === id) {
-        handleNewEntry();
-      }
     } catch (err) {
+      console.error('Delete entry failed:', err);
+      // Re-fetch to restore correct state if deletion failed on server
+      await refreshEntries();
       alert('Could not delete note: ' + err.message);
     }
   }
@@ -255,11 +266,6 @@ export default function App() {
             <button
               className={`nav-tab-btn ${path === '/' && mobileTab === 'reflect' ? 'active' : ''}`}
               onClick={() => { navigate('/'); setMobileTab('reflect'); }}
-              style={(path === '/universe' || path === '/hunt') ? {
-                border: '1px solid rgba(168, 199, 250, 0.45)',
-                color: '#a8c7fa',
-                background: 'rgba(168, 199, 250, 0.12)',
-              } : undefined}
             >
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '6px' }}>
                 <path d="M12 20h9"/>
@@ -267,36 +273,6 @@ export default function App() {
               </svg>
               <span>Reflect</span>
             </button>
-            {/* Arrow callout placed just below the reflect button */}
-            {(path === '/universe' || path === '/hunt') && (
-              <div
-                onClick={() => { navigate('/'); setMobileTab('reflect'); }}
-                style={{
-                  position: 'absolute',
-                  top: 'calc(100% + 6px)',
-                  left: '50%',
-                  transform: 'translateX(-50%)',
-                  background: 'linear-gradient(135deg, rgba(26, 115, 232, 0.95), rgba(66, 133, 244, 0.95))',
-                  color: '#ffffff',
-                  fontSize: '11px',
-                  fontWeight: '600',
-                  padding: '3px 10px',
-                  borderRadius: '9999px',
-                  whiteSpace: 'nowrap',
-                  boxShadow: '0 4px 14px rgba(0,0,0,0.5), 0 0 12px rgba(168, 199, 250, 0.4)',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                  zIndex: 100,
-                  animation: 'fade-up 0.3s ease-out',
-                }}
-                title="Click to switch to Reflect"
-              >
-                <span>↑</span>
-                <span>Reflect</span>
-              </div>
-            )}
           </div>
           <button
             className={`nav-tab-btn ${path === '/dashboard' ? 'active' : ''}`}
@@ -517,6 +493,9 @@ export default function App() {
           }}
         />
       )}
+
+      {/* In-App Music Player Banner */}
+      <InAppMusicPlayer track={musicTrack} onClose={() => setMusicTrack(null)} />
     </div>
   );
 }

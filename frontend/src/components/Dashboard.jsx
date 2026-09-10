@@ -5,6 +5,7 @@ import ClockChart from './ClockChart.jsx';
 import HeatmapCalendar from './HeatmapCalendar.jsx';
 import RecommendationCard from './RecommendationCard.jsx';
 import { ActionCard } from './IdeaStream.jsx';
+import { FeelSongsBoards } from './FeelSongsPlayer.jsx';
 
 export default function Dashboard({ uid, onBack, onSeedRefresh, entries = [] }) {
   const [data, setData] = useState(null);
@@ -153,10 +154,11 @@ export default function Dashboard({ uid, onBack, onSeedRefresh, entries = [] }) 
             </div>
           )}
 
-          {/* Gemini Mood Recommendation Pill */}
+          {/* Gemini Mood Recommendation Pill & Feel Songs Boards */}
           <div className="google-surface-card">
             <div className="google-card-body" style={{ padding: '20px 24px' }}>
               <RecommendationCard recommendation={data.recommendation} />
+              <FeelSongsBoards />
             </div>
           </div>
 

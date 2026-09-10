@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 
 const STOP_WORDS = new Set([
   'a','an','the','and','or','but','in','on','at','to','for','of','with',
@@ -47,6 +47,16 @@ export default function HuntGlobeGraph({
   const [selectedNode, setSelectedNode] = useState(null);
   const [hoveredNode, setHoveredNode] = useState(null);
   const [activeConnection, setActiveConnection] = useState(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  // Escape key exits fullscreen
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === 'Escape') setIsFullscreen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   const W = 760;
   const H = 640;
@@ -287,8 +297,22 @@ export default function HuntGlobeGraph({
   }
 
   return (
-    <div className="google-surface-card" style={{ marginBottom: '24px', overflow: 'hidden' }}>
-      <div className="google-card-body" style={{ padding: '24px 28px' }}>
+    <div
+      className="google-surface-card"
+      style={{
+        marginBottom: '24px',
+        overflow: isFullscreen ? 'auto' : 'hidden',
+        position: isFullscreen ? 'fixed' : 'relative',
+        inset: isFullscreen ? '0' : undefined,
+        zIndex: isFullscreen ? 99999 : undefined,
+        background: isFullscreen ? '#07090e' : undefined,
+        padding: isFullscreen ? '24px 32px' : undefined,
+        borderRadius: isFullscreen ? '0' : undefined,
+        height: isFullscreen ? '100vh' : undefined,
+        boxSizing: 'border-box',
+      }}
+    >
+      <div className="google-card-body" style={{ padding: isFullscreen ? '0' : '24px 28px' }}>
         
         {/* Header & Legend */}
         <div style={{
@@ -299,16 +323,51 @@ export default function HuntGlobeGraph({
           gap: '12px',
           marginBottom: '16px',
         }}>
-          <div>
-            <div className="google-eyebrow" style={{ marginBottom: '4px' }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style={{ color: '#a8c7fa' }}>
-                <circle cx="12" cy="12" r="10" />
-              </svg>
-              <span>Temporal Idea Constellation</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+            <div>
+              <div className="google-eyebrow" style={{ marginBottom: '4px' }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style={{ color: '#a8c7fa' }}>
+                  <circle cx="12" cy="12" r="10" />
+                </svg>
+                <span>Temporal Idea Constellation</span>
+              </div>
+              <h2 style={{ fontSize: '18px', fontWeight: '500', color: '#e3e3e3', margin: 0 }}>
+                Cross-Day Knowledge Globe
+              </h2>
             </div>
-            <h2 style={{ fontSize: '18px', fontWeight: '500', color: '#e3e3e3', margin: 0 }}>
-              Cross-Day Knowledge Globe
-            </h2>
+
+            {/* Fullscreen Button in the exact area circled in the screenshot */}
+            <button
+              onClick={() => setIsFullscreen((v) => !v)}
+              title={isFullscreen ? 'Exit fullscreen (Esc)' : 'Enter fullscreen'}
+              style={{
+                background: 'linear-gradient(135deg, rgba(168, 199, 250, 0.25), rgba(197, 138, 249, 0.25))',
+                border: '1px solid rgba(168, 199, 250, 0.7)',
+                boxShadow: '0 0 16px rgba(168, 199, 250, 0.4)',
+                borderRadius: '9999px',
+                padding: '5px 14px',
+                fontSize: '12px',
+                fontWeight: '600',
+                color: '#c7d8ff',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                transition: 'all 0.2s ease',
+              }}
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                {isFullscreen ? (
+                  <>
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6" y1="6" x2="18" y2="18"/>
+                  </>
+                ) : (
+                  <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
+                )}
+              </svg>
+              <span>{isFullscreen ? 'Exit' : 'Fullscreen'}</span>
+            </button>
           </div>
 
           {/* Visual Legend */}
@@ -347,8 +406,9 @@ export default function HuntGlobeGraph({
         <div style={{
           position: 'relative',
           width: '100%',
-          aspectRatio: '760 / 640',
-          maxHeight: '560px',
+          aspectRatio: isFullscreen ? undefined : '760 / 640',
+          maxHeight: isFullscreen ? 'calc(100vh - 160px)' : '560px',
+          height: isFullscreen ? 'calc(100vh - 160px)' : undefined,
           background: 'radial-gradient(circle at 50% 50%, #151a24 0%, #0c0e14 70%, #06070a 100%)',
           borderRadius: '16px',
           border: '1px solid rgba(168, 199, 250, 0.15)',
