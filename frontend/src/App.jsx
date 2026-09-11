@@ -387,34 +387,8 @@ export default function App() {
           </button>
 
           <button
-            className={`nav-tab-btn ${showRecycleBin ? 'active' : ''}`}
-            onClick={() => setShowRecycleBin(true)}
-            title="Recycle Bin: Restore deleted notes"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '6px 13px',
-              borderRadius: '9999px',
-              background: showRecycleBin ? 'rgba(242, 139, 130, 0.18)' : 'rgba(255, 255, 255, 0.05)',
-              border: showRecycleBin ? '1px solid #f28b82' : '1px solid var(--border-subtle)',
-              color: showRecycleBin ? '#f28b82' : 'var(--text-secondary)',
-              cursor: 'pointer',
-              fontSize: '12.5px',
-              fontWeight: '500',
-              transition: 'all 0.15s ease',
-            }}
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="3 6 5 6 21 6" />
-              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-            </svg>
-            <span className="desktop-only">Recycle Bin</span>
-          </button>
-
-          <button
             className={`nav-tab-btn ${showSettingsModal ? 'active' : ''}`}
-            onClick={() => setShowSettingsModal(true)}
+            onClick={() => setShowSettingsModal((prev) => !prev)}
             title="Settings: Atmosphere Themes & Account"
             style={{
               display: 'flex',
@@ -437,6 +411,21 @@ export default function App() {
             </svg>
             <span>Settings</span>
           </button>
+
+          {/* Settings Popover Dropdown (anchored right below button without closing the screen) */}
+          {showSettingsModal && (
+            <SettingsModal
+              user={user}
+              currentTheme={theme}
+              onSelectTheme={setTheme}
+              onSignOut={signOut}
+              onClose={() => setShowSettingsModal(false)}
+              onOpenRecycleBin={() => {
+                setShowSettingsModal(false);
+                setShowRecycleBin(true);
+              }}
+            />
+          )}
         </div>
       </header>
 

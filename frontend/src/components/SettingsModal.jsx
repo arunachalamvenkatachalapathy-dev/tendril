@@ -23,37 +23,37 @@ export default function SettingsModal({ user, currentTheme, onSelectTheme, onSig
   const userEmail = user?.email || (user?.isAnonymous ? 'Guest Anonymous Session' : 'Authenticated Account');
 
   return (
-    <div
-      onClick={handleBackdropClick}
-      style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 99999,
-        background: 'rgba(0, 0, 0, 0.65)',
-        backdropFilter: 'blur(16px)',
-        WebkitBackdropFilter: 'blur(16px)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '16px',
-        animation: 'fadeIn 0.15s ease-out',
-      }}
-    >
+    <>
+      {/* Transparent click-outside backdrop that does not dim or close the screen */}
+      <div
+        onClick={handleBackdropClick}
+        style={{
+          position: 'fixed',
+          inset: 0,
+          zIndex: 99990,
+          background: 'transparent',
+        }}
+      />
       <div
         ref={modalRef}
         style={{
-          width: '100%',
-          maxWidth: '440px',
-          background: 'rgba(18, 22, 34, 0.96)',
+          position: 'absolute',
+          top: 'calc(100% + 8px)',
+          right: 0,
+          zIndex: 99999,
+          width: '370px',
+          maxWidth: 'calc(100vw - 20px)',
+          background: 'rgba(18, 22, 34, 0.98)',
           backdropFilter: 'blur(28px) saturate(180%)',
           WebkitBackdropFilter: 'blur(28px) saturate(180%)',
           border: '1px solid var(--border-medium)',
-          borderRadius: '20px',
-          boxShadow: '0 24px 60px rgba(0, 0, 0, 0.8), 0 0 24px rgba(0, 0, 0, 0.4)',
+          borderRadius: '16px',
+          boxShadow: '0 16px 40px rgba(0, 0, 0, 0.65), 0 0 16px rgba(0, 0, 0, 0.4)',
           overflow: 'hidden',
           display: 'flex',
           flexDirection: 'column',
-          maxHeight: '90vh',
+          maxHeight: 'min(580px, calc(100vh - 75px))',
+          animation: 'fadeIn 0.12s ease-out',
         }}
       >
         <div style={{
@@ -342,6 +342,6 @@ export default function SettingsModal({ user, currentTheme, onSelectTheme, onSig
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }

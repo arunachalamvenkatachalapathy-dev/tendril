@@ -141,6 +141,8 @@ export function useVoiceSession() {
   const scriptProcessorRef = useRef(null);
   const audioLevelTimerRef = useRef(null);
   const audioLevelRef = useRef(0);
+  const hasSpokenInTurnRef = useRef(false);
+  const lastSpeechTimeRef = useRef(0);
   const analyserRef = useRef(null);
   const analyserCtxRef = useRef(null);
   const animFrameRef = useRef(null);
@@ -226,11 +228,6 @@ export function useVoiceSession() {
     const isUserSpeaking = micActive && (audioLevel > 12 || (currentSubtitle?.role === 'user' && currentSubtitle?.isLive));
     const isAssistantSpeaking = status === 'speaking' || (currentSubtitle?.role === 'assistant' && currentSubtitle?.isLive);
     const isSpeaking = isUserSpeaking || isAssistantSpeaking;
-
-    // Convo interruption: if user speaks while assistant is talking, immediately cut convo playback to 0
-    if (isUserSpeaking && isPlaybackActiveRef.current) {
-      stopAudioPlayback();
-    }
 
     let timer = null;
 
@@ -430,8 +427,20 @@ export function useVoiceSession() {
         audioLevelRef.current = level;
         setAudioLevel(level);
 
-        // Visual meter tick only — conversational barge-in is handled authoritatively
-        // by Gemini Live server-side VAD ('interrupted' WS event) or manual UI tap
+        // Turn completion: when user was speaking (> 10) and then pauses (> 650ms),
+        // send audio_stream_end so Gemini Live immediately finalizes and answers!
+        if (level > 10) {
+          hasSpokenInTurnRef.current = true;
+          lastSpeechTimeRef.current = Date.now();
+        } else if (hasSpokenInTurnRef.current && (Date.now() - lastSpeechTimeRef.current > 650)) {
+          hasSpokenInTurnRef.current = false;
+          if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN && !isPlaybackActiveRef.current) {
+            try {
+              wsRef.current.send(JSON.stringify({ type: 'audio_stream_end' }));
+            } catch {}
+          }
+        }
+
         animFrameRef.current = requestAnimationFrame(tick);
       };
       tick();
@@ -506,21 +515,13 @@ export function useVoiceSession() {
       const sendPcmChunk = (float32Chunk) => {
         const activeWs = wsRef.current || ws;
         if (!activeWs || activeWs.readyState !== WebSocket.OPEN) return;
-        // Half-duplex acoustic echo gate: suppress microphone transmission while Gemini
-        // is speaking through the speaker. This prevents speaker output from bleeding
-        // back into the mic, which causes false barge-in interrupts and cuts off Gemini.
-        const isAssistantActive =
-          isPlaybackActiveRef.current ||
-          statusRef.current === 'speaking' ||
-          activeSourcesRef.current.length > 0 ||
-          playbackEndTimerRef.current !== null;
 
-        if (isAssistantActive) {
-          // Strict barge-in protection: do NOT transmit to server unless user is clearly and loudly speaking
-          if (audioLevelRef.current <= 28) {
-            return;
-          }
+        // When assistant is actively speaking, only gate if mic is quiet (level < 8) to avoid speaker echo.
+        // User speech (level >= 8) is transmitted cleanly.
+        if (isPlaybackActiveRef.current && audioLevelRef.current < 8) {
+          return;
         }
+
         try {
           const resampled = downsampleTo16k(float32Chunk, sampleRate);
           const pcm = floatTo16BitPCM(resampled);
@@ -549,6 +550,13 @@ export function useVoiceSession() {
             sendPcmChunk(event.data);
           };
           source.connect(workletNode);
+
+          // Connect to destination via mute gain so Chrome/Safari audio thread continuously pulls samples
+          const workletMuteGain = audioCtx.createGain();
+          workletMuteGain.gain.value = 0;
+          workletNode.connect(workletMuteGain);
+          workletMuteGain.connect(audioCtx.destination);
+
           workletStarted = true;
           console.log('[Voice] AudioWorklet PCM capture running (rate=%d)', sampleRate);
         } catch (wErr) {

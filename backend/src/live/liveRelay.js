@@ -105,8 +105,8 @@ async function handleConnection(clientSocket) {
         outputAudioTranscription: {},
         realtimeInputConfig: {
           automaticActivityDetection: {
-            prefixPaddingMs: 300,
-            silenceDurationMs: 1200,
+            prefixPaddingMs: 250,
+            silenceDurationMs: 600,
           },
         },
         systemInstruction: `You are Tendril, a warm, intuitive, and deeply empathetic personal voice journaling companion engaging in real-time spoken conversation.
