@@ -121,17 +121,27 @@ journalRouter.post('/entries', async (req, res) => {
   }
 });
 
-// POST /api/demo/seed — Seeds a rich 14-day sample journal journey for judges
+// POST /api/demo/seed — Seeds a rich sample journal journey up to Sept 2, 2026 for judges
 journalRouter.post('/demo/seed', async (req, res) => {
   try {
     const batch = db.batch();
     const entriesCol = db.collection('users').doc(req.uid).collection('entries');
 
+    // Purge any existing entries dated beyond September 2, 2026
+    const sept2End = new Date('2026-09-02T23:59:59.999Z');
+    const existingSnap = await entriesCol.get();
+    for (const doc of existingSnap.docs) {
+      const data = doc.data();
+      const createdAt = data.createdAt?.toDate ? data.createdAt.toDate() : (data.createdAt ? new Date(data.createdAt) : null);
+      if (createdAt && createdAt > sept2End) {
+        batch.delete(doc.ref);
+      }
+    }
+
+    // All sample entries strictly dated between Aug 21, 2026 and Sept 2, 2026
     const sampleJourneys = [
       {
-        daysAgo: 13,
-        hour: 8,
-        minute: 20,
+        dateIso: '2026-08-21T08:20:00.000Z',
         title: 'Dawn of Tendril Architecture',
         summary: 'Mapped the foundational zero-trust security model. Determined that Gemini API keys must never touch the browser, choosing Secret Manager with Cloud Run service account ADC.',
         mood: 'energized',
@@ -144,9 +154,7 @@ journalRouter.post('/demo/seed', async (req, res) => {
         ],
       },
       {
-        daysAgo: 11,
-        hour: 14,
-        minute: 45,
+        dateIso: '2026-08-23T14:45:00.000Z',
         title: 'Deep Work on Live Voice Relay',
         summary: 'Encountered WebSocket frame downsampling challenges. Successfully downsampled client audio to 16kHz PCM16 for native Gemini Live streaming.',
         mood: 'focused',
@@ -159,9 +167,7 @@ journalRouter.post('/demo/seed', async (req, res) => {
         ],
       },
       {
-        daysAgo: 9,
-        hour: 23,
-        minute: 10,
+        dateIso: '2026-08-25T23:10:00.000Z',
         title: 'Midnight Overthinking on Delivery',
         summary: 'Felt overwhelmed by the scope of Hack2Skill deliverables. Realized that building clean, defensible architecture matters more than adding superficial bloat.',
         mood: 'anxious',
@@ -174,9 +180,7 @@ journalRouter.post('/demo/seed', async (req, res) => {
         ],
       },
       {
-        daysAgo: 7,
-        hour: 9,
-        minute: 15,
+        dateIso: '2026-08-27T09:15:00.000Z',
         title: 'Layered Memory Engine Rollup',
         summary: 'Adapted the claude-remember 3-tier memory model into Firestore collections. Designed automated daily rollups into recent and permanent archive themes.',
         mood: 'hopeful',
@@ -189,9 +193,7 @@ journalRouter.post('/demo/seed', async (req, res) => {
         ],
       },
       {
-        daysAgo: 5,
-        hour: 16,
-        minute: 30,
+        dateIso: '2026-08-29T16:30:00.000Z',
         title: 'Circadian Diurnal Rhythm Synthesis',
         summary: 'Observed that mental energy peaks sharply between 8 AM and 11 AM, while creative self-reflection flows best after 9 PM. Built the 24h diurnal clock.',
         mood: 'excited',
@@ -204,9 +206,7 @@ journalRouter.post('/demo/seed', async (req, res) => {
         ],
       },
       {
-        daysAgo: 3,
-        hour: 11,
-        minute: 0,
+        dateIso: '2026-08-31T11:00:00.000Z',
         title: 'Double-Bezel Hardware UI Breakthrough',
         summary: 'Overhauled the frontend into a dark OLED luxury interface with concentric double bezels, floating navigation island, and live idea vault.',
         mood: 'happy',
@@ -219,9 +219,7 @@ journalRouter.post('/demo/seed', async (req, res) => {
         ],
       },
       {
-        daysAgo: 1,
-        hour: 10,
-        minute: 15,
+        dateIso: '2026-09-02T10:15:00.000Z',
         title: 'APAC Ideathon Final Polish',
         summary: 'Verified end-to-end data isolation across separate Google accounts. Verified Cloud Run zero key leakage and published the public GitHub repository.',
         mood: 'energized',
@@ -237,9 +235,7 @@ journalRouter.post('/demo/seed', async (req, res) => {
 
     for (const s of sampleJourneys) {
       const docRef = entriesCol.doc();
-      const entryDate = new Date();
-      entryDate.setDate(entryDate.getDate() - s.daysAgo);
-      entryDate.setHours(s.hour, s.minute, 0, 0);
+      const entryDate = new Date(s.dateIso);
 
       batch.set(docRef, {
         title: s.title,
@@ -253,19 +249,21 @@ journalRouter.post('/demo/seed', async (req, res) => {
       });
     }
 
-    // Also populate rich memory tiers for demonstration
+    // Also populate rich memory tiers anchored to Sept 2, 2026 for demonstration
+    const sept2Timestamp = Timestamp.fromDate(new Date('2026-09-02T10:15:00.000Z'));
+
     const recentRef = db.collection('users').doc(req.uid).collection('memory').doc('recent');
     batch.set(recentRef, {
       summary: 'Actively engineering Tendril AI for the Google Cloud GenAI Academy APAC Ideathon. Deeply engaged in zero-trust architecture, diurnal mood mapping, and multi-tier memory compaction.',
       topics: ['tendril-ai', 'cloud-run-deployment', 'secret-manager', 'circadian-habits', 'claude-remember'],
-      updatedAt: Timestamp.now(),
+      updatedAt: sept2Timestamp,
     });
 
     const archiveRef = db.collection('users').doc(req.uid).collection('memory').doc('archive');
     batch.set(archiveRef, {
       summary: 'Engineering philosophy centered on radical user data sovereignty, aesthetic visual craftsmanship, and biological harmony.',
       values: ['Zero-Trust Security', 'Data Sovereignty', 'Diurnal Rhythm Alignment', 'Craftsmanship'],
-      updatedAt: Timestamp.now(),
+      updatedAt: sept2Timestamp,
     });
 
     const nowRef = db.collection('users').doc(req.uid).collection('memory').doc('now');
@@ -275,7 +273,7 @@ journalRouter.post('/demo/seed', async (req, res) => {
         'Validating 24-hour diurnal clock distribution',
         'Finalizing Hack2Skill submission checklist'
       ],
-      updatedAt: Timestamp.now(),
+      updatedAt: sept2Timestamp,
     });
 
     await batch.commit();

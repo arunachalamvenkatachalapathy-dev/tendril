@@ -13,7 +13,7 @@ const MOOD_COLOR = {
   anxious: '#fdd663',
 };
 
-export default function EntryList({ entries, loading, onNewEntry, onOpenEntry, selectedId, onSeedDemo, seeding, onDeleteEntry, onRemoveDuplicates }) {
+export default function EntryList({ entries, loading, onNewEntry, onOpenEntry, selectedId, onSeedDemo, seeding, onDeleteEntry, onRemoveDuplicates, onCleanBeyondSept2 }) {
   const [showOptions, setShowOptions] = useState(false);
   const [groupByDay, setGroupByDay] = useState(false);
 
@@ -93,6 +93,23 @@ export default function EntryList({ entries, loading, onNewEntry, onOpenEntry, s
                   >
                     <span>🧹</span>
                     <span>Remove duplicate notes</span>
+                  </button>
+                )}
+                {onCleanBeyondSept2 && (
+                  <button
+                    onClick={() => { setShowOptions(false); onCleanBeyondSept2(); }}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: '8px',
+                      padding: '8px 12px', borderRadius: '8px',
+                      background: 'transparent', border: 'none',
+                      color: '#f28b82', fontSize: '12.5px', textAlign: 'left',
+                      cursor: 'pointer'
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(242, 139, 130, 0.1)'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                  >
+                    <span>🗑️</span>
+                    <span>Remove notes beyond Sept 2</span>
                   </button>
                 )}
                 <button

@@ -194,6 +194,38 @@ export default function App() {
     }
   }
 
+  async function handleCleanBeyondSept2() {
+    const sept2End = new Date('2026-09-02T23:59:59.999Z');
+    const toDelete = entries.filter((e) => {
+      const d = e.createdAt ? new Date(e.createdAt) : null;
+      return d && d > sept2End;
+    });
+
+    if (toDelete.length === 0) {
+      alert('No notes found beyond September 2, 2026.');
+      return;
+    }
+
+    if (!window.confirm(`Found ${toDelete.length} note(s) dated beyond September 2, 2026. Remove them now?`)) return;
+
+    // Optimistically update UI
+    const deleteIds = new Set(toDelete.map((e) => e.id));
+    setEntries((prev) => prev.filter((e) => !deleteIds.has(e.id)));
+
+    try {
+      for (const e of toDelete) {
+        await deleteEntry(e.id).catch(() => {});
+      }
+      await refreshEntries();
+      await refreshMemoryAndIdeas();
+      alert(`Cleaned ${toDelete.length} note(s) beyond September 2!`);
+    } catch (err) {
+      console.error('Clean beyond Sept 2 failed:', err);
+      await refreshEntries();
+      alert('Failed cleaning some notes: ' + err.message);
+    }
+  }
+
   const handleSurfacedIdeas = useCallback((newIdeas) => {
     if (newIdeas && newIdeas.length > 0) {
       setSurfacedIdeas((prev) => {
@@ -356,6 +388,7 @@ export default function App() {
               onOpenEntry={handleOpenEntry}
               onDeleteEntry={handleDeleteEntry}
               onRemoveDuplicates={handleRemoveDuplicates}
+              onCleanBeyondSept2={handleCleanBeyondSept2}
               onSeedDemo={handleSeedDemo}
               seeding={seedingDemo}
               selectedId={view.mode === 'detail' ? view.entry?.id : null}
