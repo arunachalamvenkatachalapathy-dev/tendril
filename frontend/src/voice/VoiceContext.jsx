@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useRef, useState, useCallback } from 'react';
+import { createContext, useContext, useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { useVoiceSession } from './useVoiceSession.js';
 import { saveEntry } from '../api.js';
 
@@ -31,34 +31,18 @@ export function VoiceProvider({
   const hasAskedGreetingRef = useRef(false);
   const lastProcessedVoiceCommandRef = useRef('');
 
-  // Auto-initialize voice session after login
+  // Auto-initialize voice session after login safely without blocking getUserMedia
   useEffect(() => {
     if (user && !hasStartedRef.current) {
       hasStartedRef.current = true;
-      // Start voice session and attempt mic acquisition
-      voice.start(true);
+      try {
+        voice.start(false); // Connect live session in background
+      } catch (e) {
+        console.warn('[VoiceContext] start error:', e);
+      }
     }
-  }, [user, voice]);
-
-  // Initial prompt: after login and connection, prompt Gemini to ask how the user is feeling
-  useEffect(() => {
-    if (
-      user &&
-      voice.status !== 'idle' &&
-      !hasAskedGreetingRef.current &&
-      voice.liveTranscript.length === 0
-    ) {
-      // Delay slightly for audio context & websocket handshake to settle
-      const t = setTimeout(() => {
-        if (!hasAskedGreetingRef.current && voice.liveTranscript.length === 0) {
-          hasAskedGreetingRef.current = true;
-          // Send init prompt so Gemini Live proactively speaks the greeting
-          voice.sendText("Hello! Greet me warmly and concisely ask how I am feeling today in one short sentence.");
-        }
-      }, 1500);
-      return () => clearTimeout(t);
-    }
-  }, [user, voice.status, voice.liveTranscript.length, voice]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
 
   // Explicit Save Note (Note remains open until user saves it)
   const saveCurrentNote = useCallback(async () => {
@@ -136,14 +120,17 @@ export function VoiceProvider({
     }
   }, [voice.currentSubtitle, path, navigate, saveCurrentNote, onSwitchComposerMode]);
 
-  const value = {
-    ...voice,
-    sessionId,
-    savingNote,
-    saveSuccessNotice,
-    saveCurrentNote,
-    clearSession,
-  };
+  const value = useMemo(
+    () => ({
+      ...voice,
+      sessionId,
+      savingNote,
+      saveSuccessNotice,
+      saveCurrentNote,
+      clearSession,
+    }),
+    [voice, sessionId, savingNote, saveSuccessNotice, saveCurrentNote, clearSession]
+  );
 
   return <VoiceContext.Provider value={value}>{children}</VoiceContext.Provider>;
 }

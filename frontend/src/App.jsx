@@ -263,14 +263,12 @@ export default function App() {
 
   if (user === undefined) {
     return (
-      <div className="tendril-shell" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div className="google-loading-wrap">
-          <GeminiSprinkleLoader
-            size={48}
-            label="Loading Tendril…"
-            sublabel="Setting up your journal space"
-          />
-        </div>
+      <div style={{ minHeight: '100vh', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-canvas)' }}>
+        <GeminiSprinkleLoader
+          size={48}
+          label="Loading Tendril…"
+          sublabel="Setting up your journal space"
+        />
       </div>
     );
   }
@@ -280,13 +278,14 @@ export default function App() {
       {!user ? (
         <Login />
       ) : (
-        <VoiceProvider
-          user={user}
-          path={path}
-          navigate={navigate}
-          onSavedNote={refreshEntries}
-          onSwitchComposerMode={setComposerMode}
-        >
+        <ErrorBoundary>
+          <VoiceProvider
+            user={user}
+            path={path}
+            navigate={navigate}
+            onSavedNote={refreshEntries}
+            onSwitchComposerMode={setComposerMode}
+          >
           {/* Google App Header Bar */}
           <header className="google-app-header">
         <div className="brand-wrapper" onClick={() => { navigate('/'); setMobileTab('reflect'); }}>
@@ -579,6 +578,7 @@ export default function App() {
           <FloatingVoiceControls path={path} navigate={navigate} />
           <InAppMusicPlayer track={musicTrack} />
         </VoiceProvider>
+        </ErrorBoundary>
       )}
     </div>
   );

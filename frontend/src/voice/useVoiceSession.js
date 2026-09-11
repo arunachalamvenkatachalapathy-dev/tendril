@@ -135,6 +135,58 @@ export function useVoiceSession() {
   useEffect(() => { transcriptHistoryRef.current = liveTranscript; }, [liveTranscript]);
   useEffect(() => { voiceOutputRef.current = voiceOutputEnabled; }, [voiceOutputEnabled]);
 
+  // ─────────────────────────────────────────────────────────────────────────────
+  // AUDIO PLAYBACK HELPERS (24kHz PCM from Gemini Live)
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  const ensurePlaybackContext = useCallback(() => {
+    if (!playbackCtxRef.current || playbackCtxRef.current.state === 'closed') {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      // Do not force sampleRate: 24000; native hardware rate prevents NotSupportedError on iOS/Android
+      const ctx = new AudioCtx({ latencyHint: 'interactive' });
+      playbackCtxRef.current = ctx;
+
+      const gain = ctx.createGain();
+      gain.gain.value = 1.0;
+      gain.connect(ctx.destination);
+      playbackGainNodeRef.current = gain;
+    }
+    const ctx = playbackCtxRef.current;
+    if (ctx.state === 'suspended') {
+      ctx.resume().catch(() => {});
+    }
+    return ctx;
+  }, []);
+
+  const stopAudioPlayback = useCallback(() => {
+    isPlaybackActiveRef.current = false;
+    // 1. Immediately cancel any scheduled Web Speech API synthesis
+    if (typeof window !== 'undefined' && window.speechSynthesis) {
+      try { window.speechSynthesis.cancel(); } catch {}
+    }
+
+    // 2. Immediately stop, disconnect, and purge all queued buffer sources
+    activeSourcesRef.current.forEach((s) => {
+      try {
+        s.stop();
+        s.disconnect();
+      } catch {}
+    });
+    activeSourcesRef.current = [];
+    nextStartTimeRef.current = 0;
+
+    // 3. Reset gain node for next turn
+    const ctx = playbackCtxRef.current;
+    const gainNode = playbackGainNodeRef.current;
+    if (ctx && gainNode && ctx.state === 'running') {
+      try {
+        const now = ctx.currentTime;
+        gainNode.gain.cancelScheduledValues(now);
+        gainNode.gain.setValueAtTime(1.0, now);
+      } catch {}
+    }
+  }, []);
+
   // Ambient Music Ducking & Independent Audio Control for Convo Mode:
   // - When the user is speaking: Music drops to 0% (complete silence for clear mic capture).
   //   Also, any active assistant audio playback immediately cuts to 0 ("when I'm speaking the volume of the convo should move to zero").
@@ -184,58 +236,6 @@ export function useVoiceSession() {
         detail: { isSpeaking: false, userSpeaking: false, assistantSpeaking: false }
       }));
     };
-  }, []);
-
-  // ─────────────────────────────────────────────────────────────────────────────
-  // AUDIO PLAYBACK (24kHz PCM from Gemini Live)
-  // ─────────────────────────────────────────────────────────────────────────────
-
-  const ensurePlaybackContext = useCallback(() => {
-    if (!playbackCtxRef.current || playbackCtxRef.current.state === 'closed') {
-      const AudioCtx = window.AudioContext || window.webkitAudioContext;
-      // Do not force sampleRate: 24000; native hardware rate prevents NotSupportedError on iOS/Android
-      const ctx = new AudioCtx({ latencyHint: 'interactive' });
-      playbackCtxRef.current = ctx;
-
-      const gain = ctx.createGain();
-      gain.gain.value = 1.0;
-      gain.connect(ctx.destination);
-      playbackGainNodeRef.current = gain;
-    }
-    const ctx = playbackCtxRef.current;
-    if (ctx.state === 'suspended') {
-      ctx.resume().catch(() => {});
-    }
-    return ctx;
-  }, []);
-
-  const stopAudioPlayback = useCallback(() => {
-    isPlaybackActiveRef.current = false;
-    // 1. Immediately cancel any scheduled Web Speech API synthesis
-    if (typeof window !== 'undefined' && window.speechSynthesis) {
-      try { window.speechSynthesis.cancel(); } catch {}
-    }
-
-    // 2. Immediately stop, disconnect, and purge all queued buffer sources
-    activeSourcesRef.current.forEach((s) => {
-      try {
-        s.stop();
-        s.disconnect();
-      } catch {}
-    });
-    activeSourcesRef.current = [];
-    nextStartTimeRef.current = 0;
-
-    // 3. Reset gain node for next turn
-    const ctx = playbackCtxRef.current;
-    const gainNode = playbackGainNodeRef.current;
-    if (ctx && gainNode && ctx.state === 'running') {
-      try {
-        const now = ctx.currentTime;
-        gainNode.gain.cancelScheduledValues(now);
-        gainNode.gain.setValueAtTime(1.0, now);
-      } catch {}
-    }
   }, []);
 
   const playAudioChunk = useCallback((base64Data) => {
