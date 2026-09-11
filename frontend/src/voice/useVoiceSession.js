@@ -135,22 +135,39 @@ export function useVoiceSession() {
   useEffect(() => { transcriptHistoryRef.current = liveTranscript; }, [liveTranscript]);
   useEffect(() => { voiceOutputRef.current = voiceOutputEnabled; }, [voiceOutputEnabled]);
 
-  // Ambient Music Ducking for Convo Mode:
-  // When Convo is used and speech is active (Gemini speaking or user speaking),
-  // broadcast tendril:voice-speaking to duck background music down to 5% volume.
-  // A 700ms release timer prevents rapid audio bouncing during natural speech pauses.
+  // Ambient Music Ducking & Independent Audio Control for Convo Mode:
+  // - When the user is speaking: Music drops to 0% (complete silence for clear mic capture).
+  //   Also, any active assistant audio playback immediately cuts to 0 ("when I'm speaking the volume of the convo should move to zero").
+  // - When assistant/convo relays/replies: Music ducks to 5% (soft ambient background).
+  // - When idle: Music returns to user's independent volume setting (ducking never permanently alters volume).
   useEffect(() => {
-    const isSpeaking = status === 'speaking' || (micActive && audioLevel > 12) || (currentSubtitle && currentSubtitle.isLive);
+    const isUserSpeaking = micActive && (audioLevel > 12 || (currentSubtitle?.role === 'user' && currentSubtitle?.isLive));
+    const isAssistantSpeaking = status === 'speaking' || (currentSubtitle?.role === 'assistant' && currentSubtitle?.isLive);
+    const isSpeaking = isUserSpeaking || isAssistantSpeaking;
+
+    // Convo interruption: if user speaks while assistant is talking, immediately cut convo playback to 0
+    if (isUserSpeaking && isPlaybackActiveRef.current) {
+      stopAudioPlayback();
+    }
+
     let timer = null;
 
     if (isSpeaking) {
       window.dispatchEvent(new CustomEvent('tendril:voice-speaking', {
-        detail: { isSpeaking: true }
+        detail: {
+          isSpeaking: true,
+          userSpeaking: isUserSpeaking,
+          assistantSpeaking: isAssistantSpeaking,
+        }
       }));
     } else {
       timer = setTimeout(() => {
         window.dispatchEvent(new CustomEvent('tendril:voice-speaking', {
-          detail: { isSpeaking: false }
+          detail: {
+            isSpeaking: false,
+            userSpeaking: false,
+            assistantSpeaking: false,
+          }
         }));
       }, 700);
     }
@@ -158,13 +175,13 @@ export function useVoiceSession() {
     return () => {
       if (timer) clearTimeout(timer);
     };
-  }, [status, micActive, audioLevel, currentSubtitle]);
+  }, [status, micActive, audioLevel, currentSubtitle, stopAudioPlayback]);
 
-  // Ensure ducking is immediately released if Convo unmounts
+  // Ensure ducking is immediately released if unmounting
   useEffect(() => {
     return () => {
       window.dispatchEvent(new CustomEvent('tendril:voice-speaking', {
-        detail: { isSpeaking: false }
+        detail: { isSpeaking: false, userSpeaking: false, assistantSpeaking: false }
       }));
     };
   }, []);
@@ -963,11 +980,19 @@ export function useVoiceSession() {
     };
   }, [stopAudioPlayback, stopMicCapture]);
 
+  const clearTranscript = useCallback(() => {
+    setLiveTranscript([]);
+    transcriptHistoryRef.current = [];
+    setCurrentSubtitle(null);
+  }, []);
+
   return {
     status,
     activeEngine,
     audioLevel,
     liveTranscript,
+    setLiveTranscript,
+    clearTranscript,
     currentSubtitle,
     ideas,
     notice,

@@ -130,42 +130,6 @@ export default function Dashboard({ uid, onBack, onSeedRefresh, entries = [] }) 
 
       {data && (
         <>
-          {/* Gemini Action Plan Cards */}
-          {data.actions && data.actions.length > 0 && (
-            <div className="google-surface-card">
-              <div className="google-card-body" style={{ padding: '24px 28px' }}>
-                <div className="panel-title" style={{ marginBottom: '6px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '500', fontSize: '16px', color: '#e3e3e3' }}>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#a8c7fa' }}>
-                      <polyline points="9 11 12 14 22 4"/>
-                      <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
-                    </svg>
-                    <span>Suggested Actions</span>
-                  </div>
-                  <span style={{ fontSize: '11.5px', color: '#a8c7fa', background: 'rgba(168,199,250,0.1)', padding: '3px 10px', borderRadius: '9999px', border: '1px solid rgba(168,199,250,0.2)' }}>
-                    Gemini Synthesized
-                  </span>
-                </div>
-                <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '18px' }}>
-                  Concrete, personalized action steps derived from your recurring patterns, themes, and emotional trajectory.
-                </p>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '14px' }}>
-                  {data.actions.map((act, i) => (
-                    <ActionCard key={i} action={act} />
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Gemini Mood Recommendation Pill & Feel Songs Boards */}
-          <div className="google-surface-card">
-            <div className="google-card-body" style={{ padding: '20px 24px' }}>
-              <RecommendationCard recommendation={data.recommendation} />
-              <FeelSongsBoards />
-            </div>
-          </div>
-
           {data.entryCount === 0 ? (
             <div className="google-surface-card">
               <div className="google-card-body" style={{ padding: '48px 24px', textAlign: 'center' }}>
@@ -194,7 +158,7 @@ export default function Dashboard({ uid, onBack, onSeedRefresh, entries = [] }) 
             </div>
           ) : (
             <>
-              {/* 2-Column: Clock Face + Heatmap */}
+              {/* 1. TOP: 2-Column: Daily Reflection Hours Clock Face + Reflection Calendar */}
               <div className="dashboard-grid-2col">
                 <div className="google-surface-card">
                   <div className="google-card-body" style={{ padding: '24px 28px' }}>
@@ -239,18 +203,14 @@ export default function Dashboard({ uid, onBack, onSeedRefresh, entries = [] }) 
                         borderRadius: '12px',
                         border: '1px solid var(--border-subtle)',
                       }}>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
-                          <div>
-                            <div style={{ fontSize: '11px', color: '#a8c7fa', fontWeight: '500' }}>
-                              DATE: {inspectedDay.date}
-                            </div>
-                            <div style={{ fontSize: '13.5px', color: '#e3e3e3', marginTop: '2px' }}>
-                              Dominant mood: <strong style={{ textTransform: 'capitalize' }}>{inspectedDay.dominant}</strong> ({inspectedEntries.length || inspectedDay.count || 1} note{inspectedEntries.length > 1 ? 's' : ''})
-                            </div>
-                          </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                          <span style={{ fontSize: '13px', fontWeight: '600', color: '#a8c7fa' }}>
+                            {inspectedDay.date}
+                          </span>
                           <button
+                            type="button"
                             onClick={() => setInspectedDay(null)}
-                            style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '14px' }}
+                            style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '14px' }}
                           >
                             ✕
                           </button>
@@ -285,6 +245,42 @@ export default function Dashboard({ uid, onBack, onSeedRefresh, entries = [] }) 
                       </div>
                     )}
                   </div>
+                </div>
+              </div>
+
+              {/* 2. Gemini Action Plan Cards */}
+              {data.actions && data.actions.length > 0 && (
+                <div className="google-surface-card">
+                  <div className="google-card-body" style={{ padding: '24px 28px' }}>
+                    <div className="panel-title" style={{ marginBottom: '6px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '500', fontSize: '16px', color: '#e3e3e3' }}>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#a8c7fa' }}>
+                          <polyline points="9 11 12 14 22 4"/>
+                          <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+                        </svg>
+                        <span>Suggested Actions</span>
+                      </div>
+                      <span style={{ fontSize: '11.5px', color: '#a8c7fa', background: 'rgba(168,199,250,0.1)', padding: '3px 10px', borderRadius: '9999px', border: '1px solid rgba(168,199,250,0.2)' }}>
+                        Gemini Synthesized
+                      </span>
+                    </div>
+                    <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '18px' }}>
+                      Concrete, personalized action steps derived from your recurring patterns, themes, and emotional trajectory.
+                    </p>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '14px' }}>
+                      {data.actions.map((act, i) => (
+                        <ActionCard key={i} action={act} />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* 3. Gemini Mood Recommendation Pill & Feel Songs Boards */}
+              <div className="google-surface-card">
+                <div className="google-card-body" style={{ padding: '20px 24px' }}>
+                  <RecommendationCard recommendation={data.recommendation} />
+                  <FeelSongsBoards />
                 </div>
               </div>
 

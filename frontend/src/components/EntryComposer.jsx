@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { saveEntry } from '../api.js';
-import { useVoiceSession } from '../voice/useVoiceSession.js';
+import { useVoiceContext } from '../voice/VoiceContext.jsx';
 
 export default function EntryComposer({ onSaved, onExtractIdeas, initialVoiceActive = false, onSwitchToVoice }) {
   const {
@@ -19,36 +18,22 @@ export default function EntryComposer({ onSaved, onExtractIdeas, initialVoiceAct
     start,
     sendText,
     setNotice,
-  } = useVoiceSession();
+    saveCurrentNote,
+    savingNote,
+  } = useVoiceContext();
 
   const [draft, setDraft] = useState('');
   const [attachedImage, setAttachedImage] = useState(null); // { mimeType, data, previewUrl }
-  const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
   const scrollRef = useRef(null);
   const fileInputRef = useRef(null);
-  const sessionIdRef = useRef('entry_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7));
-  const liveTranscriptRef = useRef(liveTranscript);
-  useEffect(() => { liveTranscriptRef.current = liveTranscript; }, [liveTranscript]);
 
-  // Auto-save on unmount / navigation if speech or messages exist
+  // Initialize voice if requested on mount
   useEffect(() => {
-    return () => {
-      const transcript = liveTranscriptRef.current;
-      const hasSpeech = transcript.some((m) => m.role === 'user' && m.text?.trim());
-      if (hasSpeech) {
-        saveEntry(transcript, sessionIdRef.current)
-          .then(() => onSaved?.())
-          .catch(() => {});
-      }
-    };
-  }, [onSaved]);
-
-  // Initialize runtime on mount
-  useEffect(() => {
-    start(initialVoiceActive);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    if (initialVoiceActive && !micActive) {
+      start(true);
+    }
+  }, [initialVoiceActive, micActive, start]);
 
   const forwardedIdeasRef = useRef(new Set());
 
@@ -108,16 +93,11 @@ export default function EntryComposer({ onSaved, onExtractIdeas, initialVoiceAct
   }
 
   async function handleSave() {
-    if (liveTranscript.length === 0 || saving) return;
-    setSaving(true);
+    if (liveTranscript.length === 0 || savingNote) return;
     setError(null);
-    try {
-      await saveEntry(liveTranscript, sessionIdRef.current);
+    const ok = await saveCurrentNote();
+    if (ok) {
       onSaved?.();
-    } catch (err) {
-      setError(err.message || 'Could not compact and save this entry.');
-    } finally {
-      setSaving(false);
     }
   }
 
@@ -205,14 +185,14 @@ export default function EntryComposer({ onSaved, onExtractIdeas, initialVoiceAct
             <button
               className="btn-google-primary"
               onClick={handleSave}
-              disabled={liveTranscript.length === 0 || saving}
+              disabled={liveTranscript.length === 0 || savingNote}
               style={{ opacity: liveTranscript.length === 0 ? 0.5 : 1, padding: '6px 16px', fontSize: '13px', borderRadius: '9999px', display: 'flex', alignItems: 'center', gap: '6px' }}
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                 <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
                 <polyline points="17 21 17 13 7 13 7 21"></polyline>
               </svg>
-              <span>{saving ? 'Saving…' : 'Save note'}</span>
+              <span>{savingNote ? 'Saving…' : 'Save note'}</span>
             </button>
           </div>
         </div>

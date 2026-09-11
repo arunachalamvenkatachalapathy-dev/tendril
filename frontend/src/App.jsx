@@ -17,6 +17,8 @@ import { InAppMusicPlayer } from './components/FeelSongsPlayer.jsx';
 import ThemeSelector from './components/ThemeSelector.jsx';
 import SettingsModal from './components/SettingsModal.jsx';
 import { useTheme } from './theme.js';
+import { VoiceProvider } from './voice/VoiceContext.jsx';
+import FloatingVoiceControls from './components/FloatingVoiceControls.jsx';
 
 function usePath() {
   const getSubPath = () => {
@@ -57,7 +59,7 @@ export default function App() {
   const [entriesLoading, setEntriesLoading] = useState(false);
   const [view, setView] = useState({ mode: 'compose' }); // { mode: 'compose' } | { mode: 'detail', entry }
   const [composerKey, setComposerKey] = useState(0);
-  const [composerMode, setComposerMode] = useState('text'); // 'text' | 'voice'
+  const [composerMode, setComposerMode] = useState('voice'); // Convo default instead of Quill
   const [surfacedIdeas, setSurfacedIdeas] = useState([]);
   const [showMemoryModal, setShowMemoryModal] = useState(false);
   const [seedingDemo, setSeedingDemo] = useState(false);
@@ -278,7 +280,13 @@ export default function App() {
       {!user ? (
         <Login />
       ) : (
-        <>
+        <VoiceProvider
+          user={user}
+          path={path}
+          navigate={navigate}
+          onSavedNote={refreshEntries}
+          onSwitchComposerMode={setComposerMode}
+        >
           {/* Google App Header Bar */}
           <header className="google-app-header">
         <div className="brand-wrapper" onClick={() => { navigate('/'); setMobileTab('reflect'); }}>
@@ -566,11 +574,12 @@ export default function App() {
               }}
             />
           )}
-        </>
-      )}
 
-      {/* In-App Music Player — begins strictly after user login */}
-      {user && <InAppMusicPlayer track={musicTrack} />}
+          {/* Floating Voice Controls & In-App Music Player */}
+          <FloatingVoiceControls path={path} navigate={navigate} />
+          <InAppMusicPlayer track={musicTrack} />
+        </VoiceProvider>
+      )}
     </div>
   );
 }

@@ -367,16 +367,27 @@ export function InAppMusicPlayer({ track }) {
     } catch (e) {}
     return 10; // 10 percent default (final confirmed)
   });
-  const [isDucked, setIsDucked] = useState(false);
+  const [duckState, setDuckState] = useState({
+    isSpeaking: false,
+    userSpeaking: false,
+    assistantSpeaking: false,
+  });
   const iframeRef = useRef(null);
   const widgetRef = useRef(null);
 
   // Dynamic Audio Ducking for Convo Mode:
-  // When Convo speech occurs (Gemini speaking or user speaking), duck music to 5% volume.
-  // When speech stops, restore back to user's selected volume without mutating the setting.
+  // - When user speaks: volume moves to 0% (complete silence for mic clarity)
+  // - When Gemini / Convo relays/replies: volume moves to 5% (soft ambient backing track)
+  // - When idle: volume returns to user's independent volume setting (e.g. 10% default or whatever user set)
+  // - Music preference in localStorage is completely independent and preserved.
   useEffect(() => {
     const handleVoiceSpeaking = (e) => {
-      setIsDucked(Boolean(e?.detail?.isSpeaking));
+      const d = e?.detail || {};
+      setDuckState({
+        isSpeaking: Boolean(d.isSpeaking),
+        userSpeaking: Boolean(d.userSpeaking),
+        assistantSpeaking: Boolean(d.assistantSpeaking),
+      });
     };
 
     window.addEventListener('tendril:voice-speaking', handleVoiceSpeaking);
@@ -385,8 +396,12 @@ export function InAppMusicPlayer({ track }) {
     };
   }, []);
 
-  // Effective volume sent to YouTube player: ducked to 5% during speech, otherwise user volume
-  const effectiveVolume = isDucked ? Math.min(volume, 5) : volume;
+  // Effective volume sent to YouTube player: ducked to 0% if user speaking, 5% if assistant relaying, else user volume
+  const effectiveVolume = duckState.userSpeaking
+    ? 0
+    : duckState.assistantSpeaking
+    ? Math.min(volume, 5)
+    : volume;
 
   // Sync track when external event fires
   useEffect(() => {

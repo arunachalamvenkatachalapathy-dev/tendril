@@ -220,8 +220,6 @@ ${preamble ? `Personalized Context:\n${preamble}` : ''}`,
       if (modelTurnCount % IDEA_EXTRACTION_TURN_INTERVAL === 0) {
         extractAndSendIdeas();
       }
-      // Auto-persist entry to Firestore so Activity & Stream immediately include the speech
-      persistLiveVoiceEntry().catch(() => {});
     }
   }
 
@@ -320,6 +318,17 @@ words. Return ONLY a JSON array of strings.\n\n${transcriptBuffer
           console.warn('[liveRelay] failed to send audioStreamEnd:', err.message);
         }
       }
+    } else if (payload.type === 'init_prompt') {
+      if (liveSession) {
+        try {
+          liveSession.sendClientContent({
+            turns: [{ role: 'user', parts: [{ text: payload.text || "Hello Tendril! Greet me warmly and concisely ask how I am feeling today or what is on my mind in one short sentence." }] }],
+            turnComplete: true,
+          });
+        } catch (err) {
+          console.warn('[liveRelay] failed to send init prompt:', err.message);
+        }
+      }
     } else if (payload.type === 'text_message' && payload.text) {
       // Lets the user type mid-voice-session (mode toggle parity).
       transcriptBuffer.push({ role: 'user', text: payload.text });
@@ -333,15 +342,15 @@ words. Return ONLY a JSON array of strings.\n\n${transcriptBuffer
           console.warn('[liveRelay] failed to send client content:', err.message);
         }
       }
-    } else if (payload.type === 'end_session') {
+    } else if (payload.type === 'save_session') {
       persistLiveVoiceEntry().catch(() => {});
+    } else if (payload.type === 'end_session') {
       clientSocket.close(1000, 'Client ended session');
     }
   });
 
   clientSocket.on('close', (code, reason) => {
     console.log('[liveRelay] clientSocket closed code=%s reason=%s for uid=%s', code, reason?.toString(), uid);
-    persistLiveVoiceEntry().catch(() => {});
     if (activeUserSessions.get(uid)?.clientSocket === clientSocket) {
       activeUserSessions.delete(uid);
     }
