@@ -135,6 +135,40 @@ export function useVoiceSession() {
   useEffect(() => { transcriptHistoryRef.current = liveTranscript; }, [liveTranscript]);
   useEffect(() => { voiceOutputRef.current = voiceOutputEnabled; }, [voiceOutputEnabled]);
 
+  // Ambient Music Ducking for Convo Mode:
+  // When Convo is used and speech is active (Gemini speaking or user speaking),
+  // broadcast tendril:voice-speaking to duck background music down to 5% volume.
+  // A 700ms release timer prevents rapid audio bouncing during natural speech pauses.
+  useEffect(() => {
+    const isSpeaking = status === 'speaking' || (micActive && audioLevel > 12) || (currentSubtitle && currentSubtitle.isLive);
+    let timer = null;
+
+    if (isSpeaking) {
+      window.dispatchEvent(new CustomEvent('tendril:voice-speaking', {
+        detail: { isSpeaking: true }
+      }));
+    } else {
+      timer = setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('tendril:voice-speaking', {
+          detail: { isSpeaking: false }
+        }));
+      }, 700);
+    }
+
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
+  }, [status, micActive, audioLevel, currentSubtitle]);
+
+  // Ensure ducking is immediately released if Convo unmounts
+  useEffect(() => {
+    return () => {
+      window.dispatchEvent(new CustomEvent('tendril:voice-speaking', {
+        detail: { isSpeaking: false }
+      }));
+    };
+  }, []);
+
   // ─────────────────────────────────────────────────────────────────────────────
   // AUDIO PLAYBACK (24kHz PCM from Gemini Live)
   // ─────────────────────────────────────────────────────────────────────────────

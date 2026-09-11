@@ -15,6 +15,7 @@ import ErrorBoundary from './components/ErrorBoundary.jsx';
 import GeminiSprinkleLoader from './components/GeminiSprinkleLoader.jsx';
 import { InAppMusicPlayer } from './components/FeelSongsPlayer.jsx';
 import ThemeSelector from './components/ThemeSelector.jsx';
+import SettingsModal from './components/SettingsModal.jsx';
 import { useTheme } from './theme.js';
 
 function usePath() {
@@ -64,6 +65,7 @@ export default function App() {
   const [path, navigate] = usePath();
   const [musicTrack, setMusicTrack] = useState(null);
   const [theme, setTheme] = useTheme(user?.uid);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
 
   useEffect(() => {
     const onPlay = (e) => setMusicTrack(e.detail);
@@ -339,10 +341,14 @@ export default function App() {
           </button>
         </nav>
 
-        {/* User Identity & Account Actions */}
+        {/* User Identity & Settings (Themes and Sign Out inside Settings) */}
         <div className="user-profile-chip" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <ThemeSelector currentTheme={theme} onSelectTheme={setTheme} />
-          <div className="google-account-pill">
+          <div
+            className="google-account-pill"
+            onClick={() => setShowSettingsModal(true)}
+            style={{ cursor: 'pointer' }}
+            title="Open Account & Settings"
+          >
             <div className="google-user-avatar">
               {user.displayName ? user.displayName.charAt(0).toUpperCase() : user.email ? user.email.charAt(0).toUpperCase() : 'G'}
             </div>
@@ -350,6 +356,7 @@ export default function App() {
               {user.displayName || user.email || 'Guest Explorer'}
             </span>
           </div>
+
           <button
             className="mobile-only btn-mobile-new"
             onClick={handleNewEntry}
@@ -360,8 +367,31 @@ export default function App() {
               <line x1="5" y1="12" x2="19" y2="12"/>
             </svg>
           </button>
-          <button className="btn-signout" onClick={() => signOut()}>
-            Sign out
+
+          <button
+            className={`nav-tab-btn ${showSettingsModal ? 'active' : ''}`}
+            onClick={() => setShowSettingsModal(true)}
+            title="Settings: Atmosphere Themes & Account"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '6px 13px',
+              borderRadius: '9999px',
+              background: showSettingsModal ? 'rgba(168, 199, 250, 0.18)' : 'rgba(255, 255, 255, 0.05)',
+              border: showSettingsModal ? '1px solid #a8c7fa' : '1px solid var(--border-subtle)',
+              color: showSettingsModal ? '#a8c7fa' : 'var(--text-secondary)',
+              cursor: 'pointer',
+              fontSize: '12.5px',
+              fontWeight: '500',
+              transition: 'all 0.15s ease',
+            }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="3"></circle>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+            </svg>
+            <span>Settings</span>
           </button>
         </div>
       </header>
@@ -514,6 +544,17 @@ export default function App() {
           <span className="mobile-nav-label">Universe</span>
         </button>
       </nav>
+
+          {/* Settings Modal (housing Atmosphere Themes & Sign Out) */}
+          {showSettingsModal && (
+            <SettingsModal
+              user={user}
+              currentTheme={theme}
+              onSelectTheme={setTheme}
+              onSignOut={signOut}
+              onClose={() => setShowSettingsModal(false)}
+            />
+          )}
 
           {/* Memory Inspector Modal */}
           {showMemoryModal && (

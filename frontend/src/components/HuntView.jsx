@@ -46,18 +46,50 @@ export default function HuntView({ onOpenEntry, onDeleteEntry, onBack, entries =
     <div className="dashboard-container" style={{ maxWidth: '960px', margin: '0 auto', padding: '24px 16px' }}>
       
       {/* Top Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '14px', marginBottom: '16px' }}>
-        <div>
-          <div className="google-eyebrow" style={{ marginBottom: '4px' }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style={{ color: '#a8c7fa' }}>
-              <circle cx="12" cy="12" r="10" />
-            </svg>
-            <span>Universe &amp; AI Hunt</span>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px', marginBottom: '18px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '22px', flexWrap: 'wrap' }}>
+          <div>
+            <div className="google-eyebrow" style={{ marginBottom: '4px' }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style={{ color: '#a8c7fa' }}>
+                <circle cx="12" cy="12" r="10" />
+              </svg>
+              <span>Universe &amp; AI Hunt</span>
+            </div>
+            <h1 style={{ fontSize: '26px', fontWeight: '500', color: '#e3e3e3', margin: 0 }}>
+              Universe
+            </h1>
           </div>
-          <h1 style={{ fontSize: '26px', fontWeight: '500', color: '#e3e3e3', margin: 0 }}>
-            Universe
-          </h1>
+
+          {/* Cosmos View Mode Toggle & Universe Map Tabs moved up to header empty space */}
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+            <button
+              className={`google-pill-tab ${cosmosMode === 'planetary' ? 'active' : ''}`}
+              onClick={() => setCosmosMode('planetary')}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="9"/>
+                <path d="M3.6 9h16.8M3.6 15h16.8"/>
+              </svg>
+              <span>Universe Map</span>
+            </button>
+            <button
+              className={`google-pill-tab ${cosmosMode === 'constellation' ? 'active' : ''}`}
+              onClick={() => setCosmosMode('constellation')}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="3"/>
+                <circle cx="19" cy="5" r="2"/>
+                <circle cx="5" cy="19" r="2"/>
+                <line x1="12" y1="9" x2="19" y2="7"/>
+                <line x1="12" y1="15" x2="5" y2="17"/>
+              </svg>
+              <span>Idea Constellation &amp; Cross-Day Links</span>
+            </button>
+          </div>
         </div>
+
         {onBack && (
           <button
             className="btn-google-secondary"
@@ -71,35 +103,6 @@ export default function HuntView({ onOpenEntry, onDeleteEntry, onBack, entries =
             <span>Back</span>
           </button>
         )}
-      </div>
-
-      {/* 1. FIRST: Cosmos View Mode Toggle & Universe Map */}
-      <div style={{ display: 'flex', gap: '8px', marginBottom: '14px', alignItems: 'center', flexWrap: 'wrap' }}>
-        <button
-          className={`google-pill-tab ${cosmosMode === 'planetary' ? 'active' : ''}`}
-          onClick={() => setCosmosMode('planetary')}
-          style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <circle cx="12" cy="12" r="9"/>
-            <path d="M3.6 9h16.8M3.6 15h16.8"/>
-          </svg>
-          <span>Universe Map</span>
-        </button>
-        <button
-          className={`google-pill-tab ${cosmosMode === 'constellation' ? 'active' : ''}`}
-          onClick={() => setCosmosMode('constellation')}
-          style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <circle cx="12" cy="12" r="3"/>
-            <circle cx="19" cy="5" r="2"/>
-            <circle cx="5" cy="19" r="2"/>
-            <line x1="12" y1="9" x2="19" y2="7"/>
-            <line x1="12" y1="15" x2="5" y2="17"/>
-          </svg>
-          <span>Idea Constellation &amp; Cross-Day Links</span>
-        </button>
       </div>
 
       {/* Interactive Cosmos Map */}

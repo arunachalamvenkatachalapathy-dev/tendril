@@ -359,16 +359,34 @@ export function InAppMusicPlayer({ track }) {
   const [isPlaying, setIsPlaying] = useState(true);
   const [volume, setVolume] = useState(() => {
     try {
-      const saved = localStorage.getItem('tendril_music_volume_v25');
+      const saved = localStorage.getItem('tendril_music_volume_v10');
       if (saved !== null) {
         const val = parseInt(saved, 10);
         if (!isNaN(val) && val >= 0 && val <= 100) return val;
       }
     } catch (e) {}
-    return 25; // 25 percent default (final)
+    return 10; // 10 percent default (final confirmed)
   });
+  const [isDucked, setIsDucked] = useState(false);
   const iframeRef = useRef(null);
   const widgetRef = useRef(null);
+
+  // Dynamic Audio Ducking for Convo Mode:
+  // When Convo speech occurs (Gemini speaking or user speaking), duck music to 5% volume.
+  // When speech stops, restore back to user's selected volume without mutating the setting.
+  useEffect(() => {
+    const handleVoiceSpeaking = (e) => {
+      setIsDucked(Boolean(e?.detail?.isSpeaking));
+    };
+
+    window.addEventListener('tendril:voice-speaking', handleVoiceSpeaking);
+    return () => {
+      window.removeEventListener('tendril:voice-speaking', handleVoiceSpeaking);
+    };
+  }, []);
+
+  // Effective volume sent to YouTube player: ducked to 5% during speech, otherwise user volume
+  const effectiveVolume = isDucked ? Math.min(volume, 5) : volume;
 
   // Sync track when external event fires
   useEffect(() => {
@@ -384,7 +402,7 @@ export function InAppMusicPlayer({ track }) {
   // Persist volume preference
   useEffect(() => {
     try {
-      localStorage.setItem('tendril_music_volume_v25', volume.toString());
+      localStorage.setItem('tendril_music_volume_v10', volume.toString());
     } catch (e) {}
   }, [volume]);
 
@@ -444,23 +462,23 @@ export function InAppMusicPlayer({ track }) {
       setIsPlaying(false);
     } else {
       sendIframeCommand('playVideo');
-      sendIframeCommand('setVolume', [volume]);
+      sendIframeCommand('setVolume', [effectiveVolume]);
       setIsPlaying(true);
     }
-  }, [isPlaying, sendIframeCommand, volume]);
+  }, [isPlaying, sendIframeCommand, effectiveVolume]);
 
-  // Enforce 25% ambient volume whenever iframe loads
+  // Enforce ambient volume whenever iframe loads
   const handleIframeLoad = useCallback(() => {
-    sendIframeCommand('setVolume', [volume]);
-    setTimeout(() => sendIframeCommand('setVolume', [volume]), 250);
-    setTimeout(() => sendIframeCommand('setVolume', [volume]), 700);
-    setTimeout(() => sendIframeCommand('setVolume', [volume]), 1500);
-    setTimeout(() => sendIframeCommand('setVolume', [volume]), 3000);
-  }, [sendIframeCommand, volume]);
+    sendIframeCommand('setVolume', [effectiveVolume]);
+    setTimeout(() => sendIframeCommand('setVolume', [effectiveVolume]), 250);
+    setTimeout(() => sendIframeCommand('setVolume', [effectiveVolume]), 700);
+    setTimeout(() => sendIframeCommand('setVolume', [effectiveVolume]), 1500);
+    setTimeout(() => sendIframeCommand('setVolume', [effectiveVolume]), 3000);
+  }, [sendIframeCommand, effectiveVolume]);
 
   useEffect(() => {
-    sendIframeCommand('setVolume', [volume]);
-  }, [volume, sendIframeCommand]);
+    sendIframeCommand('setVolume', [effectiveVolume]);
+  }, [effectiveVolume, sendIframeCommand]);
 
   // Listen to YouTube player ready event to set volume immediately & loop on end
   useEffect(() => {
@@ -470,7 +488,7 @@ export function InAppMusicPlayer({ track }) {
         if (!data) return;
 
         if (data.event === 'onReady' || data.event === 'initialDelivery') {
-          sendIframeCommand('setVolume', [volume]);
+          sendIframeCommand('setVolume', [effectiveVolume]);
         }
 
         if (data.event === 'onStateChange') {
@@ -483,7 +501,7 @@ export function InAppMusicPlayer({ track }) {
             // loop immediately inside the player to prevent end screen links from opening in a new tab!
             sendIframeCommand('seekTo', [0, true]);
             sendIframeCommand('playVideo');
-            sendIframeCommand('setVolume', [volume]);
+            sendIframeCommand('setVolume', [effectiveVolume]);
             setIsPlaying(true);
           }
         }
@@ -491,13 +509,13 @@ export function InAppMusicPlayer({ track }) {
     };
     window.addEventListener('message', onWindowMessage);
     return () => window.removeEventListener('message', onWindowMessage);
-  }, [sendIframeCommand, volume]);
+  }, [sendIframeCommand, effectiveVolume]);
 
   // Resume on user's first interaction if browser autoplay blocked audio
   useEffect(() => {
     const resumeOnFirstInteraction = () => {
       sendIframeCommand('playVideo');
-      sendIframeCommand('setVolume', [volume]);
+      sendIframeCommand('setVolume', [effectiveVolume]);
     };
     window.addEventListener('pointerdown', resumeOnFirstInteraction, { once: true });
     window.addEventListener('keydown', resumeOnFirstInteraction, { once: true });
@@ -505,7 +523,7 @@ export function InAppMusicPlayer({ track }) {
       window.removeEventListener('pointerdown', resumeOnFirstInteraction);
       window.removeEventListener('keydown', resumeOnFirstInteraction);
     };
-  }, [sendIframeCommand, volume]);
+  }, [sendIframeCommand, effectiveVolume]);
 
   function handleSelectTrack(newTrack) {
     setActiveTrack(newTrack);
@@ -697,7 +715,7 @@ export function InAppMusicPlayer({ track }) {
                 {activeTrack.title}
               </div>
               <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
-                {activeTrack.moodLabel || 'Ambient'} • {volume}% volume
+                {activeTrack.moodLabel || 'Ambient'} • {isDucked ? '5% (Ducked for Convo)' : `${volume}% volume`}
               </div>
             </div>
           </div>
@@ -799,11 +817,11 @@ export function InAppMusicPlayer({ track }) {
                 setShowVolumeModal(v => !v);
                 setShowSearchModal(false);
               }}
-              title="Adjust volume (Default: 25%)"
+              title={isDucked ? `Volume: ${volume}% (ducked to 5% during convo speech)` : "Adjust volume (Default: 10%)"}
               style={{
                 background: showVolumeModal ? 'rgba(168, 199, 250, 0.2)' : 'rgba(255, 255, 255, 0.05)',
-                border: '1px solid rgba(255, 255, 255, 0.1)',
-                color: '#c7d8ff',
+                border: isDucked ? '1px solid #fdd663' : '1px solid rgba(255, 255, 255, 0.1)',
+                color: isDucked ? '#fdd663' : '#c7d8ff',
                 borderRadius: '9999px',
                 padding: '2px 8px',
                 fontSize: '11px',
@@ -817,7 +835,7 @@ export function InAppMusicPlayer({ track }) {
                 <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
                 <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
               </svg>
-              <span>{volume}%</span>
+              <span>{isDucked ? '5%' : `${volume}%`}</span>
             </button>
 
             {/* Minimize / Down Arrow button */}
@@ -861,12 +879,12 @@ export function InAppMusicPlayer({ track }) {
                   <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
                 </svg>
                 <span style={{ fontSize: '11px', color: '#e3e3e3', fontWeight: '500' }}>
-                  Volume: {volume}% {volume === 25 ? '(Default)' : ''}
+                  Volume: {volume}% {volume === 10 ? '(Default)' : ''}
                 </span>
               </div>
               <button
                 type="button"
-                onClick={() => setVolume(v => (v === 0 ? 25 : 0))}
+                onClick={() => setVolume(v => (v === 0 ? 10 : 0))}
                 style={{
                   background: 'transparent',
                   border: 'none',
@@ -898,8 +916,8 @@ export function InAppMusicPlayer({ track }) {
             {/* Quick preset chips */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '4px' }}>
               {[
-                { val: 10, label: '10% Whisper' },
-                { val: 25, label: '25% Default' },
+                { val: 10, label: '10% Default' },
+                { val: 25, label: '25% Whisper' },
                 { val: 50, label: '50% Ambient' },
                 { val: 80, label: '80% Rich' },
               ].map((p) => (
@@ -1086,7 +1104,7 @@ export function InAppMusicPlayer({ track }) {
             {/* Quick volume reminder in search drawer */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '4px', paddingTop: '6px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
               <span style={{ fontSize: '10.5px', color: 'var(--text-muted)' }}>
-                Volume: {volume}% {volume === 25 ? '(Default)' : ''}
+                Volume: {volume}% {volume === 10 ? '(Default)' : ''}
               </span>
               <div style={{ display: 'flex', gap: '4px' }}>
                 {[10, 25, 50, 80].map(v => (
@@ -1104,7 +1122,7 @@ export function InAppMusicPlayer({ track }) {
                       cursor: 'pointer',
                     }}
                   >
-                    {v === 25 ? '25% (Default)' : v + '%'}
+                    {v === 10 ? '10% (Default)' : v + '%'}
                   </button>
                 ))}
               </div>

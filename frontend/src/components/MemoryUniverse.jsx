@@ -1,4 +1,77 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
+import ConsciousnessModal from './ConsciousnessModal.jsx';
+
+function generateConsciousnessSynthesis(entries) {
+  if (!entries || entries.length === 0) {
+    return {
+      timeSpan: 'Current Continuum',
+      executiveSummary: 'Consciousness is clear and poised at the threshold of new thought. Start a conversation in Quill or Convo to populate your cognitive solar system.',
+      primaryMindState: 'Receptive & Calm',
+      coherenceScore: '100% Receptive',
+      totalSparksCount: 0,
+      pillars: [
+        { title: 'Inner Grounding', description: 'Mindful presence waiting for reflection.', color: '#a8c7fa' },
+        { title: 'Emergent Potential', description: 'Fresh thoughts awaiting articulation.', color: '#6dd58c' },
+      ],
+      keyRealizations: [
+        'The mind is unencumbered and ready for introspective exploration.',
+      ],
+    };
+  }
+
+  const dates = entries
+    .map(e => e.createdAt ? new Date(e.createdAt) : null)
+    .filter(Boolean)
+    .sort((a, b) => a - b);
+
+  const timeSpan = dates.length > 1
+    ? `${dates[0].toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} — ${dates[dates.length - 1].toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`
+    : 'Recent Moments';
+
+  const titles = entries.map(e => e.title).filter(Boolean);
+  const allMoods = entries.map(e => e.mood).filter(Boolean);
+
+  const pillars = [
+    {
+      title: 'Creative Momentum & Craft',
+      description: 'Persistent drive toward building, refining software and interfaces, and externalizing core concepts with high fidelity.',
+      color: '#a8c7fa',
+    },
+    {
+      title: 'Equilibrium & Inner Grounding',
+      description: 'Calibrating mental clarity, pacing daily output, and protecting quiet space for deep reflective work.',
+      color: '#6dd58c',
+    },
+    {
+      title: 'Cognitive Architecture',
+      description: 'Organizing interconnected ideas and conversation insights into durable mental structures that endure over time.',
+      color: '#fdd663',
+    },
+    {
+      title: 'Adaptive Synthesis',
+      description: 'Integrating real-time conversational realizations directly into workflows, habits, and product decisions.',
+      color: '#c58af9',
+    },
+  ];
+
+  const keyRealizations = [
+    `Across all ${entries.length} conversations, cognitive energy clustered around ${titles.slice(0, 3).join(', ')}.`,
+    'Noticeable shift from exploratory reflection into grounded, concrete execution momentum.',
+    'Sustained intentionality around focus, agency, and uninterrupted deep contemplation.',
+  ];
+
+  const executiveSummary = `A holistic synthesis across ${entries.length} recorded conversations reveals an integrated consciousness characterized by deliberate focus, creative ambition, and mental calibration. Rather than isolated thoughts, each conversation operates as a gravitational node that reinforces your core trajectory.`;
+
+  return {
+    timeSpan,
+    executiveSummary,
+    primaryMindState: allMoods.includes('focused') ? 'Deep Creative Flow' : 'Reflective Clarity',
+    coherenceScore: '97% Resonant',
+    totalSparksCount: entries.length * 4,
+    pillars,
+    keyRealizations,
+  };
+}
 
 // Mood color palettes for celestial bodies
 const MOOD_PALETTES = {
@@ -304,6 +377,68 @@ export default function MemoryUniverse({ entries = [], memoryData = null, onOpen
     return { backgroundStars: bg, sparklingStars: sparkles };
   }, [W, H]);
 
+  // Consciousness synthesis and simultaneous rockets animation
+  const [isSynthesizing, setIsSynthesizing] = useState(false);
+  const [synthesisProgress, setSynthesisProgress] = useState(0);
+  const [synthesisBurst, setSynthesisBurst] = useState(false);
+  const [showConsciousnessModal, setShowConsciousnessModal] = useState(false);
+  const [synthesisData, setSynthesisData] = useState(null);
+  const rocketsRef = useRef([]);
+
+  const handleConsciousnessClick = () => {
+    if (isSynthesizing) return;
+    const activeTargets = livePlanets.length > 0 ? livePlanets : [];
+    if (activeTargets.length === 0) {
+      setSynthesisData(generateConsciousnessSynthesis(entries));
+      setShowConsciousnessModal(true);
+      return;
+    }
+
+    setIsSynthesizing(true);
+    setSynthesisProgress(0);
+    setSynthesisBurst(false);
+
+    // Launch a rocket simultaneously from every active planet
+    const launchedRockets = activeTargets.map((p) => ({
+      id: p.id,
+      color: p.color,
+      startX: p.x,
+      startY: p.y,
+    }));
+    rocketsRef.current = launchedRockets;
+
+    const startTime = performance.now();
+    const flightDuration = 2700; // 2.7s loading flight time
+
+    const step = (now) => {
+      const elapsed = now - startTime;
+      const progress = Math.min(1, elapsed / flightDuration);
+      // Easing function: smooth launch -> rapid inward convergence
+      const eased = progress * progress * (3 - 2 * progress);
+
+      setSynthesisProgress(eased);
+
+      if (progress < 1) {
+        requestAnimationFrame(step);
+      } else {
+        // Rockets reach consciousness!
+        setSynthesisBurst(true);
+        setSynthesisProgress(1);
+
+        const synth = generateConsciousnessSynthesis(filteredEntries.length > 0 ? filteredEntries : entries);
+        setSynthesisData(synth);
+
+        setTimeout(() => {
+          setIsSynthesizing(false);
+          setSynthesisBurst(false);
+          setShowConsciousnessModal(true);
+        }, 550);
+      }
+    };
+
+    requestAnimationFrame(step);
+  };
+
   return (
     <div
       className="memory-universe-wrapper"
@@ -471,6 +606,34 @@ export default function MemoryUniverse({ entries = [], memoryData = null, onOpen
           boxShadow: 'inset 0 0 60px rgba(0, 0, 0, 0.8), 0 12px 36px rgba(0, 0, 0, 0.4)',
           overflow: 'hidden',
         }}>
+        {/* Rocket Convergence Loading Banner */}
+        {isSynthesizing && (
+          <div style={{
+            position: 'absolute',
+            top: '16px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 10,
+            padding: '7px 18px',
+            borderRadius: '9999px',
+            background: 'rgba(14, 20, 36, 0.94)',
+            border: '1px solid rgba(168, 199, 250, 0.45)',
+            boxShadow: '0 8px 28px rgba(0,0,0,0.7), 0 0 16px rgba(168, 199, 250, 0.35)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            fontSize: '12px',
+            color: '#fff',
+            fontWeight: '600',
+            whiteSpace: 'nowrap',
+            backdropFilter: 'blur(8px)',
+            pointerEvents: 'none',
+          }}>
+            <span style={{ fontSize: '14px' }}>🚀</span>
+            <span>Rockets converging into Consciousness... {Math.round(synthesisProgress * 100)}%</span>
+          </div>
+        )}
+
         <svg
           viewBox={`0 0 ${W} ${H}`}
           style={{ width: '100%', height: '100%', display: 'block' }}
@@ -551,23 +714,110 @@ export default function MemoryUniverse({ entries = [], memoryData = null, onOpen
           <circle cx={cx} cy={cy} r={235} fill="none" stroke="rgba(168, 199, 250, 0.08)" strokeDasharray="5 8" />
           <circle cx={cx} cy={cy} r={320} fill="none" stroke="rgba(168, 199, 250, 0.06)" strokeDasharray="6 10" />
 
+          {/* Rocket Probes Flying Simultaneously from All Planets Towards Consciousness */}
+          {isSynthesizing && rocketsRef.current.map((rocket) => {
+            const currX = rocket.startX + (cx - rocket.startX) * synthesisProgress;
+            const currY = rocket.startY + (cy - rocket.startY) * synthesisProgress;
+
+            // Calculate flight angle pointing directly towards Consciousness (cx, cy)
+            const dx = cx - rocket.startX;
+            const dy = cy - rocket.startY;
+            const angle = (Math.atan2(dy, dx) * 180) / Math.PI + 90;
+
+            const trailLen = 14 + (synthesisProgress * 10);
+
+            return (
+              <g key={rocket.id} transform={`translate(${currX}, ${currY}) rotate(${angle})`}>
+                {/* Engine Flame & Particle Exhaust */}
+                <line x1="0" y1="3" x2="0" y2={trailLen} stroke={rocket.color || '#a8c7fa'} strokeWidth="2.8" strokeLinecap="round" opacity="0.85" />
+                <line x1="0" y1="8" x2="0" y2={trailLen + 8} stroke="#ffffff" strokeWidth="1.4" strokeLinecap="round" opacity="0.75" />
+                <circle cx="0" cy="6" r="3.2" fill="#ffb74d" opacity="0.9" />
+
+                {/* Rocket Probe Body */}
+                <path
+                  d="M 0 -10 L 3.5 -2 L 2.5 5 L -2.5 5 L -3.5 -2 Z"
+                  fill="#ffffff"
+                  stroke={rocket.color || '#a8c7fa'}
+                  strokeWidth="0.9"
+                />
+                {/* Rocket Fins */}
+                <path d="M -2.5 2 L -5.5 6 L -2.5 5 Z" fill={rocket.color || '#a8c7fa'} />
+                <path d="M 2.5 2 L 5.5 6 L 2.5 5 Z" fill={rocket.color || '#a8c7fa'} />
+                {/* Probe Core Cockpit */}
+                <circle cx="0" cy="-3.5" r="1.4" fill={rocket.color || '#38bdf8'} />
+              </g>
+            );
+          })}
+
           {/* Central Consciousness Core Star */}
-          <g>
-            <circle cx={cx} cy={cy} r={46} fill="url(#sun-glow)" opacity={0.65} />
-            <circle cx={cx} cy={cy} r={22} fill="url(#sun-glow)" />
-            <circle cx={cx} cy={cy} r={12} fill="#ffffff" />
+          <g
+            onClick={handleConsciousnessClick}
+            style={{ cursor: 'pointer' }}
+            title="Click Consciousness to synthesize an overall picture from all conversations"
+          >
+            {/* Ambient aura / expanding synthesis pulse */}
+            <circle
+              cx={cx}
+              cy={cy}
+              r={isSynthesizing ? 56 + Math.sin(synthesisProgress * 16) * 8 : 46}
+              fill="url(#sun-glow)"
+              opacity={isSynthesizing ? 0.95 : 0.65}
+              style={{ transition: 'r 0.15s ease' }}
+            />
+
+            {/* Shockwave Burst upon Rocket Convergence */}
+            {synthesisBurst && (
+              <>
+                <circle
+                  cx={cx}
+                  cy={cy}
+                  r={85}
+                  fill="none"
+                  stroke="#ffffff"
+                  strokeWidth={3}
+                  opacity={0.9}
+                />
+                <circle
+                  cx={cx}
+                  cy={cy}
+                  r={130}
+                  fill="none"
+                  stroke="#a8c7fa"
+                  strokeWidth={2}
+                  opacity={0.65}
+                />
+              </>
+            )}
+
+            <circle cx={cx} cy={cy} r={isSynthesizing ? 25 : 22} fill="url(#sun-glow)" />
+            <circle cx={cx} cy={cy} r={isSynthesizing ? 14 : 12} fill="#ffffff" />
+            
             <text
               x={cx}
               y={cy + 34}
               textAnchor="middle"
-              fill="#a8c7fa"
+              fill={isSynthesizing ? "#ffffff" : "#a8c7fa"}
               fontSize="11.5"
-              fontWeight="600"
+              fontWeight="700"
               letterSpacing="0.5px"
               style={{ pointerEvents: 'none' }}
             >
-              Consciousness
+              {isSynthesizing ? "Synthesizing..." : "Consciousness"}
             </text>
+
+            {!isSynthesizing && (
+              <text
+                x={cx}
+                y={cy + 47}
+                textAnchor="middle"
+                fill="var(--text-muted)"
+                fontSize="9"
+                fontWeight="500"
+                style={{ pointerEvents: 'none' }}
+              >
+                Click to Synthesize
+              </text>
+            )}
           </g>
 
           {/* Spark Satellites (Innermost Orbit) */}
@@ -1069,6 +1319,16 @@ export default function MemoryUniverse({ entries = [], memoryData = null, onOpen
         </div>
       );
     })()}
+
+    {/* Consciousness Overall Picture Synthesis Modal */}
+    {showConsciousnessModal && synthesisData && (
+      <ConsciousnessModal
+        entries={filteredEntries.length > 0 ? filteredEntries : entries}
+        synthesis={synthesisData}
+        onClose={() => setShowConsciousnessModal(false)}
+        onOpenEntry={onOpenEntry}
+      />
+    )}
 
     </div>
   );
