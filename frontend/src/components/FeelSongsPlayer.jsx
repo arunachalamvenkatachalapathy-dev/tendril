@@ -2,6 +2,16 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 
 export const FEEL_SONGS = [
   {
+    id: 'succession-lofi',
+    title: 'Succession Main Theme (Lofi Remix)',
+    artist: 'Nicholas Britell / Lofi Chill',
+    mood: 'focused',
+    moodLabel: 'Succession Lofi',
+    color: '#a8c7fa',
+    videoId: 'mAtdSyadnZU',
+    description: 'Moody, iconic piano chords with chilled lofi beats for introspective deep work.',
+  },
+  {
     id: 'lofi-calm',
     title: 'Lofi Beats to Reflect & Journal',
     artist: 'Lofi Girl / 1 A.M Study Session',
@@ -30,6 +40,16 @@ export const FEEL_SONGS = [
     color: '#fdd663',
     videoId: 'WPni755-Krg',
     description: 'Continuous binaural alpha waves to sustain unbroken focus during writing or reflection.',
+  },
+  {
+    id: 'dynamic-playlist',
+    title: 'Dynamic Chill & Study Stream',
+    artist: 'Continuous Dynamic Flow',
+    mood: 'focused',
+    moodLabel: 'Dynamic Playlist',
+    color: '#c58af9',
+    playlistId: 'UUyD54nsDZ928JJu3Kbm7Fig',
+    description: 'Continuously updating multi-track dynamic ambient stream for effortless focus.',
   },
   {
     id: 'sitar-focus',
@@ -79,6 +99,7 @@ export const FEEL_SONGS = [
 export function parseYouTubeInput(input) {
   if (!input || typeof input !== 'string') return null;
   const trimmed = input.trim();
+  if (!trimmed) return null;
 
   // 1. Playlist URL
   const listMatch = trimmed.match(/[?&]list=([a-zA-Z0-9_-]+)/);
@@ -112,7 +133,8 @@ export function parseYouTubeInput(input) {
     return { type: 'playlist', id: trimmed };
   }
 
-  return { type: 'video', id: trimmed };
+  // 6. Otherwise treat as a search query
+  return { type: 'search', id: trimmed };
 }
 
 /**
@@ -124,13 +146,22 @@ export function getEmbedUrl(track) {
     ? '&origin=' + encodeURIComponent(window.location.origin)
     : '';
 
+  if (track.searchQuery) {
+    return 'https://www.youtube.com/embed?listType=search&list=' + encodeURIComponent(track.searchQuery) + '&autoplay=1&enablejsapi=1&playsinline=1&loop=1&rel=0' + originParam;
+  }
+
   if (track.customUrl) {
     const parsed = parseYouTubeInput(track.customUrl);
     if (parsed) {
       if (parsed.type === 'playlist') {
         return 'https://www.youtube.com/embed/videoseries?list=' + parsed.id + '&autoplay=1&enablejsapi=1&playsinline=1&loop=1&rel=0' + originParam;
       }
-      return 'https://www.youtube.com/embed/' + parsed.id + '?autoplay=1&enablejsapi=1&playsinline=1&loop=1&playlist=' + parsed.id + '&rel=0' + originParam;
+      if (parsed.type === 'video') {
+        return 'https://www.youtube.com/embed/' + parsed.id + '?autoplay=1&enablejsapi=1&playsinline=1&loop=1&playlist=' + parsed.id + '&rel=0' + originParam;
+      }
+      if (parsed.type === 'search') {
+        return 'https://www.youtube.com/embed?listType=search&list=' + encodeURIComponent(parsed.id) + '&autoplay=1&enablejsapi=1&playsinline=1&loop=1&rel=0' + originParam;
+      }
     }
   }
 
@@ -138,7 +169,7 @@ export function getEmbedUrl(track) {
     return 'https://www.youtube.com/embed/videoseries?list=' + track.playlistId + '&autoplay=1&enablejsapi=1&playsinline=1&loop=1&rel=0' + originParam;
   }
 
-  const vId = track.videoId || 'lTRiuFIWV54';
+  const vId = track.videoId || 'mAtdSyadnZU';
   return 'https://www.youtube.com/embed/' + vId + '?autoplay=1&enablejsapi=1&playsinline=1&loop=1&playlist=' + vId + '&rel=0' + originParam;
 }
 
@@ -302,40 +333,42 @@ export function FeelSongsBoards({ onSelectSong, currentTrackId }) {
 function getInitialTrack(initialTrack) {
   if (initialTrack) return initialTrack;
   try {
-    const saved = localStorage.getItem('tendril_last_track');
+    const saved = localStorage.getItem('tendril_last_track_v25');
     if (saved) {
       const parsed = JSON.parse(saved);
-      if (parsed && (parsed.videoId || parsed.customUrl)) return parsed;
+      if (parsed && (parsed.videoId || parsed.playlistId || parsed.customUrl || parsed.searchQuery)) return parsed;
     }
   } catch (e) {}
-  return FEEL_SONGS[0];
+  return FEEL_SONGS[0]; // Succession Main Theme (Lofi Remix)
 }
 
 /**
  * Floating In-App Music Widget
  * - Subtle, calm, non-flashy 40px round glass button.
  * - Single persistent iframe that NEVER pauses or restarts when clicking the round button.
- * - 40% default volume with interactive top-bar volume changer and slider.
- * - Remembers chosen station/playlist and user volume.
+ * - 25% default volume with interactive top-bar volume changer and slider.
+ * - Succession Main Theme (Lofi Remix) default track for all users.
+ * - Real-time Song Search & YouTube audio stream search.
  */
 export function InAppMusicPlayer({ track }) {
   const [isExpanded, setIsExpanded] = useState(false);
-  const [showChangeModal, setShowChangeModal] = useState(false);
+  const [showSearchModal, setShowSearchModal] = useState(false);
   const [showVolumeModal, setShowVolumeModal] = useState(false);
-  const [customInput, setCustomInput] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
   const [activeTrack, setActiveTrack] = useState(() => getInitialTrack(track));
   const [isPlaying, setIsPlaying] = useState(true);
   const [volume, setVolume] = useState(() => {
     try {
-      const saved = localStorage.getItem('tendril_music_volume');
+      const saved = localStorage.getItem('tendril_music_volume_v25');
       if (saved !== null) {
         const val = parseInt(saved, 10);
         if (!isNaN(val) && val >= 0 && val <= 100) return val;
       }
     } catch (e) {}
-    return 40; // 40 percent default as requested
+    return 25; // 25 percent default (final)
   });
   const iframeRef = useRef(null);
+  const widgetRef = useRef(null);
 
   // Sync track when external event fires
   useEffect(() => {
@@ -343,7 +376,7 @@ export function InAppMusicPlayer({ track }) {
       setActiveTrack(track);
       setIsPlaying(true);
       try {
-        localStorage.setItem('tendril_last_track', JSON.stringify(track));
+        localStorage.setItem('tendril_last_track_v25', JSON.stringify(track));
       } catch (e) {}
     }
   }, [track]);
@@ -351,9 +384,48 @@ export function InAppMusicPlayer({ track }) {
   // Persist volume preference
   useEffect(() => {
     try {
-      localStorage.setItem('tendril_music_volume', volume.toString());
+      localStorage.setItem('tendril_music_volume_v25', volume.toString());
     } catch (e) {}
   }, [volume]);
+
+  // When player is open, clicking anywhere in the rest of the screen collapses it back to the round circle
+  useEffect(() => {
+    if (!isExpanded) return;
+
+    const handleClickOutside = (event) => {
+      if (widgetRef.current && !widgetRef.current.contains(event.target)) {
+        setIsExpanded(false);
+        setShowSearchModal(false);
+        setShowVolumeModal(false);
+      }
+    };
+
+    document.addEventListener('pointerdown', handleClickOutside);
+    return () => {
+      document.removeEventListener('pointerdown', handleClickOutside);
+    };
+  }, [isExpanded]);
+
+  // Auto-minimize player card back to the round button after 15 seconds of inactivity
+  useEffect(() => {
+    if (!isExpanded) return;
+    let timer = null;
+    const resetTimer = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => {
+        setIsExpanded(false);
+        setShowSearchModal(false);
+        setShowVolumeModal(false);
+      }, 15000);
+    };
+    resetTimer();
+    const events = ['mousemove', 'pointerdown', 'keydown', 'scroll', 'touchstart'];
+    events.forEach(ev => window.addEventListener(ev, resetTimer, { passive: true }));
+    return () => {
+      if (timer) clearTimeout(timer);
+      events.forEach(ev => window.removeEventListener(ev, resetTimer));
+    };
+  }, [isExpanded]);
 
   const sendIframeCommand = useCallback((func, args = []) => {
     try {
@@ -366,7 +438,18 @@ export function InAppMusicPlayer({ track }) {
     } catch (e) {}
   }, []);
 
-  // Enforce 40% ambient volume whenever iframe loads
+  const handleTogglePlayPause = useCallback(() => {
+    if (isPlaying) {
+      sendIframeCommand('pauseVideo');
+      setIsPlaying(false);
+    } else {
+      sendIframeCommand('playVideo');
+      sendIframeCommand('setVolume', [volume]);
+      setIsPlaying(true);
+    }
+  }, [isPlaying, sendIframeCommand, volume]);
+
+  // Enforce 25% ambient volume whenever iframe loads
   const handleIframeLoad = useCallback(() => {
     sendIframeCommand('setVolume', [volume]);
     setTimeout(() => sendIframeCommand('setVolume', [volume]), 250);
@@ -390,12 +473,19 @@ export function InAppMusicPlayer({ track }) {
           sendIframeCommand('setVolume', [volume]);
         }
 
-        // When a video ends (info === 0: YT.PlayerState.ENDED),
-        // loop immediately inside the player to prevent end screen links from opening in a new tab!
-        if (data.event === 'onStateChange' && data.info === 0) {
-          sendIframeCommand('seekTo', [0, true]);
-          sendIframeCommand('playVideo');
-          sendIframeCommand('setVolume', [volume]);
+        if (data.event === 'onStateChange') {
+          if (data.info === 1) {
+            setIsPlaying(true);
+          } else if (data.info === 2) {
+            setIsPlaying(false);
+          } else if (data.info === 0) {
+            // When a video ends (info === 0: YT.PlayerState.ENDED),
+            // loop immediately inside the player to prevent end screen links from opening in a new tab!
+            sendIframeCommand('seekTo', [0, true]);
+            sendIframeCommand('playVideo');
+            sendIframeCommand('setVolume', [volume]);
+            setIsPlaying(true);
+          }
         }
       } catch (err) {}
     };
@@ -420,30 +510,65 @@ export function InAppMusicPlayer({ track }) {
   function handleSelectTrack(newTrack) {
     setActiveTrack(newTrack);
     setIsPlaying(true);
-    setShowChangeModal(false);
+    setShowSearchModal(false);
+    setShowVolumeModal(false);
     try {
-      localStorage.setItem('tendril_last_track', JSON.stringify(newTrack));
+      localStorage.setItem('tendril_last_track_v25', JSON.stringify(newTrack));
     } catch (e) {}
   }
 
-  function handleApplyCustomUrl(e) {
-    e?.preventDefault();
-    if (!customInput.trim()) return;
-    const parsed = parseYouTubeInput(customInput.trim());
-    if (!parsed) return;
+  // Filter songs based on search query
+  const filteredSongs = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return FEEL_SONGS;
+    return FEEL_SONGS.filter(s =>
+      s.title.toLowerCase().includes(q) ||
+      (s.artist && s.artist.toLowerCase().includes(q)) ||
+      (s.moodLabel && s.moodLabel.toLowerCase().includes(q)) ||
+      (s.description && s.description.toLowerCase().includes(q))
+    );
+  }, [searchQuery]);
 
-    const newTrack = {
-      id: 'custom-' + Date.now(),
-      title: 'Custom YouTube Stream',
-      artist: 'User Playlist',
-      customUrl: customInput.trim(),
-      videoId: parsed.type === 'video' ? parsed.id : null,
-      playlistId: parsed.type === 'playlist' ? parsed.id : null,
-      moodLabel: 'Custom Playlist',
-      color: '#a8c7fa',
-    };
-    handleSelectTrack(newTrack);
-    setCustomInput('');
+  // Search submit: supports matching tracks, YouTube URLs, or direct YouTube search stream
+  function handleSearchSubmit(e, overrideQuery) {
+    e?.preventDefault();
+    const q = (overrideQuery || searchQuery).trim();
+    if (!q) return;
+
+    const parsed = parseYouTubeInput(q);
+    if (parsed.type === 'video') {
+      handleSelectTrack({
+        id: 'yt-vid-' + Date.now(),
+        title: 'Custom YouTube Stream',
+        artist: 'YouTube Video',
+        videoId: parsed.id,
+        moodLabel: 'Custom Video',
+        color: '#a8c7fa',
+      });
+    } else if (parsed.type === 'playlist') {
+      handleSelectTrack({
+        id: 'yt-list-' + Date.now(),
+        title: 'Custom YouTube Playlist',
+        artist: 'YouTube Stream',
+        playlistId: parsed.id,
+        moodLabel: 'Custom Playlist',
+        color: '#c58af9',
+      });
+    } else {
+      if (filteredSongs.length === 1 && !overrideQuery) {
+        handleSelectTrack(filteredSongs[0]);
+        return;
+      }
+      handleSelectTrack({
+        id: 'search-' + Date.now(),
+        title: `Search: "${q}"`,
+        artist: 'YouTube Continuous Audio',
+        searchQuery: q,
+        moodLabel: 'Search Result',
+        color: '#ffb74d',
+        description: `Streaming top audio results for "${q}"`,
+      });
+    }
   }
 
   // Next / Previous station switchers
@@ -464,7 +589,7 @@ export function InAppMusicPlayer({ track }) {
   const youtubeWatchUrl = activeTrack.customUrl || (activeTrack.videoId ? 'https://www.youtube.com/watch?v=' + activeTrack.videoId : 'https://www.youtube.com');
 
   return (
-    <div style={{ position: 'fixed', bottom: '24px', right: '24px', zIndex: 99998 }}>
+    <div ref={widgetRef} style={{ position: 'fixed', bottom: '24px', right: '24px', zIndex: 99998 }}>
       
       {/* 1. Subtle, Non-Flashy Glassmorphic Round Button (always present, never flashy) */}
       <button
@@ -578,6 +703,35 @@ export function InAppMusicPlayer({ track }) {
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '3px', flexShrink: 0 }}>
+            {/* Play / Pause button */}
+            <button
+              type="button"
+              onClick={handleTogglePlayPause}
+              title={isPlaying ? "Pause music" : "Play music"}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: isPlaying ? '#a8c7fa' : 'var(--text-secondary)',
+                cursor: 'pointer',
+                padding: '3px',
+                borderRadius: '4px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              {isPlaying ? (
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                  <rect x="6" y="4" width="4" height="16" rx="1" />
+                  <rect x="14" y="4" width="4" height="16" rx="1" />
+                </svg>
+              ) : (
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                  <polygon points="5 3 19 12 5 21 5 3" />
+                </svg>
+              )}
+            </button>
+
             {/* Previous station */}
             <button
               type="button"
@@ -610,25 +764,32 @@ export function InAppMusicPlayer({ track }) {
               </svg>
             </button>
 
-            {/* Change button in top bar */}
+            {/* Song Search button in top bar */}
             <button
               type="button"
               onClick={() => {
-                setShowChangeModal(v => !v);
+                setShowSearchModal(v => !v);
                 setShowVolumeModal(false);
               }}
-              title="Change song or playlist"
+              title="Search songs, artists, moods, or YouTube"
               style={{
-                background: showChangeModal ? 'rgba(168, 199, 250, 0.2)' : 'rgba(255, 255, 255, 0.05)',
+                background: showSearchModal ? 'rgba(168, 199, 250, 0.2)' : 'rgba(255, 255, 255, 0.05)',
                 border: '1px solid rgba(255, 255, 255, 0.1)',
                 color: '#c7d8ff',
                 borderRadius: '9999px',
                 padding: '2px 8px',
                 fontSize: '11px',
                 cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '3px',
               }}
             >
-              Change
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="11" cy="11" r="8" />
+                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+              </svg>
+              <span>Search</span>
             </button>
 
             {/* Volume Change button in the top of the YouTube bar */}
@@ -636,9 +797,9 @@ export function InAppMusicPlayer({ track }) {
               type="button"
               onClick={() => {
                 setShowVolumeModal(v => !v);
-                setShowChangeModal(false);
+                setShowSearchModal(false);
               }}
-              title="Adjust volume (Default: 40%)"
+              title="Adjust volume (Default: 25%)"
               style={{
                 background: showVolumeModal ? 'rgba(168, 199, 250, 0.2)' : 'rgba(255, 255, 255, 0.05)',
                 border: '1px solid rgba(255, 255, 255, 0.1)',
@@ -659,7 +820,7 @@ export function InAppMusicPlayer({ track }) {
               <span>{volume}%</span>
             </button>
 
-            {/* Minimize / Close button */}
+            {/* Minimize / Down Arrow button */}
             <button
               type="button"
               onClick={() => setIsExpanded(false)}
@@ -675,9 +836,8 @@ export function InAppMusicPlayer({ track }) {
                 alignItems: 'center',
               }}
             >
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <line x1="18" y1="6" x2="6" y2="18"/>
-                <line x1="6" y1="6" x2="18" y2="18"/>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="6 9 12 15 18 9" />
               </svg>
             </button>
           </div>
@@ -701,12 +861,12 @@ export function InAppMusicPlayer({ track }) {
                   <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
                 </svg>
                 <span style={{ fontSize: '11px', color: '#e3e3e3', fontWeight: '500' }}>
-                  Volume: {volume}% {volume === 40 ? '(Default)' : ''}
+                  Volume: {volume}% {volume === 25 ? '(Default)' : ''}
                 </span>
               </div>
               <button
                 type="button"
-                onClick={() => setVolume(v => (v === 0 ? 40 : 0))}
+                onClick={() => setVolume(v => (v === 0 ? 25 : 0))}
                 style={{
                   background: 'transparent',
                   border: 'none',
@@ -738,10 +898,10 @@ export function InAppMusicPlayer({ track }) {
             {/* Quick preset chips */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '4px' }}>
               {[
-                { val: 15, label: '15% Quiet' },
-                { val: 40, label: '40% Default' },
-                { val: 65, label: '65% Focus' },
-                { val: 90, label: '90% Rich' },
+                { val: 10, label: '10% Whisper' },
+                { val: 25, label: '25% Default' },
+                { val: 50, label: '50% Ambient' },
+                { val: 80, label: '80% Rich' },
               ].map((p) => (
                 <button
                   key={p.val}
@@ -767,85 +927,169 @@ export function InAppMusicPlayer({ track }) {
           </div>
         )}
 
-        {/* Change / Search / Station Selector Drawer */}
-        {showChangeModal && (
+        {/* Dedicated Song Search Drawer */}
+        {showSearchModal && (
           <div style={{
             padding: '12px 14px',
-            background: 'rgba(10, 14, 22, 0.95)',
+            background: 'rgba(10, 14, 22, 0.96)',
             borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
             display: 'flex',
             flexDirection: 'column',
-            gap: '8px',
+            gap: '9px',
+            maxHeight: '340px',
+            overflowY: 'auto',
           }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: '500' }}>
-                Paste any YouTube song or playlist link:
-              </span>
-              <a
-                href={youtubeWatchUrl}
-                target="_blank"
-                rel="noreferrer"
-                style={{ fontSize: '11px', color: 'var(--text-muted)', textDecoration: 'none' }}
-              >
-                YouTube ↗
-              </a>
-            </div>
-
-            <form onSubmit={handleApplyCustomUrl} style={{ display: 'flex', gap: '6px' }}>
-              <input
-                type="text"
-                value={customInput}
-                onChange={(e) => setCustomInput(e.target.value)}
-                placeholder="Paste YouTube link or playlist URL…"
-                style={{
-                  flex: 1,
-                  padding: '5px 10px',
-                  fontSize: '11.5px',
-                  background: 'rgba(255, 255, 255, 0.06)',
-                  border: '1px solid var(--border-subtle)',
-                  borderRadius: '6px',
-                  color: '#fff',
-                  outline: 'none',
-                }}
-              />
+            {/* Search Input Form */}
+            <form onSubmit={handleSearchSubmit} style={{ display: 'flex', gap: '6px' }}>
+              <div style={{
+                flex: 1,
+                display: 'flex',
+                alignItems: 'center',
+                background: 'rgba(255, 255, 255, 0.06)',
+                border: '1px solid rgba(255, 255, 255, 0.12)',
+                borderRadius: '8px',
+                padding: '0 8px',
+                gap: '6px',
+              }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2.5">
+                  <circle cx="11" cy="11" r="8" />
+                  <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                </svg>
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search songs, artists, moods, or YouTube..."
+                  autoFocus
+                  style={{
+                    flex: 1,
+                    padding: '6px 0',
+                    fontSize: '11.5px',
+                    background: 'transparent',
+                    border: 'none',
+                    color: '#fff',
+                    outline: 'none',
+                  }}
+                />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery('')}
+                    style={{
+                      background: 'transparent',
+                      border: 'none',
+                      color: 'var(--text-muted)',
+                      cursor: 'pointer',
+                      padding: '2px',
+                      fontSize: '11px',
+                    }}
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
               <button
                 type="submit"
                 className="btn-google-primary"
-                style={{ padding: '5px 10px', fontSize: '11px', borderRadius: '6px', whiteSpace: 'nowrap' }}
+                style={{ padding: '0 12px', fontSize: '11px', borderRadius: '8px', whiteSpace: 'nowrap' }}
               >
                 Play
               </button>
             </form>
 
-            {/* Quick Stations Pills */}
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '2px' }}>
-              {FEEL_SONGS.map((s) => (
-                <button
-                  key={s.id}
-                  type="button"
-                  onClick={() => handleSelectTrack(s)}
-                  style={{
-                    padding: '2px 7px',
-                    borderRadius: '9999px',
-                    background: activeTrack.videoId === s.videoId ? 'rgba(168, 199, 250, 0.2)' : 'rgba(255, 255, 255, 0.04)',
-                    border: activeTrack.videoId === s.videoId ? '1px solid #a8c7fa' : '1px solid var(--border-subtle)',
-                    color: activeTrack.videoId === s.videoId ? '#a8c7fa' : 'var(--text-secondary)',
-                    fontSize: '10px',
-                    cursor: 'pointer',
-                  }}
-                >
-                  {s.moodLabel}
-                </button>
-              ))}
+            {/* Direct YouTube search stream card if user is searching */}
+            {searchQuery.trim() && (
+              <div
+                onClick={(e) => handleSearchSubmit(e, searchQuery.trim())}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '7px 10px',
+                  background: 'rgba(168, 199, 250, 0.08)',
+                  border: '1px solid rgba(168, 199, 250, 0.25)',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                }}
+              >
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: '11.5px', fontWeight: '600', color: '#a8c7fa', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    🔍 Search YouTube & Play: "{searchQuery.trim()}"
+                  </div>
+                  <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
+                    Continuous stream in player • Stays inside app
+                  </div>
+                </div>
+                <span style={{ fontSize: '11px', color: '#a8c7fa', fontWeight: '600', marginLeft: '6px' }}>▶</span>
+              </div>
+            )}
+
+            {/* Curated or Filtered Tracks */}
+            <div>
+              <div style={{ fontSize: '10px', fontWeight: '600', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '4px' }}>
+                {searchQuery.trim() ? `Matching Soundscapes (${filteredSongs.length})` : 'Curated Ambient Stations'}
+              </div>
+
+              {filteredSongs.length === 0 && !searchQuery.trim() && (
+                <div style={{ fontSize: '11px', color: 'var(--text-muted)', padding: '4px 0' }}>
+                  No curated tracks found. Press Play above to search YouTube.
+                </div>
+              )}
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                {filteredSongs.map((s) => {
+                  const isCurrent = activeTrack.videoId === s.videoId || (s.playlistId && activeTrack.playlistId === s.playlistId);
+                  return (
+                    <div
+                      key={s.id}
+                      onClick={() => handleSelectTrack(s)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '5px 8px',
+                        borderRadius: '6px',
+                        background: isCurrent ? 'rgba(168, 199, 250, 0.15)' : 'rgba(255, 255, 255, 0.03)',
+                        border: isCurrent ? '1px solid rgba(168, 199, 250, 0.35)' : '1px solid transparent',
+                        cursor: 'pointer',
+                        transition: 'background 0.15s ease',
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '7px', minWidth: 0 }}>
+                        <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: s.color, flexShrink: 0 }} />
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ fontSize: '11.5px', fontWeight: isCurrent ? '600' : '500', color: isCurrent ? '#fff' : '#e0e4ec', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {s.title}
+                          </div>
+                          <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
+                            {s.artist}
+                          </div>
+                        </div>
+                      </div>
+                      <span style={{
+                        fontSize: '9.5px',
+                        padding: '2px 6px',
+                        borderRadius: '9999px',
+                        background: isCurrent ? 'rgba(168, 199, 250, 0.25)' : 'rgba(255, 255, 255, 0.05)',
+                        color: isCurrent ? '#a8c7fa' : 'var(--text-secondary)',
+                        whiteSpace: 'nowrap',
+                        marginLeft: '6px',
+                      }}>
+                        {s.moodLabel}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
 
-            {/* Ambient Volume Control in Change drawer */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '6px', paddingTop: '6px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+            {/* Quick volume reminder in search drawer */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '4px', paddingTop: '6px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
               <span style={{ fontSize: '10.5px', color: 'var(--text-muted)' }}>
-                Volume: {volume}% {volume === 40 ? '(Default)' : ''}
+                Volume: {volume}% {volume === 25 ? '(Default)' : ''}
               </span>
               <div style={{ display: 'flex', gap: '4px' }}>
-                {[15, 40, 65, 90].map(v => (
+                {[10, 25, 50, 80].map(v => (
                   <button
                     key={v}
                     type="button"
@@ -860,7 +1104,7 @@ export function InAppMusicPlayer({ track }) {
                       cursor: 'pointer',
                     }}
                   >
-                    {v === 40 ? '40% (Default)' : v + '%'}
+                    {v === 25 ? '25% (Default)' : v + '%'}
                   </button>
                 ))}
               </div>

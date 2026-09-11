@@ -1,4 +1,4 @@
-﻿import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { THEMES } from '../theme.js';
 
 export default function ThemeSelector({ currentTheme, onSelectTheme }) {
@@ -24,47 +24,48 @@ export default function ThemeSelector({ currentTheme, onSelectTheme }) {
       <button
         type="button"
         onClick={() => setIsOpen(v => !v)}
-        title="Change journaling theme"
+        title={`Theme Atmosphere: ${activeThemeObj.name}`}
+        aria-label={`Theme: ${activeThemeObj.name}`}
         style={{
+          width: '32px',
+          height: '32px',
+          borderRadius: '50%',
           display: 'flex',
           alignItems: 'center',
-          gap: '6px',
-          background: isOpen ? 'rgba(255, 255, 255, 0.1)' : 'rgba(255, 255, 255, 0.05)',
-          border: '1px solid var(--border-subtle)',
-          borderRadius: '9999px',
-          padding: '5px 11px',
-          color: 'var(--text-secondary)',
-          fontSize: '12px',
+          justifyContent: 'center',
+          background: isOpen ? 'rgba(255, 255, 255, 0.12)' : 'rgba(255, 255, 255, 0.05)',
+          backdropFilter: 'blur(16px)',
+          WebkitBackdropFilter: 'blur(16px)',
+          border: isOpen ? `1.5px solid ${activeThemeObj.accent}` : '1px solid var(--border-subtle)',
           cursor: 'pointer',
+          padding: 0,
           transition: 'all 0.2s ease',
+          boxShadow: isOpen ? `0 0 10px ${activeThemeObj.accent}40` : 'none',
           userSelect: 'none',
         }}
         onMouseEnter={e => {
-          e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)';
-          e.currentTarget.style.borderColor = activeThemeObj.accent + '60';
+          e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+          e.currentTarget.style.borderColor = activeThemeObj.accent;
+          e.currentTarget.style.transform = 'scale(1.06)';
         }}
         onMouseLeave={e => {
-          e.currentTarget.style.background = isOpen ? 'rgba(255, 255, 255, 0.1)' : 'rgba(255, 255, 255, 0.05)';
-          e.currentTarget.style.borderColor = 'var(--border-subtle)';
+          e.currentTarget.style.background = isOpen ? 'rgba(255, 255, 255, 0.12)' : 'rgba(255, 255, 255, 0.05)';
+          e.currentTarget.style.borderColor = isOpen ? activeThemeObj.accent : 'var(--border-subtle)';
+          e.currentTarget.style.transform = 'scale(1)';
         }}
       >
+        {/* Aesthetic Color Object Swatch (No Words) */}
         <span
           style={{
-            width: '8px',
-            height: '8px',
+            width: '18px',
+            height: '18px',
             borderRadius: '50%',
-            background: activeThemeObj.accent,
-            boxShadow: '0 0 6px ' + activeThemeObj.accent + '80',
-            flexShrink: 0,
+            background: `conic-gradient(from 45deg, ${activeThemeObj.accent}, ${activeThemeObj.surfaceBg || '#1e1f20'}, ${activeThemeObj.accent})`,
+            boxShadow: `0 0 8px ${activeThemeObj.accent}70`,
+            border: '1.5px solid rgba(255, 255, 255, 0.3)',
+            display: 'block',
           }}
         />
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="12" cy="12" r="10"/>
-          <path d="M12 2a14.5 14.5 0 0 0 0 20 10 10 0 0 0 0-20"/>
-        </svg>
-        <span className="desktop-only" style={{ fontWeight: '500' }}>
-          {activeThemeObj.name.split(' ')[0]}
-        </span>
       </button>
 
       {isOpen && (
