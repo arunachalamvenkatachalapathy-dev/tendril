@@ -456,31 +456,36 @@ export function InAppMusicPlayer({ track }) {
     } catch (e) {}
   }, []);
 
+  const startPlayback = useCallback(() => {
+    sendIframeCommand('unMute');
+    sendIframeCommand('setVolume', [effectiveVolume]);
+    sendIframeCommand('playVideo');
+  }, [sendIframeCommand, effectiveVolume]);
+
   const handleTogglePlayPause = useCallback(() => {
     if (isPlaying) {
       sendIframeCommand('pauseVideo');
       setIsPlaying(false);
     } else {
-      sendIframeCommand('playVideo');
-      sendIframeCommand('setVolume', [effectiveVolume]);
+      startPlayback();
       setIsPlaying(true);
     }
-  }, [isPlaying, sendIframeCommand, effectiveVolume]);
+  }, [isPlaying, startPlayback]);
 
-  // Enforce ambient volume whenever iframe loads
+  // Enforce automatic ambient playback whenever iframe loads
   const handleIframeLoad = useCallback(() => {
-    sendIframeCommand('setVolume', [effectiveVolume]);
-    setTimeout(() => sendIframeCommand('setVolume', [effectiveVolume]), 250);
-    setTimeout(() => sendIframeCommand('setVolume', [effectiveVolume]), 700);
-    setTimeout(() => sendIframeCommand('setVolume', [effectiveVolume]), 1500);
-    setTimeout(() => sendIframeCommand('setVolume', [effectiveVolume]), 3000);
-  }, [sendIframeCommand, effectiveVolume]);
+    startPlayback();
+    setTimeout(startPlayback, 250);
+    setTimeout(startPlayback, 700);
+    setTimeout(startPlayback, 1500);
+    setTimeout(startPlayback, 3000);
+  }, [startPlayback]);
 
   useEffect(() => {
     sendIframeCommand('setVolume', [effectiveVolume]);
   }, [effectiveVolume, sendIframeCommand]);
 
-  // Listen to YouTube player ready event to set volume immediately & loop on end
+  // Listen to YouTube player ready event to start playback immediately & loop on end
   useEffect(() => {
     const onWindowMessage = (e) => {
       try {
@@ -488,7 +493,7 @@ export function InAppMusicPlayer({ track }) {
         if (!data) return;
 
         if (data.event === 'onReady' || data.event === 'initialDelivery') {
-          sendIframeCommand('setVolume', [effectiveVolume]);
+          startPlayback();
         }
 
         if (data.event === 'onStateChange') {
@@ -496,11 +501,14 @@ export function InAppMusicPlayer({ track }) {
             setIsPlaying(true);
           } else if (data.info === 2) {
             setIsPlaying(false);
+          } else if (data.info === -1) {
+            startPlayback();
           } else if (data.info === 0) {
             // When a video ends (info === 0: YT.PlayerState.ENDED),
             // loop immediately inside the player to prevent end screen links from opening in a new tab!
             sendIframeCommand('seekTo', [0, true]);
             sendIframeCommand('playVideo');
+            sendIframeCommand('unMute');
             sendIframeCommand('setVolume', [effectiveVolume]);
             setIsPlaying(true);
           }
@@ -509,21 +517,48 @@ export function InAppMusicPlayer({ track }) {
     };
     window.addEventListener('message', onWindowMessage);
     return () => window.removeEventListener('message', onWindowMessage);
-  }, [sendIframeCommand, effectiveVolume]);
+  }, [sendIframeCommand, effectiveVolume, startPlayback]);
 
-  // Resume on user's first interaction if browser autoplay blocked audio
+  // Automatic unlock & resume on ANY user gesture anywhere on window (capture phase)
   useEffect(() => {
-    const resumeOnFirstInteraction = () => {
-      sendIframeCommand('playVideo');
-      sendIframeCommand('setVolume', [effectiveVolume]);
+    let fired = false;
+    const unlockAndPlay = () => {
+      try {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (AudioCtx) {
+          const ctx = new AudioCtx();
+          if (ctx.state === 'suspended') ctx.resume();
+        }
+      } catch (e) {}
+
+      startPlayback();
+
+      if (!fired) {
+        fired = true;
+        setTimeout(startPlayback, 150);
+        setTimeout(startPlayback, 600);
+      }
     };
-    window.addEventListener('pointerdown', resumeOnFirstInteraction, { once: true });
-    window.addEventListener('keydown', resumeOnFirstInteraction, { once: true });
+
+    const interactionEvents = [
+      'pointerdown',
+      'click',
+      'touchstart',
+      'keydown',
+      'wheel',
+      'scroll',
+    ];
+
+    interactionEvents.forEach((ev) => {
+      window.addEventListener(ev, unlockAndPlay, { capture: true, passive: true });
+    });
+
     return () => {
-      window.removeEventListener('pointerdown', resumeOnFirstInteraction);
-      window.removeEventListener('keydown', resumeOnFirstInteraction);
+      interactionEvents.forEach((ev) => {
+        window.removeEventListener(ev, unlockAndPlay, { capture: true });
+      });
     };
-  }, [sendIframeCommand, effectiveVolume]);
+  }, [startPlayback]);
 
   function handleSelectTrack(newTrack) {
     setActiveTrack(newTrack);
