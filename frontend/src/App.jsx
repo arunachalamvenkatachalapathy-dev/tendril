@@ -570,8 +570,8 @@ export default function App() {
         </>
       )}
 
-      {/* In-App Music Player — Sleek glassmorphic circle present from the beginning (Login and Workspace) */}
-      <InAppMusicPlayer track={musicTrack} />
+      {/* In-App Music Player — begins strictly after user login */}
+      {user && <InAppMusicPlayer track={musicTrack} />}
     </div>
   );
 }

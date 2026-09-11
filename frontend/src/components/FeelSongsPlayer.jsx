@@ -1032,7 +1032,7 @@ export function InAppMusicPlayer({ track }) {
               >
                 <div style={{ minWidth: 0 }}>
                   <div style={{ fontSize: '11.5px', fontWeight: '600', color: '#a8c7fa', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    🔍 Search YouTube & Play: "{searchQuery.trim()}"
+                    Search YouTube & Play: "{searchQuery.trim()}"
                   </div>
                   <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
                     Continuous stream in player • Stays inside app

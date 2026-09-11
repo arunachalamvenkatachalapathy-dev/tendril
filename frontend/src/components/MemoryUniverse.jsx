@@ -517,7 +517,23 @@ export default function MemoryUniverse({ entries = [], memoryData = null, onOpen
               transition: 'all 0.15s ease',
             }}
           >
-            {isAnimating ? '⏸ Pause' : '⟳ Orbit'}
+            {isAnimating ? (
+              <>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                  <rect x="6" y="4" width="4" height="16" rx="1"/>
+                  <rect x="14" y="4" width="4" height="16" rx="1"/>
+                </svg>
+                <span>Pause</span>
+              </>
+            ) : (
+              <>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <polyline points="23 4 23 10 17 10"/>
+                  <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+                </svg>
+                <span>Orbit</span>
+              </>
+            )}
           </button>
           <button
             onClick={() => setIsFullscreen((v) => !v)}
@@ -629,7 +645,7 @@ export default function MemoryUniverse({ entries = [], memoryData = null, onOpen
             backdropFilter: 'blur(8px)',
             pointerEvents: 'none',
           }}>
-            <span style={{ fontSize: '14px' }}>🚀</span>
+            <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#ef4444', boxShadow: '0 0 8px #ef4444', flexShrink: 0 }} />
             <span>Rockets converging into Consciousness... {Math.round(synthesisProgress * 100)}%</span>
           </div>
         )}
@@ -728,23 +744,51 @@ export default function MemoryUniverse({ entries = [], memoryData = null, onOpen
 
             return (
               <g key={rocket.id} transform={`translate(${currX}, ${currY}) rotate(${angle})`}>
-                {/* Engine Flame & Particle Exhaust */}
-                <line x1="0" y1="3" x2="0" y2={trailLen} stroke={rocket.color || '#a8c7fa'} strokeWidth="2.8" strokeLinecap="round" opacity="0.85" />
-                <line x1="0" y1="8" x2="0" y2={trailLen + 8} stroke="#ffffff" strokeWidth="1.4" strokeLinecap="round" opacity="0.75" />
-                <circle cx="0" cy="6" r="3.2" fill="#ffb74d" opacity="0.9" />
-
-                {/* Rocket Probe Body */}
+                {/* 1. Luminous Pure White Fire & Exhaust Plume */}
                 <path
-                  d="M 0 -10 L 3.5 -2 L 2.5 5 L -2.5 5 L -3.5 -2 Z"
-                  fill="#ffffff"
-                  stroke={rocket.color || '#a8c7fa'}
-                  strokeWidth="0.9"
+                  d={`M -3.8 6 Q 0 ${16 + (synthesisProgress * 10)} 3.8 6 Q 0 3.5 -3.8 6 Z`}
+                  fill="rgba(255, 255, 255, 0.4)"
                 />
-                {/* Rocket Fins */}
-                <path d="M -2.5 2 L -5.5 6 L -2.5 5 Z" fill={rocket.color || '#a8c7fa'} />
-                <path d="M 2.5 2 L 5.5 6 L 2.5 5 Z" fill={rocket.color || '#a8c7fa'} />
-                {/* Probe Core Cockpit */}
-                <circle cx="0" cy="-3.5" r="1.4" fill={rocket.color || '#38bdf8'} />
+                <path
+                  d={`M -2.6 6 Q 0 ${12 + (synthesisProgress * 7)} 2.6 6 Q 0 4 -2.6 6 Z`}
+                  fill="#ffffff"
+                />
+                <circle cx="0" cy={13 + (synthesisProgress * 6)} r="1.6" fill="#ffffff" opacity="0.95" />
+                <circle cx="-0.9" cy={18 + (synthesisProgress * 8)} r="1.2" fill="#ffffff" opacity="0.8" />
+                <circle cx="0.9" cy={23 + (synthesisProgress * 10)} r="0.8" fill="#ffffff" opacity="0.6" />
+
+                {/* 2. Cute Red Rocket Body */}
+                {/* Flared curved cute fins (darker crimson red) */}
+                <path d="M -4.2 2 C -7.8 3.5, -8 8, -4.2 6.8 Z" fill="#dc2626" stroke="#b91c1c" strokeWidth="0.6" strokeLinejoin="round" />
+                <path d="M 4.2 2 C 7.8 3.5, 8 8, 4.2 6.8 Z" fill="#dc2626" stroke="#b91c1c" strokeWidth="0.6" strokeLinejoin="round" />
+
+                {/* Chubby, rounded aerodynamic cute red fuselage */}
+                <path
+                  d="M 0 -13 C 4.5 -8.5, 5.2 0.5, 4.2 6 C 2.5 6.4, -2.5 6.4, -4.2 6 C -5.2 0.5, -4.5 -8.5, 0 -13 Z"
+                  fill="#ef4444"
+                  stroke="#dc2626"
+                  strokeWidth="0.8"
+                />
+
+                {/* Specular glossy highlight curve on left shoulder */}
+                <path
+                  d="M -2.2 -8 C -3.6 -3, -3.4 1.5, -2.6 4.5"
+                  fill="none"
+                  stroke="rgba(255, 255, 255, 0.75)"
+                  strokeWidth="0.9"
+                  strokeLinecap="round"
+                />
+
+                {/* Engine nozzle at base */}
+                <rect x="-2.2" y="5.8" width="4.4" height="1.6" rx="0.8" fill="#334155" />
+
+                {/* Cute round porthole / cockpit window */}
+                <circle cx="0" cy="-2.5" r="2.7" fill="#ffffff" />
+                <circle cx="0" cy="-2.5" r="1.9" fill="#38bdf8" />
+                <circle cx="-0.6" cy="-3.1" r="0.65" fill="#ffffff" />
+
+                {/* Cute white nosecone cap */}
+                <path d="M 0 -13 C 1.6 -10.8, 1.8 -9.5, 1.8 -8.5 L -1.8 -8.5 C -1.8 -9.5, -1.6 -10.8, 0 -13 Z" fill="#ffffff" opacity="0.9" />
               </g>
             );
           })}

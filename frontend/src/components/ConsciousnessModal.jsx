@@ -71,8 +71,11 @@ export default function ConsciousnessModal({ entries = [], synthesis, onClose, o
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
+              color: '#081326',
             }}>
-              <span style={{ fontSize: '18px' }}>✨</span>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2l2.4 6.8 6.8 2.4-6.8 2.4L12 22l-2.4-6.8-6.8-2.4 6.8-2.4z"/>
+              </svg>
             </div>
             <div>
               <div style={{ fontSize: '16px', fontWeight: '700', color: '#f0f4fc', letterSpacing: '-0.2px' }}>
@@ -149,13 +152,13 @@ export default function ConsciousnessModal({ entries = [], synthesis, onClose, o
             {/* Metric Pills */}
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
               <div style={{ padding: '4px 10px', borderRadius: '9999px', background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.08)', fontSize: '11.5px', color: '#c7d8ff' }}>
-                🧠 Primary State: <strong>{synthesis.primaryMindState || 'Focused Momentum'}</strong>
+                Primary State: <strong>{synthesis.primaryMindState || 'Focused Momentum'}</strong>
               </div>
               <div style={{ padding: '4px 10px', borderRadius: '9999px', background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.08)', fontSize: '11.5px', color: '#6dd58c' }}>
-                ✨ Resonance: <strong>{synthesis.coherenceScore || '96% Cohesive'}</strong>
+                Resonance: <strong>{synthesis.coherenceScore || '96% Cohesive'}</strong>
               </div>
               <div style={{ padding: '4px 10px', borderRadius: '9999px', background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.08)', fontSize: '11.5px', color: '#fdd663' }}>
-                ⚡ Active Sparks: <strong>{synthesis.totalSparksCount || entries.length * 3} ideas</strong>
+                Active Sparks: <strong>{synthesis.totalSparksCount || entries.length * 3} ideas</strong>
               </div>
             </div>
           </div>
