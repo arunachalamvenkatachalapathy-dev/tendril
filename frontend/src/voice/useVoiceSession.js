@@ -134,6 +134,7 @@ export function useVoiceSession() {
   const nextStartTimeRef = useRef(0);
   const activeSourcesRef = useRef([]);
   const isPlaybackActiveRef = useRef(false);
+  const playbackEndTimerRef = useRef(null);
   const micStreamRef = useRef(null);
   const audioCtxRef = useRef(null);
   const workletNodeRef = useRef(null);
@@ -183,6 +184,10 @@ export function useVoiceSession() {
   }, []);
 
   const stopAudioPlayback = useCallback(() => {
+    if (playbackEndTimerRef.current) {
+      clearTimeout(playbackEndTimerRef.current);
+      playbackEndTimerRef.current = null;
+    }
     isPlaybackActiveRef.current = false;
     // 1. Immediately cancel any scheduled Web Speech API synthesis
     if (typeof window !== 'undefined' && window.speechSynthesis) {
@@ -265,6 +270,12 @@ export function useVoiceSession() {
   const playAudioChunk = useCallback((base64Data) => {
     if (!voiceOutputRef.current) return;
     try {
+      // Clear any pending end-of-turn timer because a new chunk has arrived
+      if (playbackEndTimerRef.current) {
+        clearTimeout(playbackEndTimerRef.current);
+        playbackEndTimerRef.current = null;
+      }
+
       // Ensure browser speech synthesis never collides with Gemini Live PCM audio
       if (typeof window !== 'undefined' && window.speechSynthesis?.speaking) {
         window.speechSynthesis.cancel();
@@ -285,6 +296,9 @@ export function useVoiceSession() {
 
       // Mark playback active so mic does not echo Gemini's own words back into the model
       isPlaybackActiveRef.current = true;
+      if (statusRef.current !== 'speaking') {
+        setStatus('speaking');
+      }
 
       // Web Audio natively resamples 24kHz buffer to hardware context rate
       const audioBuffer = ctx.createBuffer(1, float32.length, OUTPUT_SAMPLE_RATE);
@@ -299,13 +313,10 @@ export function useVoiceSession() {
       }
 
       const now = ctx.currentTime;
-      // If nextStartTime is in the past (first chunk of turn or gap after silence),
-      // schedule smoothly starting 50ms ahead of current hardware time.
-      // NEVER clamp with (startTime > now + 2.0) because streaming network chunks
-      // naturally arrive faster than real-time and must queue sequentially into the future.
-      // Clamping was resetting startTime mid-turn, causing sentences to overlap and play on top of each other!
+      // If nextStartTime is in the past (idle or gap after silence),
+      // schedule smoothly starting with a tiny 40ms lead for network jitter absorption.
       if (nextStartTimeRef.current < now) {
-        nextStartTimeRef.current = now + 0.05;
+        nextStartTimeRef.current = now + 0.04;
       }
       const startTime = nextStartTimeRef.current;
       src.start(startTime);
@@ -315,16 +326,21 @@ export function useVoiceSession() {
       src.onended = () => {
         activeSourcesRef.current = activeSourcesRef.current.filter((s) => s !== src);
         if (activeSourcesRef.current.length === 0) {
-          isPlaybackActiveRef.current = false;
-          nextStartTimeRef.current = 0;
-          if (statusRef.current === 'speaking') {
-            setStatus('listening');
-          }
+          // Acoustic echo decay & streaming jitter grace window (400ms):
+          // Do not instantly release isPlaybackActive or reset nextStartTime to prevent
+          // false barge-in interrupts from speaker reverberation or packet jitter.
+          if (playbackEndTimerRef.current) clearTimeout(playbackEndTimerRef.current);
+          playbackEndTimerRef.current = setTimeout(() => {
+            if (activeSourcesRef.current.length === 0) {
+              isPlaybackActiveRef.current = false;
+              nextStartTimeRef.current = 0;
+              if (statusRef.current === 'speaking') {
+                setStatus('listening');
+              }
+            }
+          }, 400);
         }
       };
-      if (statusRef.current !== 'speaking') {
-        setStatus('speaking');
-      }
     } catch (err) {
       console.warn('[Voice] Audio playback error:', err.message);
     }
@@ -340,6 +356,26 @@ export function useVoiceSession() {
       const utterance = new SpeechSynthesisUtterance(cleanText);
       utterance.rate = 1.0;
       utterance.pitch = 1.0;
+
+      // Select highest quality natural / neural voice
+      const voices = window.speechSynthesis.getVoices();
+      const isMulti = languageRef.current === 'multi';
+      let selectedVoice = null;
+      if (!isMulti) {
+        selectedVoice = voices.find((v) =>
+          (v.name.includes('Natural') || v.name.includes('Google') || v.name.includes('Neural') || v.name.includes('Premium')) &&
+          v.lang.startsWith('en')
+        ) || voices.find((v) => v.lang.startsWith('en'));
+      } else {
+        const userLang = navigator.language || 'en-US';
+        selectedVoice = voices.find((v) => v.lang.startsWith(userLang.slice(0, 2))) ||
+          voices.find((v) => v.name.includes('Natural') && v.lang.startsWith('en')) ||
+          voices[0];
+      }
+      if (selectedVoice) {
+        utterance.voice = selectedVoice;
+      }
+
       setStatus('speaking');
       utterance.onend = () => setStatus('listening');
       utterance.onerror = () => setStatus('listening');
@@ -662,6 +698,18 @@ export function useVoiceSession() {
               case 'turn_complete':
                 setCurrentSubtitle((prev) => prev ? { ...prev, isLive: false } : null);
                 setLiveTranscript((prev) => prev.map((m) => (m.isStreaming ? { ...m, isStreaming: false } : m)));
+                if (activeSourcesRef.current.length === 0) {
+                  if (playbackEndTimerRef.current) clearTimeout(playbackEndTimerRef.current);
+                  playbackEndTimerRef.current = setTimeout(() => {
+                    if (activeSourcesRef.current.length === 0) {
+                      isPlaybackActiveRef.current = false;
+                      nextStartTimeRef.current = 0;
+                      if (statusRef.current === 'speaking') {
+                        setStatus('listening');
+                      }
+                    }
+                  }, 300);
+                }
                 break;
               case 'ideas':
                 setIdeas((prev) => [...new Set([...payload.ideas, ...prev])].slice(0, 8));
@@ -928,6 +976,7 @@ export function useVoiceSession() {
     setHasMic(true);
     setMicActive(true);
     setNotice(null);
+    shouldReconnectRef.current = true;
     startAudioMeter(stream);
 
     // Connect WebSocket and begin capture once auth_ok is received
