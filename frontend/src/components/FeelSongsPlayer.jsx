@@ -1,70 +1,70 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 
 export const FEEL_SONGS = [
   {
-    id: 'succession-focus',
-    title: 'Succession & Cinematic Piano',
-    artist: 'Nicholas Britell / Orchestral Stream',
-    mood: 'energized',
-    moodLabel: 'Cinematic & Drive',
-    color: '#a8c7fa',
-    videoId: 'jZq3m2jN1oU',
-    description: 'Dramatic classical piano cadence and orchestral suites for intense problem solving.',
-  },
-  {
     id: 'lofi-calm',
     title: 'Lofi Beats to Reflect & Journal',
-    artist: 'Lofi Girl Continuous Live Stream',
+    artist: 'Lofi Girl Official 24/7 Stream',
     mood: 'calm',
     moodLabel: 'Calm & Warm',
     color: '#6dd58c',
-    videoId: 'jfKfP97GQzM',
-    description: 'Cozy, gentle downtempo continuous stream to quiet mental chatter.',
+    videoId: '5qap5aO4i9A',
+    description: 'Cozy, gentle downtempo continuous stream to slow down mental chatter.',
   },
   {
-    id: 'interstellar-space',
-    title: 'Cosmic & Interstellar Ambient',
-    artist: 'Hans Zimmer / Deep Space Ambient',
-    mood: 'hopeful',
-    moodLabel: 'Cosmic Reflection',
-    color: '#c58af9',
-    videoId: '45ETZ1CaVEw',
-    description: 'Expansive ethereal soundscapes designed for cosmic reflection and perspective.',
-  },
-  {
-    id: 'rain-piano',
-    title: 'Peaceful Rain & Soft Piano',
-    artist: 'Rainy Day Cafe & Classical Ambient',
-    mood: 'calm',
-    moodLabel: 'Peaceful Rain',
-    color: '#78a9ff',
-    videoId: 'lTRiuFIWV54',
-    description: 'Continuous soothing raindrops paired with solitary piano melodies for introspection.',
+    id: 'synthwave-drive',
+    title: 'Synthwave & Cinematic Drive',
+    artist: 'Lofi Girl Synthwave Radio',
+    mood: 'energized',
+    moodLabel: 'Cinematic & Drive',
+    color: '#a8c7fa',
+    videoId: '4xDzrJKXOOY',
+    description: 'Energetic retro electronic rhythms for deep momentum and problem solving.',
   },
   {
     id: 'alpha-waves',
     title: 'Deep Focus & Flow State',
-    artist: 'Brainwave Lab / Alpha Waves Stream',
+    artist: 'Yellow Brick Cinema / Alpha Waves',
     mood: 'focused',
     moodLabel: 'Deep Flow',
     color: '#fdd663',
     videoId: 'WPni755-Krg',
-    description: 'Continuous binaural frequencies to sustain unbroken focus during writing or reflection.',
+    description: 'Continuous binaural alpha waves to sustain unbroken focus during writing or reflection.',
   },
   {
-    id: 'morning-uplift',
-    title: 'Acoustic Warmth & Gentle Sunrise',
-    artist: 'Morning Acoustic Vibes & Coffeehouse',
+    id: 'peaceful-piano',
+    title: 'Peaceful Piano & Solitude',
+    artist: 'Peder B. Helland / Classical Stream',
+    mood: 'calm',
+    moodLabel: 'Peaceful Piano',
+    color: '#c58af9',
+    videoId: 'lCOF9LN_Zxs',
+    description: 'Solitary, emotional piano melodies for introspective contemplation.',
+  },
+  {
+    id: 'rain-ambient',
+    title: 'Rain on Window & Soft Thunder',
+    artist: 'Relaxing Ambience ASMR',
+    mood: 'calm',
+    moodLabel: 'Peaceful Rain',
+    color: '#78a9ff',
+    videoId: 'mPZkdNFkNps',
+    description: 'Continuous soothing raindrops and distant thunder for calming anxiety.',
+  },
+  {
+    id: 'jazz-warmth',
+    title: 'Slow Jazz Piano & Morning Warmth',
+    artist: 'Cafe Music BGM 24/7 Stream',
     mood: 'happy',
     moodLabel: 'Uplifting Clarity',
     color: '#ffb74d',
-    videoId: 'WJ3-F02-U_g',
-    description: 'Bright, heartwarming acoustic picking to inspire optimism and clarity.',
+    videoId: 'Dx5qFachd3A',
+    description: 'Warm, cozy coffeehouse jazz piano to inspire optimism and clarity.',
   },
 ];
 
 /**
- * Extracts a YouTube Video ID or Playlist ID from any URL or raw string
+ * Extracts YouTube Video ID or Playlist ID from any URL or string
  */
 export function parseYouTubeInput(input) {
   if (!input || typeof input !== 'string') return null;
@@ -94,7 +94,7 @@ export function parseYouTubeInput(input) {
     return { type: embedMatch[1].startsWith('PL') ? 'playlist' : 'video', id: embedMatch[1] };
   }
 
-  // 5. If it's a raw 11-char video ID or raw PL playlist ID
+  // 5. If raw 11-char ID
   if (/^[a-zA-Z0-9_-]{11}$/.test(trimmed)) {
     return { type: 'video', id: trimmed };
   }
@@ -111,23 +111,22 @@ export function parseYouTubeInput(input) {
 export function getEmbedUrl(track) {
   if (!track) return '';
 
-  // Custom user-pasted URL or ID
   if (track.customUrl) {
     const parsed = parseYouTubeInput(track.customUrl);
     if (parsed) {
       if (parsed.type === 'playlist') {
-        return 'https://www.youtube-nocookie.com/embed/videoseries?list=' + parsed.id + '&autoplay=1&enablejsapi=1&playsinline=1';
+        return 'https://www.youtube.com/embed/videoseries?list=' + parsed.id + '&autoplay=1&enablejsapi=1&playsinline=1';
       }
-      return 'https://www.youtube-nocookie.com/embed/' + parsed.id + '?autoplay=1&loop=1&playlist=' + parsed.id + '&enablejsapi=1&playsinline=1';
+      return 'https://www.youtube.com/embed/' + parsed.id + '?autoplay=1&enablejsapi=1&playsinline=1';
     }
   }
 
   if (track.playlistId) {
-    return 'https://www.youtube-nocookie.com/embed/videoseries?list=' + track.playlistId + '&autoplay=1&enablejsapi=1&playsinline=1';
+    return 'https://www.youtube.com/embed/videoseries?list=' + track.playlistId + '&autoplay=1&enablejsapi=1&playsinline=1';
   }
 
-  const vId = track.videoId || 'jfKfP97GQzM';
-  return 'https://www.youtube-nocookie.com/embed/' + vId + '?autoplay=1&loop=1&playlist=' + vId + '&enablejsapi=1&playsinline=1';
+  const vId = track.videoId || '5qap5aO4i9A';
+  return 'https://www.youtube.com/embed/' + vId + '?autoplay=1&enablejsapi=1&playsinline=1';
 }
 
 /**
@@ -139,7 +138,8 @@ export function playInAppMusic(trackOrQuery) {
   if (typeof trackOrQuery === 'string') {
     const found = FEEL_SONGS.find(s => 
       s.title.toLowerCase().includes(trackOrQuery.toLowerCase()) ||
-      s.mood.toLowerCase().includes(trackOrQuery.toLowerCase())
+      s.mood.toLowerCase().includes(trackOrQuery.toLowerCase()) ||
+      s.moodLabel.toLowerCase().includes(trackOrQuery.toLowerCase())
     );
     track = found || FEEL_SONGS[0];
   }
@@ -295,10 +295,15 @@ export function InAppMusicPlayer({ track, onClose }) {
   const [activeTrack, setActiveTrack] = useState(track);
 
   useEffect(() => {
-    if (track) setActiveTrack(track);
+    setActiveTrack(track);
   }, [track]);
 
-  if (!activeTrack) return null;
+  if (!track || !activeTrack) return null;
+
+  function handleClose() {
+    setActiveTrack(null);
+    if (onClose) onClose();
+  }
 
   function handleApplyCustomUrl(e) {
     e?.preventDefault();
@@ -325,6 +330,8 @@ export function InAppMusicPlayer({ track, onClose }) {
     setActiveTrack(preset);
     setShowChangeModal(false);
   }
+
+  const youtubeWatchUrl = activeTrack.customUrl || (activeTrack.videoId ? 'https://www.youtube.com/watch?v=' + activeTrack.videoId : 'https://www.youtube.com');
 
   return (
     <div
@@ -438,7 +445,7 @@ export function InAppMusicPlayer({ track, onClose }) {
 
           {/* Close button */}
           <button
-            onClick={onClose}
+            onClick={handleClose}
             title="Close music player"
             style={{
               background: 'transparent',
@@ -469,15 +476,27 @@ export function InAppMusicPlayer({ track, onClose }) {
           flexDirection: 'column',
           gap: '8px',
         }}>
-          <div style={{ fontSize: '11.5px', color: '#a8c7fa', fontWeight: '500' }}>
-            Paste any YouTube video or playlist link:
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: '11.5px', color: '#a8c7fa', fontWeight: '500' }}>
+              Paste any YouTube link or select a station:
+            </span>
+            <a
+              href={youtubeWatchUrl}
+              target="_blank"
+              rel="noreferrer"
+              style={{ fontSize: '11px', color: 'var(--text-muted)', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '3px' }}
+            >
+              <span>Open on YouTube</span>
+              <span>↗</span>
+            </a>
           </div>
+
           <form onSubmit={handleApplyCustomUrl} style={{ display: 'flex', gap: '6px' }}>
             <input
               type="text"
               value={customInput}
               onChange={(e) => setCustomInput(e.target.value)}
-              placeholder="https://www.youtube.com/watch?v=... or playlist ID"
+              placeholder="Paste https://youtube.com/watch?v=... or playlist URL"
               style={{
                 flex: 1,
                 padding: '6px 10px',
@@ -508,14 +527,14 @@ export function InAppMusicPlayer({ track, onClose }) {
                 style={{
                   padding: '3px 8px',
                   borderRadius: '9999px',
-                  background: activeTrack.id === s.id ? 'rgba(168, 199, 250, 0.2)' : 'rgba(255, 255, 255, 0.04)',
-                  border: activeTrack.id === s.id ? '1px solid #a8c7fa' : '1px solid var(--border-subtle)',
-                  color: activeTrack.id === s.id ? '#a8c7fa' : 'var(--text-secondary)',
+                  background: activeTrack.videoId === s.videoId ? 'rgba(168, 199, 250, 0.2)' : 'rgba(255, 255, 255, 0.04)',
+                  border: activeTrack.videoId === s.videoId ? '1px solid #a8c7fa' : '1px solid var(--border-subtle)',
+                  color: activeTrack.videoId === s.videoId ? '#a8c7fa' : 'var(--text-secondary)',
                   fontSize: '10.5px',
                   cursor: 'pointer',
                 }}
               >
-                {s.title.split('&')[0].trim()}
+                {s.moodLabel}
               </button>
             ))}
           </div>
@@ -536,7 +555,7 @@ export function InAppMusicPlayer({ track, onClose }) {
         }}
       >
         <iframe
-          key={activeTrack.id || activeTrack.videoId || activeTrack.customUrl}
+          key={activeTrack.videoId || activeTrack.customUrl}
           width="100%"
           height="180"
           src={getEmbedUrl(activeTrack)}

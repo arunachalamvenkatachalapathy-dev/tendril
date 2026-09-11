@@ -528,7 +528,9 @@ export default function App() {
       )}
 
       {/* In-App Music Player Banner */}
-      <InAppMusicPlayer track={musicTrack} onClose={() => setMusicTrack(null)} />
+      {musicTrack && (
+        <InAppMusicPlayer track={musicTrack} onClose={() => setMusicTrack(null)} />
+      )}
     </div>
   );
 }
