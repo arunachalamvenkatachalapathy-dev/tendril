@@ -24,9 +24,9 @@ export default function ConsciousnessModal({ entries = [], synthesis, onClose, o
         position: 'fixed',
         inset: 0,
         zIndex: 99999,
-        background: 'rgba(4, 7, 14, 0.78)',
-        backdropFilter: 'blur(24px) saturate(180%)',
-        WebkitBackdropFilter: 'blur(24px) saturate(180%)',
+        background: 'rgba(15, 23, 42, 0.65)',
+        backdropFilter: 'blur(20px) saturate(160%)',
+        WebkitBackdropFilter: 'blur(20px) saturate(160%)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -40,12 +40,12 @@ export default function ConsciousnessModal({ entries = [], synthesis, onClose, o
           width: '100%',
           maxWidth: '680px',
           maxHeight: '88vh',
-          background: 'rgba(14, 18, 30, 0.96)',
+          background: 'linear-gradient(145deg, #1e283d 0%, #151e30 100%)',
           backdropFilter: 'blur(32px)',
           WebkitBackdropFilter: 'blur(32px)',
-          border: '1px solid rgba(168, 199, 250, 0.25)',
+          border: '1px solid rgba(168, 199, 250, 0.35)',
           borderRadius: '24px',
-          boxShadow: '0 28px 70px rgba(0, 0, 0, 0.85), 0 0 35px rgba(168, 199, 250, 0.2)',
+          boxShadow: '0 28px 70px rgba(10, 16, 30, 0.5), 0 0 35px rgba(168, 199, 250, 0.25)',
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
@@ -55,11 +55,11 @@ export default function ConsciousnessModal({ entries = [], synthesis, onClose, o
         {/* Modal Top Header */}
         <div style={{
           padding: '18px 24px',
-          borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+          borderBottom: '1px solid rgba(168, 199, 250, 0.18)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          background: 'rgba(255, 255, 255, 0.02)',
+          background: 'rgba(255, 255, 255, 0.04)',
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <div style={{
@@ -122,10 +122,10 @@ export default function ConsciousnessModal({ entries = [], synthesis, onClose, o
           {/* 1. Macro Mind Portrait Card */}
           <div style={{
             padding: '18px 20px',
-            background: 'linear-gradient(135deg, rgba(168, 199, 250, 0.08) 0%, rgba(109, 213, 140, 0.04) 100%)',
-            border: '1px solid rgba(168, 199, 250, 0.2)',
+            background: 'linear-gradient(135deg, rgba(168, 199, 250, 0.16) 0%, rgba(129, 140, 248, 0.12) 100%)',
+            border: '1px solid rgba(168, 199, 250, 0.32)',
             borderRadius: '16px',
-            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.2)',
+            boxShadow: '0 8px 24px rgba(10, 16, 30, 0.25)',
           }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -151,13 +151,13 @@ export default function ConsciousnessModal({ entries = [], synthesis, onClose, o
 
             {/* Metric Pills */}
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-              <div style={{ padding: '4px 10px', borderRadius: '9999px', background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.08)', fontSize: '11.5px', color: '#c7d8ff' }}>
+              <div style={{ padding: '5px 12px', borderRadius: '9999px', background: 'rgba(255, 255, 255, 0.1)', border: '1px solid rgba(168, 199, 250, 0.25)', fontSize: '11.5px', color: '#c7d8ff' }}>
                 Primary State: <strong>{synthesis.primaryMindState || 'Focused Momentum'}</strong>
               </div>
-              <div style={{ padding: '4px 10px', borderRadius: '9999px', background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.08)', fontSize: '11.5px', color: '#6dd58c' }}>
+              <div style={{ padding: '5px 12px', borderRadius: '9999px', background: 'rgba(109, 213, 140, 0.15)', border: '1px solid rgba(109, 213, 140, 0.35)', fontSize: '11.5px', color: '#6dd58c' }}>
                 Resonance: <strong>{synthesis.coherenceScore || '96% Cohesive'}</strong>
               </div>
-              <div style={{ padding: '4px 10px', borderRadius: '9999px', background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.08)', fontSize: '11.5px', color: '#fdd663' }}>
+              <div style={{ padding: '5px 12px', borderRadius: '9999px', background: 'rgba(253, 214, 99, 0.15)', border: '1px solid rgba(253, 214, 99, 0.35)', fontSize: '11.5px', color: '#fdd663' }}>
                 Active Sparks: <strong>{synthesis.totalSparksCount || entries.length * 3} ideas</strong>
               </div>
             </div>
@@ -174,21 +174,22 @@ export default function ConsciousnessModal({ entries = [], synthesis, onClose, o
                   key={idx}
                   style={{
                     padding: '12px 14px',
-                    background: 'rgba(255, 255, 255, 0.03)',
-                    border: '1px solid rgba(255, 255, 255, 0.07)',
+                    background: 'rgba(34, 46, 74, 0.75)',
+                    border: '1px solid rgba(168, 199, 250, 0.22)',
                     borderRadius: '12px',
                     display: 'flex',
                     flexDirection: 'column',
                     gap: '6px',
+                    boxShadow: '0 4px 14px rgba(10, 16, 30, 0.2)',
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: pillar.color || '#a8c7fa' }} />
+                    <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: pillar.color || '#a8c7fa', boxShadow: '0 0 8px ' + (pillar.color || '#a8c7fa') + '80' }} />
                     <span style={{ fontSize: '12.5px', fontWeight: '600', color: '#ffffff' }}>
                       {pillar.title}
                     </span>
                   </div>
-                  <div style={{ fontSize: '11.5px', color: 'var(--text-secondary)', lineHeight: '1.45' }}>
+                  <div style={{ fontSize: '11.5px', color: '#c5d0e6', lineHeight: '1.45' }}>
                     {pillar.description}
                   </div>
                 </div>
@@ -210,12 +211,13 @@ export default function ConsciousnessModal({ entries = [], synthesis, onClose, o
                 <div
                   key={i}
                   style={{
-                    padding: '10px 14px',
-                    background: 'rgba(255, 255, 255, 0.02)',
+                    padding: '11px 14px',
+                    background: 'rgba(34, 46, 74, 0.65)',
+                    border: '1px solid rgba(168, 199, 250, 0.2)',
                     borderLeft: '3px solid #a8c7fa',
                     borderRadius: '0 8px 8px 0',
                     fontSize: '12px',
-                    color: '#d0d7e5',
+                    color: '#e2e8f4',
                     lineHeight: '1.5',
                   }}
                 >
@@ -246,8 +248,8 @@ export default function ConsciousnessModal({ entries = [], synthesis, onClose, o
                   }}
                   style={{
                     padding: '8px 12px',
-                    background: 'rgba(255, 255, 255, 0.03)',
-                    border: '1px solid rgba(255, 255, 255, 0.08)',
+                    background: 'rgba(34, 46, 74, 0.7)',
+                    border: '1px solid rgba(168, 199, 250, 0.22)',
                     borderRadius: '10px',
                     cursor: 'pointer',
                     minWidth: '140px',
@@ -255,12 +257,12 @@ export default function ConsciousnessModal({ entries = [], synthesis, onClose, o
                     transition: 'all 0.15s ease',
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.background = 'rgba(168, 199, 250, 0.1)';
+                    e.currentTarget.style.background = 'rgba(168, 199, 250, 0.18)';
                     e.currentTarget.style.borderColor = '#a8c7fa';
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)';
-                    e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)';
+                    e.currentTarget.style.background = 'rgba(34, 46, 74, 0.7)';
+                    e.currentTarget.style.borderColor = 'rgba(168, 199, 250, 0.22)';
                   }}
                 >
                   <div style={{ fontSize: '11px', color: '#a8c7fa', fontWeight: '600', marginBottom: '3px' }}>

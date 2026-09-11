@@ -780,7 +780,7 @@ export default function MemoryUniverse({ entries = [], memoryData = null, onOpen
                 />
 
                 {/* Engine nozzle at base */}
-                <rect x="-2.2" y="5.8" width="4.4" height="1.6" rx="0.8" fill="#334155" />
+                <rect x="-2.2" y="5.8" width="4.4" height="1.6" rx="0.8" fill="#ffffff" />
 
                 {/* Cute round porthole / cockpit window */}
                 <circle cx="0" cy="-2.5" r="2.7" fill="#ffffff" />

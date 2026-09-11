@@ -252,7 +252,6 @@ export default function App() {
       await seedDemoData();
       await refreshEntries();
       await refreshMemoryAndIdeas();
-      navigate('/dashboard');
     } catch (err) {
       alert('Failed to seed demo data: ' + err.message);
     } finally {
