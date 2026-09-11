@@ -14,6 +14,8 @@ import HuntView from './components/HuntView.jsx';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
 import GeminiSprinkleLoader from './components/GeminiSprinkleLoader.jsx';
 import { InAppMusicPlayer } from './components/FeelSongsPlayer.jsx';
+import ThemeSelector from './components/ThemeSelector.jsx';
+import { useTheme } from './theme.js';
 
 function usePath() {
   const getSubPath = () => {
@@ -61,6 +63,7 @@ export default function App() {
   const [mobileTab, setMobileTab] = useState('reflect'); // 'reflect' | 'timeline' | 'sparks'
   const [path, navigate] = usePath();
   const [musicTrack, setMusicTrack] = useState(null);
+  const [theme, setTheme] = useTheme(user?.uid);
 
   useEffect(() => {
     const onPlay = (e) => setMusicTrack(e.detail);
@@ -341,7 +344,8 @@ export default function App() {
         </nav>
 
         {/* User Identity & Account Actions */}
-        <div className="user-profile-chip">
+        <div className="user-profile-chip" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <ThemeSelector currentTheme={theme} onSelectTheme={setTheme} />
           <div className="google-account-pill">
             <div className="google-user-avatar">
               {user.displayName ? user.displayName.charAt(0).toUpperCase() : user.email ? user.email.charAt(0).toUpperCase() : 'G'}
@@ -527,10 +531,8 @@ export default function App() {
         />
       )}
 
-      {/* In-App Music Player Banner */}
-      {musicTrack && (
-        <InAppMusicPlayer track={musicTrack} onClose={() => setMusicTrack(null)} />
-      )}
+      {/* In-App Music Player — Sleek glassmorphic circle present from the beginning */}
+      <InAppMusicPlayer track={musicTrack} />
     </div>
   );
 }

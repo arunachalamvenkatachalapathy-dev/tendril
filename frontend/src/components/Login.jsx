@@ -1,10 +1,13 @@
 import { useState } from 'react';
 import { signInWithGoogle, signInWithGoogleRedirect, signInAsGuest, auth } from '../firebase.js';
+import ThemeSelector from './ThemeSelector.jsx';
+import { useTheme } from '../theme.js';
 
 export default function Login() {
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
   const [guestLoading, setGuestLoading] = useState(false);
+  const [theme, setTheme] = useTheme(null);
 
   async function handleSignIn() {
     setError(null);
@@ -119,8 +122,14 @@ export default function Login() {
             </div>
           </div>
 
+          {/* Theme Option Just Near Login */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', maxWidth: '340px', margin: '20px auto 0', padding: '0 4px' }}>
+            <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Atmosphere theme:</span>
+            <ThemeSelector currentTheme={theme} onSelectTheme={setTheme} />
+          </div>
+
           {/* Sign-In Actions */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', alignItems: 'center', margin: '28px auto 0', width: '100%', maxWidth: '340px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', alignItems: 'center', margin: '14px auto 0', width: '100%', maxWidth: '340px' }}>
             {/* Google Sign-In */}
             <button
               className="google-signin-btn btn-tendril-primary"

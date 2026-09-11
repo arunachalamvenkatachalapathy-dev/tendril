@@ -1,14 +1,14 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect, useRef } from 'react';
 
 export const FEEL_SONGS = [
   {
     id: 'lofi-calm',
     title: 'Lofi Beats to Reflect & Journal',
-    artist: 'Lofi Girl Official 24/7 Stream',
+    artist: 'Lofi Girl / 1 A.M Study Session',
     mood: 'calm',
     moodLabel: 'Calm & Warm',
     color: '#6dd58c',
-    videoId: '5qap5aO4i9A',
+    videoId: 'lTRiuFIWV54',
     description: 'Cozy, gentle downtempo continuous stream to slow down mental chatter.',
   },
   {
@@ -64,37 +64,37 @@ export const FEEL_SONGS = [
 ];
 
 /**
- * Extracts YouTube Video ID or Playlist ID from any URL or string
+ * Parses any YouTube link, playlist, or video ID
  */
 export function parseYouTubeInput(input) {
   if (!input || typeof input !== 'string') return null;
   const trimmed = input.trim();
 
-  // 1. Check for playlist URL
+  // 1. Playlist URL
   const listMatch = trimmed.match(/[?&]list=([a-zA-Z0-9_-]+)/);
   if (listMatch) {
     return { type: 'playlist', id: listMatch[1] };
   }
 
-  // 2. Check for standard YouTube watch URL: v=...
+  // 2. Standard watch URL: v=...
   const vMatch = trimmed.match(/[?&]v=([a-zA-Z0-9_-]{11})/);
   if (vMatch) {
     return { type: 'video', id: vMatch[1] };
   }
 
-  // 3. Check for short link: youtu.be/...
+  // 3. Short link: youtu.be/...
   const shortMatch = trimmed.match(/youtu\.be\/([a-zA-Z0-9_-]{11})/);
   if (shortMatch) {
     return { type: 'video', id: shortMatch[1] };
   }
 
-  // 4. Check for embed link: /embed/...
+  // 4. Embed link
   const embedMatch = trimmed.match(/\/embed\/([a-zA-Z0-9_-]+)/);
   if (embedMatch) {
     return { type: embedMatch[1].startsWith('PL') ? 'playlist' : 'video', id: embedMatch[1] };
   }
 
-  // 5. If raw 11-char ID
+  // 5. Raw 11-char ID
   if (/^[a-zA-Z0-9_-]{11}$/.test(trimmed)) {
     return { type: 'video', id: trimmed };
   }
@@ -125,7 +125,7 @@ export function getEmbedUrl(track) {
     return 'https://www.youtube.com/embed/videoseries?list=' + track.playlistId + '&autoplay=1&enablejsapi=1&playsinline=1';
   }
 
-  const vId = track.videoId || '5qap5aO4i9A';
+  const vId = track.videoId || 'lTRiuFIWV54';
   return 'https://www.youtube.com/embed/' + vId + '?autoplay=1&enablejsapi=1&playsinline=1';
 }
 
@@ -243,11 +243,9 @@ export function FeelSongsBoards({ onSelectSong, currentTrackId }) {
                   </span>
 
                   {isPlaying && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
-                      <span className="soundwave-bar bar-1" />
-                      <span className="soundwave-bar bar-2" />
-                      <span className="soundwave-bar bar-3" />
-                    </div>
+                    <span style={{ fontSize: '11px', color: song.color, fontWeight: '600' }}>
+                      ● Active
+                    </span>
                   )}
                 </div>
 
@@ -286,23 +284,50 @@ export function FeelSongsBoards({ onSelectSong, currentTrackId }) {
 }
 
 /**
- * In-App Music Player Banner with Change Link Option
+ * Helper to get initial remembered track
  */
-export function InAppMusicPlayer({ track, onClose }) {
-  const [isMinimized, setIsMinimized] = useState(false);
+function getInitialTrack(initialTrack) {
+  if (initialTrack) return initialTrack;
+  try {
+    const saved = localStorage.getItem('tendril_last_track');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (parsed && (parsed.videoId || parsed.customUrl)) return parsed;
+    }
+  } catch (e) {}
+  return FEEL_SONGS[0];
+}
+
+/**
+ * Floating Glassmorphic Music Widget
+ * Single persistent iframe that NEVER unmounts on expand/minimize.
+ * Calm, subtle, non-flashy 42px round glass button.
+ */
+export function InAppMusicPlayer({ track }) {
+  const [isExpanded, setIsExpanded] = useState(false);
   const [showChangeModal, setShowChangeModal] = useState(false);
   const [customInput, setCustomInput] = useState('');
-  const [activeTrack, setActiveTrack] = useState(track);
+  const [activeTrack, setActiveTrack] = useState(() => getInitialTrack(track));
+  const [isPlaying, setIsPlaying] = useState(false);
 
+  // Sync track when external event fires
   useEffect(() => {
-    setActiveTrack(track);
+    if (track) {
+      setActiveTrack(track);
+      setIsPlaying(true);
+      try {
+        localStorage.setItem('tendril_last_track', JSON.stringify(track));
+      } catch (e) {}
+    }
   }, [track]);
 
-  if (!track || !activeTrack) return null;
-
-  function handleClose() {
-    setActiveTrack(null);
-    if (onClose) onClose();
+  function handleSelectTrack(newTrack) {
+    setActiveTrack(newTrack);
+    setIsPlaying(true);
+    setShowChangeModal(false);
+    try {
+      localStorage.setItem('tendril_last_track', JSON.stringify(newTrack));
+    } catch (e) {}
   }
 
   function handleApplyCustomUrl(e) {
@@ -312,259 +337,313 @@ export function InAppMusicPlayer({ track, onClose }) {
     if (!parsed) return;
 
     const newTrack = {
-      ...activeTrack,
       id: 'custom-' + Date.now(),
       title: 'Custom YouTube Stream',
       artist: 'User Link',
       customUrl: customInput.trim(),
       videoId: parsed.type === 'video' ? parsed.id : null,
       playlistId: parsed.type === 'playlist' ? parsed.id : null,
-      moodLabel: 'Custom Music',
+      moodLabel: 'Custom Playlist',
+      color: '#a8c7fa',
     };
-    setActiveTrack(newTrack);
-    setShowChangeModal(false);
+    handleSelectTrack(newTrack);
     setCustomInput('');
   }
 
-  function handleSelectPreset(preset) {
-    setActiveTrack(preset);
-    setShowChangeModal(false);
+  // Next / Previous station switchers
+  function handleNextTrack() {
+    const currentIndex = FEEL_SONGS.findIndex(s => s.id === activeTrack.id || s.videoId === activeTrack.videoId);
+    const nextIndex = (currentIndex + 1) % FEEL_SONGS.length;
+    handleSelectTrack(FEEL_SONGS[nextIndex]);
+  }
+
+  function handlePrevTrack() {
+    const currentIndex = FEEL_SONGS.findIndex(s => s.id === activeTrack.id || s.videoId === activeTrack.videoId);
+    const prevIndex = (currentIndex - 1 + FEEL_SONGS.length) % FEEL_SONGS.length;
+    handleSelectTrack(FEEL_SONGS[prevIndex]);
   }
 
   const youtubeWatchUrl = activeTrack.customUrl || (activeTrack.videoId ? 'https://www.youtube.com/watch?v=' + activeTrack.videoId : 'https://www.youtube.com');
 
   return (
-    <div
-      className="in-app-music-banner"
-      style={{
-        position: 'fixed',
-        bottom: '24px',
-        right: '24px',
-        zIndex: 99998,
-        maxWidth: isMinimized ? '340px' : '460px',
-        width: 'calc(100vw - 48px)',
-        background: 'rgba(15, 18, 26, 0.96)',
-        backdropFilter: 'blur(16px)',
-        border: '1px solid rgba(168, 199, 250, 0.3)',
-        borderRadius: '16px',
-        boxShadow: '0 12px 36px rgba(0, 0, 0, 0.65), 0 0 20px rgba(66, 133, 244, 0.25)',
-        overflow: 'hidden',
-        transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
-        animation: 'fade-up 0.3s ease-out',
-      }}
-    >
-      {/* Top Banner Control Bar */}
-      <div style={{
-        padding: '10px 14px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        background: 'rgba(255, 255, 255, 0.04)',
-        borderBottom: isMinimized ? 'none' : '1px solid rgba(255, 255, 255, 0.08)',
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#a8c7fa" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+    <div style={{ position: 'fixed', bottom: '24px', right: '24px', zIndex: 99998 }}>
+      
+      {/* 1. Subtle, Non-Flashy Glassmorphic Round Button */}
+      {!isExpanded && (
+        <button
+          type="button"
+          onClick={() => {
+            setIsExpanded(true);
+            if (!isPlaying) setIsPlaying(true);
+          }}
+          title={isPlaying ? 'Music playing: ' + activeTrack.title + ' (Click to expand)' : 'Tendril Soundscapes (Click to open)'}
+          style={{
+            width: '42px',
+            height: '42px',
+            borderRadius: '50%',
+            background: 'rgba(18, 22, 32, 0.72)',
+            backdropFilter: 'blur(20px) saturate(160%)',
+            WebkitBackdropFilter: 'blur(20px) saturate(160%)',
+            border: '1px solid rgba(255, 255, 255, 0.12)',
+            boxShadow: '0 4px 16px rgba(0, 0, 0, 0.35)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            padding: 0,
+            transition: 'all 0.2s ease',
+            color: isPlaying ? '#a8c7fa' : 'var(--text-secondary)',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = 'rgba(25, 30, 45, 0.85)';
+            e.currentTarget.style.borderColor = 'rgba(168, 199, 250, 0.4)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = 'rgba(18, 22, 32, 0.72)';
+            e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.12)';
+          }}
+        >
+          {/* Subtle clean music icon */}
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
             <path d="M9 18V5l12-2v13"/>
             <circle cx="6" cy="18" r="3"/>
             <circle cx="18" cy="16" r="3"/>
           </svg>
-          <div style={{ minWidth: 0 }}>
-            <div style={{
-              fontSize: '12.5px',
-              fontWeight: '600',
-              color: '#e3e3e3',
-              whiteSpace: 'nowrap',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-            }}>
-              {activeTrack.title}
-            </div>
-            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-              Playing in Tendril • {activeTrack.moodLabel || 'Feel Songs'}
-            </div>
-          </div>
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
-          {/* Change Track / Custom URL Button */}
-          <button
-            onClick={() => setShowChangeModal(v => !v)}
-            title="Change music or paste any YouTube URL"
-            style={{
-              background: showChangeModal ? 'rgba(168, 199, 250, 0.25)' : 'rgba(255, 255, 255, 0.06)',
-              border: '1px solid rgba(168, 199, 250, 0.3)',
-              color: '#c7d8ff',
-              borderRadius: '9999px',
-              padding: '2px 8px',
-              fontSize: '11px',
-              fontWeight: '500',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px',
-              transition: 'all 0.15s ease',
-            }}
-          >
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-            </svg>
-            <span>Change</span>
-          </button>
-
-          {/* Equalizer animation */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '2px', marginLeft: '4px', marginRight: '4px' }}>
-            <span className="soundwave-bar bar-1" />
-            <span className="soundwave-bar bar-2" />
-            <span className="soundwave-bar bar-3" />
-          </div>
-
-          {/* Minimize / Expand Toggle */}
-          <button
-            onClick={() => setIsMinimized(v => !v)}
-            title={isMinimized ? 'Expand player' : 'Minimize player'}
-            style={{
-              background: 'transparent',
-              border: 'none',
-              color: 'var(--text-secondary)',
-              cursor: 'pointer',
-              padding: '4px',
-              borderRadius: '4px',
-              display: 'flex',
-              alignItems: 'center',
-            }}
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              {isMinimized ? (
-                <polyline points="18 15 12 9 6 15" />
-              ) : (
-                <polyline points="6 9 12 15 18 9" />
-              )}
-            </svg>
-          </button>
-
-          {/* Close button */}
-          <button
-            onClick={handleClose}
-            title="Close music player"
-            style={{
-              background: 'transparent',
-              border: 'none',
-              color: 'var(--text-muted)',
-              cursor: 'pointer',
-              padding: '4px',
-              borderRadius: '4px',
-              display: 'flex',
-              alignItems: 'center',
-            }}
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <line x1="18" y1="6" x2="6" y2="18" />
-              <line x1="6" y1="6" x2="18" y2="18" />
-            </svg>
-          </button>
-        </div>
-      </div>
-
-      {/* Change Music Input Dropdown Form */}
-      {showChangeModal && (
-        <div style={{
-          padding: '12px 14px',
-          background: '#121622',
-          borderBottom: '1px solid rgba(168, 199, 250, 0.2)',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '8px',
-        }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: '11.5px', color: '#a8c7fa', fontWeight: '500' }}>
-              Paste any YouTube link or select a station:
-            </span>
-            <a
-              href={youtubeWatchUrl}
-              target="_blank"
-              rel="noreferrer"
-              style={{ fontSize: '11px', color: 'var(--text-muted)', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '3px' }}
-            >
-              <span>Open on YouTube</span>
-              <span>↗</span>
-            </a>
-          </div>
-
-          <form onSubmit={handleApplyCustomUrl} style={{ display: 'flex', gap: '6px' }}>
-            <input
-              type="text"
-              value={customInput}
-              onChange={(e) => setCustomInput(e.target.value)}
-              placeholder="Paste https://youtube.com/watch?v=... or playlist URL"
-              style={{
-                flex: 1,
-                padding: '6px 10px',
-                fontSize: '12px',
-                background: 'rgba(255, 255, 255, 0.06)',
-                border: '1px solid var(--border-subtle)',
-                borderRadius: '8px',
-                color: '#fff',
-                outline: 'none',
-              }}
-            />
-            <button
-              type="submit"
-              className="btn-google-primary"
-              style={{ padding: '6px 12px', fontSize: '12px', borderRadius: '8px', whiteSpace: 'nowrap' }}
-            >
-              Play Link
-            </button>
-          </form>
-
-          {/* Quick Preset Selector */}
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', marginTop: '4px' }}>
-            {FEEL_SONGS.map((s) => (
-              <button
-                key={s.id}
-                type="button"
-                onClick={() => handleSelectPreset(s)}
-                style={{
-                  padding: '3px 8px',
-                  borderRadius: '9999px',
-                  background: activeTrack.videoId === s.videoId ? 'rgba(168, 199, 250, 0.2)' : 'rgba(255, 255, 255, 0.04)',
-                  border: activeTrack.videoId === s.videoId ? '1px solid #a8c7fa' : '1px solid var(--border-subtle)',
-                  color: activeTrack.videoId === s.videoId ? '#a8c7fa' : 'var(--text-secondary)',
-                  fontSize: '10.5px',
-                  cursor: 'pointer',
-                }}
-              >
-                {s.moodLabel}
-              </button>
-            ))}
-          </div>
-        </div>
+          
+          {/* Tiny understated activity dot */}
+          {isPlaying && (
+            <span style={{
+              position: 'absolute',
+              top: '6px',
+              right: '6px',
+              width: '6px',
+              height: '6px',
+              borderRadius: '50%',
+              background: '#a8c7fa',
+              boxShadow: '0 0 4px #a8c7fa',
+            }} />
+          )}
+        </button>
       )}
 
-      {/* Embedded YouTube Player — NEVER unmounted so audio runs continuously until app is closed */}
+      {/* 2. Expanded Glassmorphic Player Card — The iframe inside NEVER unmounts */}
       <div
+        className="in-app-music-card"
         style={{
-          position: 'relative',
-          width: '100%',
-          height: isMinimized ? '0px' : '180px',
-          background: '#000',
+          display: isExpanded ? 'block' : 'none',
+          width: '380px',
+          maxWidth: 'calc(100vw - 48px)',
+          background: 'rgba(14, 18, 28, 0.88)',
+          backdropFilter: 'blur(28px) saturate(180%)',
+          WebkitBackdropFilter: 'blur(28px) saturate(180%)',
+          border: '1px solid rgba(255, 255, 255, 0.12)',
+          borderRadius: '18px',
+          boxShadow: '0 16px 48px rgba(0, 0, 0, 0.7), 0 0 20px rgba(0, 0, 0, 0.25)',
           overflow: 'hidden',
-          transition: 'height 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
-          opacity: isMinimized ? 0 : 1,
-          pointerEvents: isMinimized ? 'none' : 'auto',
+          animation: 'fade-up 0.2s ease-out',
         }}
       >
-        <iframe
-          key={activeTrack.videoId || activeTrack.customUrl}
-          width="100%"
-          height="180"
-          src={getEmbedUrl(activeTrack)}
-          title={activeTrack.title}
-          frameBorder="0"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-          allowFullScreen
-          style={{ display: 'block', border: 'none' }}
-        />
+        {/* Top Header Bar */}
+        <div style={{
+          padding: '10px 14px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          background: 'rgba(255, 255, 255, 0.03)',
+          borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+            <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: activeTrack.color || '#a8c7fa', flexShrink: 0 }} />
+            <div style={{ minWidth: 0 }}>
+              <div style={{
+                fontSize: '12px',
+                fontWeight: '600',
+                color: '#e3e3e3',
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              }}>
+                {activeTrack.title}
+              </div>
+              <div style={{ fontSize: '10.5px', color: 'var(--text-muted)' }}>
+                {activeTrack.moodLabel || 'Soundscape'}
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
+            {/* Previous track */}
+            <button
+              type="button"
+              onClick={handlePrevTrack}
+              title="Previous station"
+              style={{
+                background: 'transparent', border: 'none', color: 'var(--text-secondary)',
+                cursor: 'pointer', padding: '3px', borderRadius: '4px', display: 'flex'
+              }}
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <polygon points="19 20 9 12 19 4 19 20"/>
+                <line x1="5" y1="19" x2="5" y2="5"/>
+              </svg>
+            </button>
+
+            {/* Next track */}
+            <button
+              type="button"
+              onClick={handleNextTrack}
+              title="Next station"
+              style={{
+                background: 'transparent', border: 'none', color: 'var(--text-secondary)',
+                cursor: 'pointer', padding: '3px', borderRadius: '4px', display: 'flex'
+              }}
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <polygon points="5 4 15 12 5 20 5 4"/>
+                <line x1="19" y1="5" x2="19" y2="19"/>
+              </svg>
+            </button>
+
+            {/* Change button */}
+            <button
+              type="button"
+              onClick={() => setShowChangeModal(v => !v)}
+              title="Change song or playlist"
+              style={{
+                background: showChangeModal ? 'rgba(168, 199, 250, 0.2)' : 'rgba(255, 255, 255, 0.05)',
+                border: '1px solid rgba(255, 255, 255, 0.1)',
+                color: '#c7d8ff',
+                borderRadius: '9999px',
+                padding: '2px 8px',
+                fontSize: '11px',
+                cursor: 'pointer',
+                marginLeft: '3px',
+              }}
+            >
+              Change
+            </button>
+
+            {/* Minimize button (back into circle) */}
+            <button
+              type="button"
+              onClick={() => setIsExpanded(false)}
+              title="Minimize to round button"
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: 'var(--text-muted)',
+                cursor: 'pointer',
+                padding: '3px 4px',
+                borderRadius: '4px',
+                display: 'flex',
+                alignItems: 'center',
+                marginLeft: '2px',
+              }}
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        {/* Change / Search / Station Selector Drawer */}
+        {showChangeModal && (
+          <div style={{
+            padding: '12px 14px',
+            background: 'rgba(10, 14, 22, 0.95)',
+            borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '8px',
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: '500' }}>
+                Paste any YouTube song or playlist link:
+              </span>
+              <a
+                href={youtubeWatchUrl}
+                target="_blank"
+                rel="noreferrer"
+                style={{ fontSize: '11px', color: 'var(--text-muted)', textDecoration: 'none' }}
+              >
+                YouTube ↗
+              </a>
+            </div>
+
+            <form onSubmit={handleApplyCustomUrl} style={{ display: 'flex', gap: '6px' }}>
+              <input
+                type="text"
+                value={customInput}
+                onChange={(e) => setCustomInput(e.target.value)}
+                placeholder="Paste YouTube link or playlist URL…"
+                style={{
+                  flex: 1,
+                  padding: '5px 10px',
+                  fontSize: '11.5px',
+                  background: 'rgba(255, 255, 255, 0.06)',
+                  border: '1px solid var(--border-subtle)',
+                  borderRadius: '6px',
+                  color: '#fff',
+                  outline: 'none',
+                }}
+              />
+              <button
+                type="submit"
+                className="btn-google-primary"
+                style={{ padding: '5px 10px', fontSize: '11px', borderRadius: '6px', whiteSpace: 'nowrap' }}
+              >
+                Play
+              </button>
+            </form>
+
+            {/* Quick Stations Pills */}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '2px' }}>
+              {FEEL_SONGS.map((s) => (
+                <button
+                  key={s.id}
+                  type="button"
+                  onClick={() => handleSelectTrack(s)}
+                  style={{
+                    padding: '2px 7px',
+                    borderRadius: '9999px',
+                    background: activeTrack.videoId === s.videoId ? 'rgba(168, 199, 250, 0.2)' : 'rgba(255, 255, 255, 0.04)',
+                    border: activeTrack.videoId === s.videoId ? '1px solid #a8c7fa' : '1px solid var(--border-subtle)',
+                    color: activeTrack.videoId === s.videoId ? '#a8c7fa' : 'var(--text-secondary)',
+                    fontSize: '10px',
+                    cursor: 'pointer',
+                  }}
+                >
+                  {s.moodLabel}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Embedded YouTube Player — NEVER unmounted, so audio continues without restart! */}
+        <div
+          style={{
+            position: 'relative',
+            width: '100%',
+            height: '180px',
+            background: '#000',
+          }}
+        >
+          {isPlaying && (
+            <iframe
+              key={activeTrack.videoId || activeTrack.customUrl}
+              width="100%"
+              height="180"
+              src={getEmbedUrl(activeTrack)}
+              title={activeTrack.title}
+              frameBorder="0"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+              style={{ display: 'block', border: 'none' }}
+            />
+          )}
+        </div>
       </div>
     </div>
   );

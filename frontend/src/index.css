@@ -50,6 +50,108 @@
   --ease-fluid: cubic-bezier(0.05, 0.7, 0.1, 1);
 }
 
+/* ==========================================================================
+   THEME 1: Warm Parchment & Sepia (Day One / Ulysses / Moleskine inspiration)
+   ========================================================================== */
+[data-theme="parchment"] {
+  --bg-canvas: #16120e;
+  --bg-surface: #201b16;
+  --bg-surface-elevated: #2b241e;
+  --bg-surface-high: #382f27;
+  --bg-surface-highest: #453b32;
+  --bg-deep: #120e0b;
+
+  --border-subtle: rgba(245, 158, 11, 0.12);
+  --border-medium: rgba(245, 158, 11, 0.22);
+  --border-focus: #f59e0b;
+
+  --accent-google-blue: #f59e0b;
+  --accent-google-primary: #fbbf24;
+  --accent-blue-container: rgba(245, 158, 11, 0.15);
+  --google-green: #10b981;
+  --google-yellow: #fbbf24;
+  --google-red: #f87171;
+
+  --accent-emerald: #f59e0b;
+  --accent-emerald-glow: rgba(245, 158, 11, 0.2);
+  --accent-cyan: #fbbf24;
+  --accent-cyan-glow: rgba(251, 191, 36, 0.2);
+  --accent-violet: #d97706;
+
+  --text-primary: #f5ede4;
+  --text-secondary: #d6c8ba;
+  --text-muted: #9e8e7e;
+  --text-dim: #6b5e52;
+}
+
+/* ==========================================================================
+   THEME 2: Forest Sage (Bear Notes / Reflect Botanical Mindfulness inspiration)
+   ========================================================================== */
+[data-theme="forest"] {
+  --bg-canvas: #0c1611;
+  --bg-surface: #13221b;
+  --bg-surface-elevated: #1a3026;
+  --bg-surface-high: #233e32;
+  --bg-surface-highest: #2d4e3f;
+  --bg-deep: #08100c;
+
+  --border-subtle: rgba(109, 213, 140, 0.12);
+  --border-medium: rgba(109, 213, 140, 0.22);
+  --border-focus: #6dd58c;
+
+  --accent-google-blue: #6dd58c;
+  --accent-google-primary: #86efac;
+  --accent-blue-container: rgba(109, 213, 140, 0.15);
+  --google-green: #6dd58c;
+  --google-yellow: #fde047;
+  --google-red: #f87171;
+
+  --accent-emerald: #6dd58c;
+  --accent-emerald-glow: rgba(109, 213, 140, 0.2);
+  --accent-cyan: #86efac;
+  --accent-cyan-glow: rgba(134, 239, 172, 0.2);
+  --accent-violet: #34d399;
+
+  --text-primary: #edf8f2;
+  --text-secondary: #c5dfd0;
+  --text-muted: #85aa94;
+  --text-dim: #547561;
+}
+
+/* ==========================================================================
+   THEME 3: Nordic Slate (Craft / Notion Minimalist Twilight inspiration)
+   ========================================================================== */
+[data-theme="nordic"] {
+  --bg-canvas: #0b0f19;
+  --bg-surface: #121927;
+  --bg-surface-elevated: #1a2438;
+  --bg-surface-high: #24324d;
+  --bg-surface-highest: #2f4062;
+  --bg-deep: #070a11;
+
+  --border-subtle: rgba(129, 140, 248, 0.12);
+  --border-medium: rgba(129, 140, 248, 0.22);
+  --border-focus: #818cf8;
+
+  --accent-google-blue: #818cf8;
+  --accent-google-primary: #a5b4fc;
+  --accent-blue-container: rgba(129, 140, 248, 0.15);
+  --google-green: #34d399;
+  --google-yellow: #fbbf24;
+  --google-red: #f87171;
+
+  --accent-emerald: #818cf8;
+  --accent-emerald-glow: rgba(129, 140, 248, 0.2);
+  --accent-cyan: #38bdf8;
+  --accent-cyan-glow: rgba(56, 189, 248, 0.2);
+  --accent-violet: #c084fc;
+
+  --text-primary: #f1f5f9;
+  --text-secondary: #cbd5e1;
+  --text-muted: #94a3b8;
+  --text-dim: #64748b;
+}
+
 *, *::before, *::after {
   box-sizing: border-box;
   margin: 0;
