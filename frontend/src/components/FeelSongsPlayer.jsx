@@ -351,7 +351,8 @@ function getInitialTrack(initialTrack) {
  * - Succession Main Theme (Lofi Remix) default track for all users.
  * - Real-time Song Search & YouTube audio stream search.
  */
-export function InAppMusicPlayer({ track, isExpanded: controlledExpanded, onToggleExpanded }) {
+export function InAppMusicPlayer({ track, path, isExpanded: controlledExpanded, onToggleExpanded }) {
+  const isReflect = path === '/';
   const [internalExpanded, setInternalExpanded] = useState(false);
   const isExpanded = controlledExpanded !== undefined ? controlledExpanded : internalExpanded;
   const setIsExpanded = onToggleExpanded || setInternalExpanded;
@@ -713,27 +714,30 @@ export function InAppMusicPlayer({ track, isExpanded: controlledExpanded, onTogg
           max-width: calc(100vw - 48px);
         }
         @media (max-width: 768px) {
-          /* On mobile screens, hide the floating round button that was covering the Universe nav tab */
-          .tendril-music-round-btn {
-            display: none !important;
-          }
           .tendril-music-container {
             bottom: auto !important;
             right: auto !important;
-            top: 60px !important;
-            left: 0 !important;
-            width: 100% !important;
-            pointer-events: none;
+          }
+          /* Default mobile stack on secondary screens (above 76px bottom dock) */
+          .tendril-music-round-btn {
+            display: flex !important;
+            bottom: 84px !important;
+            right: 16px !important;
+          }
+          /* On Reflect screen on mobile: stacked safely above the composer input bar */
+          .tendril-music-round-btn.on-reflect {
+            bottom: 144px !important;
+            right: 16px !important;
           }
           .in-app-music-card {
             position: fixed !important;
-            top: 60px !important;
-            bottom: auto !important;
+            bottom: 84px !important;
+            top: auto !important;
             left: 12px !important;
             right: 12px !important;
             width: auto !important;
             max-width: calc(100vw - 24px) !important;
-            max-height: calc(100dvh - 148px) !important;
+            max-height: calc(100dvh - 160px) !important;
             overflow-y: auto !important;
             box-shadow: 0 16px 48px rgba(0, 0, 0, 0.85) !important;
           }
@@ -741,10 +745,10 @@ export function InAppMusicPlayer({ track, isExpanded: controlledExpanded, onTogg
       `}</style>
       <div ref={widgetRef} className="tendril-music-container">
         
-        {/* 1. Subtle, Non-Flashy Glassmorphic Round Button (always present on desktop, never flashy) */}
+        {/* 1. Subtle, Non-Flashy Glassmorphic Round Button */}
         <button
           type="button"
-          className="tendril-music-round-btn"
+          className={`tendril-music-round-btn ${isReflect ? 'on-reflect' : ''}`}
           onClick={() => setIsExpanded(prev => !prev)}
           title={isPlaying ? 'Tendril Music: ' + activeTrack.title + ' (' + volume + '% volume)' : 'Tendril Ambient Soundscapes'}
           style={{

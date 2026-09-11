@@ -387,35 +387,6 @@ export default function App() {
             </svg>
           </button>
 
-          {/* Mobile In-App Music Header Button */}
-          <button
-            type="button"
-            className="mobile-only mobile-music-trigger-btn"
-            onClick={() => setShowMusicCard((prev) => !prev)}
-            title={showMusicCard ? 'Close music player' : 'Tendril Ambient Music'}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: '32px',
-              height: '32px',
-              padding: 0,
-              borderRadius: '50%',
-              background: showMusicCard ? 'rgba(168, 199, 250, 0.22)' : 'rgba(255, 255, 255, 0.05)',
-              border: showMusicCard ? '1px solid #a8c7fa' : '1px solid var(--border-subtle)',
-              color: showMusicCard ? '#a8c7fa' : 'var(--text-secondary)',
-              cursor: 'pointer',
-              position: 'relative',
-              transition: 'all 0.15s ease',
-            }}
-          >
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M9 18V5l12-2v13"/>
-              <circle cx="6" cy="18" r="3"/>
-              <circle cx="18" cy="16" r="3"/>
-            </svg>
-          </button>
-
           <button
             className={`nav-tab-btn ${showSettingsModal ? 'active' : ''}`}
             onClick={() => setShowSettingsModal((prev) => !prev)}
@@ -648,7 +619,7 @@ export default function App() {
 
           {/* Floating Voice Controls & In-App Music Player */}
           <FloatingVoiceControls path={path} navigate={navigate} onOpenVoiceConvo={handleOpenVoiceConvo} composerMode={composerMode} />
-          <InAppMusicPlayer track={musicTrack} isExpanded={showMusicCard} onToggleExpanded={setShowMusicCard} />
+          <InAppMusicPlayer track={musicTrack} path={path} isExpanded={showMusicCard} onToggleExpanded={setShowMusicCard} />
         </VoiceProvider>
         </ErrorBoundary>
       )}

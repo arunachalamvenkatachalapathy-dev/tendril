@@ -16,11 +16,7 @@ export default function FloatingVoiceControls({ path, navigate, onOpenVoiceConvo
     toggleLanguage,
   } = useVoiceContext();
 
-  // On the Reflect screen, full inline voice controls already exist in the center card and composer.
-  // Hide floating controls completely on Reflect to eliminate duplicate icons and mobile overshadowing.
-  if (path === '/') {
-    return null;
-  }
+  const isReflect = path === '/';
 
   const handleMicClick = () => {
     if (!micActive) {
@@ -164,16 +160,34 @@ export default function FloatingVoiceControls({ path, navigate, onOpenVoiceConvo
         }
 
         @media (max-width: 768px) {
+          /* Default mobile stack on secondary screens (above 76px bottom dock) */
           .tendril-floating-mic {
-            bottom: 92px !important;
+            bottom: 132px !important;
             right: 16px !important;
           }
           .tendril-floating-lang {
-            bottom: 144px !important;
+            bottom: 180px !important;
             right: 16px !important;
           }
           .tendril-live-transcript-pill {
-            bottom: 88px !important;
+            bottom: 84px !important;
+            left: 50% !important;
+            transform: translateX(-50%) !important;
+            max-width: calc(100vw - 32px) !important;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45) !important;
+          }
+
+          /* On Reflect screen on mobile: stacked safely above the composer input bar */
+          .tendril-floating-mic.on-reflect {
+            bottom: 192px !important;
+            right: 16px !important;
+          }
+          .tendril-floating-lang.on-reflect {
+            bottom: 240px !important;
+            right: 16px !important;
+          }
+          .tendril-live-transcript-pill.on-reflect {
+            bottom: 144px !important;
             left: 50% !important;
             transform: translateX(-50%) !important;
             max-width: calc(100vw - 32px) !important;
@@ -185,7 +199,7 @@ export default function FloatingVoiceControls({ path, navigate, onOpenVoiceConvo
       {/* Floating Language Toggle stacked above the mic button */}
       <button
         type="button"
-        className="tendril-floating-lang"
+        className={`tendril-floating-lang ${isReflect ? 'on-reflect' : ''}`}
         onClick={toggleLanguage}
         title={
           language === 'en'
@@ -205,7 +219,7 @@ export default function FloatingVoiceControls({ path, navigate, onOpenVoiceConvo
         type="button"
         className={`tendril-floating-mic ${
           isAssistantSpeaking ? 'speaking' : micActive ? 'active' : 'inactive'
-        }`}
+        } ${isReflect ? 'on-reflect' : ''}`}
         onClick={handleMicClick}
         title={
           micActive
@@ -252,7 +266,7 @@ export default function FloatingVoiceControls({ path, navigate, onOpenVoiceConvo
 
       {/* Floating Live Subtitle Pill across all pages */}
       {showLivePill && (
-        <div className="tendril-live-transcript-pill">
+        <div className={`tendril-live-transcript-pill ${isReflect ? 'on-reflect' : ''}`}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
             <span
               style={{
