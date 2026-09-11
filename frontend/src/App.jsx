@@ -137,6 +137,13 @@ export default function App() {
     if (path !== '/') navigate('/');
   }
 
+  const handleOpenVoiceConvo = useCallback(() => {
+    setView({ mode: 'compose' });
+    setComposerMode('voice');
+    setMobileTab('reflect');
+    if (path !== '/') navigate('/');
+  }, [path, navigate]);
+
   async function handleOpenEntry(id) {
     try {
       const entry = await getEntry(id);
@@ -575,7 +582,7 @@ export default function App() {
           )}
 
           {/* Floating Voice Controls & In-App Music Player */}
-          <FloatingVoiceControls path={path} navigate={navigate} />
+          <FloatingVoiceControls path={path} navigate={navigate} onOpenVoiceConvo={handleOpenVoiceConvo} />
           <InAppMusicPlayer track={musicTrack} />
         </VoiceProvider>
         </ErrorBoundary>

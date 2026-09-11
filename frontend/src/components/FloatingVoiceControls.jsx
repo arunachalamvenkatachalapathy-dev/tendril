@@ -1,7 +1,7 @@
 import React from 'react';
 import { useVoiceContext } from '../voice/VoiceContext.jsx';
 
-export default function FloatingVoiceControls({ path, navigate }) {
+export default function FloatingVoiceControls({ path, navigate, onOpenVoiceConvo }) {
   const {
     micActive,
     toggleMic,
@@ -15,6 +15,15 @@ export default function FloatingVoiceControls({ path, navigate }) {
     language,
     toggleLanguage,
   } = useVoiceContext();
+
+  const handleMicClick = () => {
+    if (!micActive) {
+      onOpenVoiceConvo?.();
+      toggleMic();
+    } else {
+      toggleMic();
+    }
+  };
 
   const isUserSpeaking = micActive && (audioLevel > 12 || (currentSubtitle?.role === 'user' && currentSubtitle?.isLive));
   const isAssistantSpeaking = status === 'speaking' || (currentSubtitle?.role === 'assistant' && currentSubtitle?.isLive);
@@ -173,7 +182,7 @@ export default function FloatingVoiceControls({ path, navigate }) {
         className={`tendril-floating-mic ${
           isAssistantSpeaking ? 'speaking' : micActive ? 'active' : 'inactive'
         }`}
-        onClick={toggleMic}
+        onClick={handleMicClick}
         title={
           micActive
             ? 'Voice listening is active (Click to mute mic)'

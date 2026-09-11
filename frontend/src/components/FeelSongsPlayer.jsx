@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useVoiceContext } from '../voice/VoiceContext.jsx';
 
 export const FEEL_SONGS = [
   {
@@ -367,44 +368,21 @@ export function InAppMusicPlayer({ track }) {
     } catch (e) {}
     return 10; // 10 percent default (final confirmed)
   });
-  const [duckState, setDuckState] = useState({
-    isSpeaking: false,
-    userSpeaking: false,
-    assistantSpeaking: false,
-  });
+  const voiceCtx = useVoiceContext();
+  const micActive = Boolean(voiceCtx?.micActive);
+  const micActiveRef = useRef(micActive);
+  useEffect(() => {
+    micActiveRef.current = micActive;
+  }, [micActive]);
+
+  const userPausedRef = useRef(false);
   const iframeRef = useRef(null);
   const widgetRef = useRef(null);
 
-  // Dynamic Audio Ducking for Convo Mode:
-  // - When user speaks: volume moves to 0% (complete silence for mic clarity)
-  // - When Gemini / Convo relays/replies: volume moves to 5% (soft ambient backing track)
-  // - When idle: volume returns to user's independent volume setting (e.g. 10% default or whatever user set)
-  // - Music preference in localStorage is completely independent and preserved.
-  useEffect(() => {
-    const handleVoiceSpeaking = (e) => {
-      const d = e?.detail || {};
-      setDuckState({
-        isSpeaking: Boolean(d.isSpeaking),
-        userSpeaking: Boolean(d.userSpeaking),
-        assistantSpeaking: Boolean(d.assistantSpeaking),
-      });
-    };
-
-    window.addEventListener('tendril:voice-speaking', handleVoiceSpeaking);
-    return () => {
-      window.removeEventListener('tendril:voice-speaking', handleVoiceSpeaking);
-    };
-  }, []);
-
-  // Effective volume sent to YouTube player: ducked to 0% if user speaking, 5% if assistant relaying, else user volume
-  const effectiveVolume = duckState.userSpeaking
-    ? 0
-    : duckState.assistantSpeaking
-    ? Math.min(volume, 5)
-    : volume;
-
-  const isDucked = Boolean(duckState.userSpeaking || duckState.assistantSpeaking);
-  const duckedText = duckState.userSpeaking ? '0% (Muted for Speaking)' : '5% (Ducked for Convo)';
+  // During voice convo with Gemini (mic active), music is completely silenced to 0%
+  const effectiveVolume = micActive ? 0 : volume;
+  const isDucked = micActive;
+  const duckedText = '0% (Muted for Voice Convo)';
 
   // Sync track when external event fires
   useEffect(() => {
@@ -475,28 +453,56 @@ export function InAppMusicPlayer({ track }) {
   }, []);
 
   const startPlayback = useCallback(() => {
+    if (userPausedRef.current) return;
+    if (micActiveRef.current) return;
     sendIframeCommand('unMute');
-    sendIframeCommand('setVolume', [effectiveVolume]);
+    sendIframeCommand('setVolume', [volume]);
     sendIframeCommand('playVideo');
-  }, [sendIframeCommand, effectiveVolume]);
+  }, [sendIframeCommand, volume]);
 
   const handleTogglePlayPause = useCallback(() => {
     if (isPlaying) {
+      userPausedRef.current = true;
       sendIframeCommand('pauseVideo');
       setIsPlaying(false);
     } else {
-      startPlayback();
+      userPausedRef.current = false;
       setIsPlaying(true);
+      if (!micActiveRef.current) {
+        sendIframeCommand('unMute');
+        sendIframeCommand('setVolume', [volume]);
+        sendIframeCommand('playVideo');
+      }
     }
-  }, [isPlaying, startPlayback]);
+  }, [isPlaying, volume, sendIframeCommand]);
 
-  // Enforce automatic ambient playback whenever iframe loads
+  // Complete silence during voice conversation with Gemini:
+  // When mic turns ON -> pause video & set volume to 0
+  // When mic turns OFF -> if user did not manually pause, resume music
+  useEffect(() => {
+    if (micActive) {
+      sendIframeCommand('pauseVideo');
+      sendIframeCommand('setVolume', [0]);
+    } else {
+      if (!userPausedRef.current) {
+        sendIframeCommand('unMute');
+        sendIframeCommand('setVolume', [volume]);
+        sendIframeCommand('playVideo');
+        setIsPlaying(true);
+      }
+    }
+  }, [micActive, volume, sendIframeCommand]);
+
+  // Enforce automatic ambient playback whenever iframe loads (unless user paused or mic active)
   const handleIframeLoad = useCallback(() => {
+    if (userPausedRef.current || micActiveRef.current) return;
     startPlayback();
-    setTimeout(startPlayback, 250);
-    setTimeout(startPlayback, 700);
-    setTimeout(startPlayback, 1500);
-    setTimeout(startPlayback, 3000);
+    setTimeout(() => {
+      if (!userPausedRef.current && !micActiveRef.current) startPlayback();
+    }, 300);
+    setTimeout(() => {
+      if (!userPausedRef.current && !micActiveRef.current) startPlayback();
+    }, 1000);
   }, [startPlayback]);
 
   useEffect(() => {
@@ -511,36 +517,64 @@ export function InAppMusicPlayer({ track }) {
         if (!data) return;
 
         if (data.event === 'onReady' || data.event === 'initialDelivery') {
-          startPlayback();
+          if (!userPausedRef.current && !micActiveRef.current) {
+            startPlayback();
+          }
         }
 
         if (data.event === 'onStateChange') {
-          if (data.info === 1) {
+          if (data.info === 1) { // PLAYING
             setIsPlaying(true);
-          } else if (data.info === 2) {
+            userPausedRef.current = false;
+          } else if (data.info === 2) { // PAUSED
             setIsPlaying(false);
-          } else if (data.info === -1) {
-            startPlayback();
-          } else if (data.info === 0) {
-            // When a video ends (info === 0: YT.PlayerState.ENDED),
-            // loop immediately inside the player to prevent end screen links from opening in a new tab!
+            // If paused while mic is not active, user explicitly paused in the player
+            if (!micActiveRef.current) {
+              userPausedRef.current = true;
+            }
+          } else if (data.info === -1) { // UNSTARTED
+            if (!userPausedRef.current && !micActiveRef.current) {
+              startPlayback();
+            }
+          } else if (data.info === 0) { // ENDED (loop seamlessly)
             sendIframeCommand('seekTo', [0, true]);
-            sendIframeCommand('playVideo');
-            sendIframeCommand('unMute');
-            sendIframeCommand('setVolume', [effectiveVolume]);
-            setIsPlaying(true);
+            if (!userPausedRef.current && !micActiveRef.current) {
+              sendIframeCommand('playVideo');
+              sendIframeCommand('unMute');
+              sendIframeCommand('setVolume', [volume]);
+              setIsPlaying(true);
+            }
           }
         }
       } catch (err) {}
     };
     window.addEventListener('message', onWindowMessage);
     return () => window.removeEventListener('message', onWindowMessage);
-  }, [sendIframeCommand, effectiveVolume, startPlayback]);
+  }, [sendIframeCommand, volume, startPlayback]);
 
-  // Automatic unlock & resume on ANY user gesture anywhere on window (capture phase)
+  // One-time initial gesture unlock for browser autoplay policy.
+  // Immediately detaches after first gesture so clicks anywhere on the screen NEVER re-trigger playback!
   useEffect(() => {
-    let fired = false;
+    let unlocked = false;
+    const interactionEvents = ['pointerdown', 'click', 'touchstart', 'keydown'];
+
+    const cleanup = () => {
+      interactionEvents.forEach((ev) => {
+        window.removeEventListener(ev, unlockAndPlay, { capture: true });
+      });
+    };
+
     const unlockAndPlay = () => {
+      if (unlocked) {
+        cleanup();
+        return;
+      }
+      unlocked = true;
+      cleanup();
+
+      // If user manually paused or mic is active, do not play
+      if (userPausedRef.current || micActiveRef.current) return;
+
       try {
         const AudioCtx = window.AudioContext || window.webkitAudioContext;
         if (AudioCtx) {
@@ -550,32 +584,13 @@ export function InAppMusicPlayer({ track }) {
       } catch (e) {}
 
       startPlayback();
-
-      if (!fired) {
-        fired = true;
-        setTimeout(startPlayback, 150);
-        setTimeout(startPlayback, 600);
-      }
     };
-
-    const interactionEvents = [
-      'pointerdown',
-      'click',
-      'touchstart',
-      'keydown',
-      'wheel',
-      'scroll',
-    ];
 
     interactionEvents.forEach((ev) => {
       window.addEventListener(ev, unlockAndPlay, { capture: true, passive: true });
     });
 
-    return () => {
-      interactionEvents.forEach((ev) => {
-        window.removeEventListener(ev, unlockAndPlay, { capture: true });
-      });
-    };
+    return cleanup;
   }, [startPlayback]);
 
   function handleSelectTrack(newTrack) {
