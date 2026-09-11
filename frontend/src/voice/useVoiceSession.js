@@ -140,6 +140,7 @@ export function useVoiceSession() {
   const workletNodeRef = useRef(null);
   const scriptProcessorRef = useRef(null);
   const audioLevelTimerRef = useRef(null);
+  const audioLevelRef = useRef(0);
   const analyserRef = useRef(null);
   const analyserCtxRef = useRef(null);
   const animFrameRef = useRef(null);
@@ -426,6 +427,7 @@ export function useVoiceSession() {
         for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
         const avg = sum / dataArray.length;
         const level = Math.min(100, Math.round(avg * 1.5));
+        audioLevelRef.current = level;
         setAudioLevel(level);
 
         // Visual meter tick only — conversational barge-in is handled authoritatively
@@ -442,6 +444,7 @@ export function useVoiceSession() {
     if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
     analyserRef.current = null;
     analyserCtxRef.current = null;
+    audioLevelRef.current = 0;
     setAudioLevel(0);
   }, []);
 
@@ -506,8 +509,17 @@ export function useVoiceSession() {
         // Half-duplex acoustic echo gate: suppress microphone transmission while Gemini
         // is speaking through the speaker. This prevents speaker output from bleeding
         // back into the mic, which causes false barge-in interrupts and cuts off Gemini.
-        if (isPlaybackActiveRef.current || statusRef.current === 'speaking') {
-          return;
+        const isAssistantActive =
+          isPlaybackActiveRef.current ||
+          statusRef.current === 'speaking' ||
+          activeSourcesRef.current.length > 0 ||
+          playbackEndTimerRef.current !== null;
+
+        if (isAssistantActive) {
+          // Strict barge-in protection: do NOT transmit to server unless user is clearly and loudly speaking
+          if (audioLevelRef.current <= 28) {
+            return;
+          }
         }
         try {
           const resampled = downsampleTo16k(float32Chunk, sampleRate);
@@ -690,9 +702,13 @@ export function useVoiceSession() {
                 handleTranscriptionDelta(payload.role, payload.text);
                 break;
               case 'interrupted':
-                stopAudioPlayback();
-                setStatus('listening');
-                setCurrentSubtitle(null);
+                // Only abort queued assistant audio if user is deliberately speaking loudly into the mic (> 26)
+                // If user is not loudly speaking, let already queued speech finish completely without cutoff!
+                if (audioLevelRef.current > 26) {
+                  stopAudioPlayback();
+                  setStatus('listening');
+                  setCurrentSubtitle(null);
+                }
                 setLiveTranscript((prev) => prev.map((m) => (m.isStreaming ? { ...m, isStreaming: false } : m)));
                 break;
               case 'turn_complete':

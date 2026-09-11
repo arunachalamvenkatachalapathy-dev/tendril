@@ -84,6 +84,28 @@ export function deleteEntry(id) {
   });
 }
 
+export function listTrashEntries() {
+  return authedFetch('/api/entries/trash');
+}
+
+export function restoreEntry(id) {
+  return authedFetch(`/api/entries/${id}/restore`, {
+    method: 'POST',
+  });
+}
+
+export function permanentlyDeleteEntry(id) {
+  return authedFetch(`/api/entries/${id}/permanent`, {
+    method: 'DELETE',
+  });
+}
+
+export function emptyTrash() {
+  return authedFetch('/api/entries/trash/empty', {
+    method: 'POST',
+  });
+}
+
 export function getMemoryContext() {
   return authedFetch('/api/memory/context');
 }

@@ -99,8 +99,20 @@ export function VoiceProvider({
       return;
     }
 
-    // Check for save command
-    if (/\b(save note|save entry|save this note|save my note)\b/.test(raw)) {
+    // Check for save command (immediate voice save)
+    const isSaveCommand =
+      /\b(save( (my|the|this|his|her|our)? *(chat|convo|conversation|reflection|entry|note|session|everything))?|save it|save this|save now|please save)\b/i.test(raw) ||
+      raw.includes('save his chat') ||
+      raw.includes('save my chat') ||
+      raw.includes('save chat') ||
+      raw.includes('save the chat') ||
+      raw.includes('save this chat') ||
+      raw.includes('save conversation') ||
+      raw.includes('save this conversation') ||
+      raw.includes('save this') ||
+      raw === 'save';
+
+    if (isSaveCommand) {
       lastProcessedVoiceCommandRef.current = raw;
       saveCurrentNote();
       return;

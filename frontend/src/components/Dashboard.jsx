@@ -41,6 +41,10 @@ export default function Dashboard({ uid, onBack, onSeedRefresh, entries = [] }) 
   }, [uid, rangeDays, entries.length]);
 
   async function handleSeedDemoOnDemand() {
+    if (entries && entries.length > 0) {
+      alert('Demo data seeding is disabled because you already have active reflections. Tendril protects your personal journal history from being overwritten.');
+      return;
+    }
     if (!window.confirm('Seed a 14-day sample cognitive journey to demonstrate Diurnal Telemetry and Sentiment Matrix?')) return;
     setSeeding(true);
     try {

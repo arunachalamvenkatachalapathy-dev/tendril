@@ -1,7 +1,7 @@
-﻿import { useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { THEMES } from '../theme.js';
 
-export default function SettingsModal({ user, currentTheme, onSelectTheme, onSignOut, onClose }) {
+export default function SettingsModal({ user, currentTheme, onSelectTheme, onSignOut, onClose, onOpenRecycleBin }) {
   const modalRef = useRef(null);
 
   useEffect(() => {
@@ -241,6 +241,63 @@ export default function SettingsModal({ user, currentTheme, onSelectTheme, onSig
             <div style={{ fontSize: '11px', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
               <strong style={{ color: '#e3e3e3' }}>Auto-Ducking Active:</strong> Music volume automatically ducks to 5% whenever speaking in Convo mode.
             </div>
+          </div>
+
+          <div style={{
+            padding: '12px 14px',
+            background: 'rgba(255, 255, 255, 0.03)',
+            border: '1px solid var(--border-subtle)',
+            borderRadius: '12px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div style={{
+                width: '32px',
+                height: '32px',
+                borderRadius: '8px',
+                background: 'rgba(242, 139, 130, 0.12)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#f28b82',
+                flexShrink: 0,
+              }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="3 6 5 6 21 6" />
+                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                </svg>
+              </div>
+              <div>
+                <div style={{ fontSize: '13px', fontWeight: '600', color: '#f0f3f8' }}>
+                  Recycle Bin
+                </div>
+                <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                  View, restore, or purge deleted notes
+                </div>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                onClose();
+                onOpenRecycleBin?.();
+              }}
+              style={{
+                padding: '6px 14px',
+                borderRadius: '8px',
+                background: 'rgba(255, 255, 255, 0.08)',
+                border: '1px solid var(--border-medium)',
+                color: '#e3e3e3',
+                fontSize: '12px',
+                fontWeight: '500',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              Open
+            </button>
           </div>
 
           <div style={{ paddingTop: '8px', borderTop: '1px solid var(--border-subtle)' }}>

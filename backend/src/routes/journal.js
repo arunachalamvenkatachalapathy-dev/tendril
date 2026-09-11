@@ -121,22 +121,23 @@ journalRouter.post('/entries', async (req, res) => {
   }
 });
 
-// POST /api/demo/seed — Seeds a rich sample journal journey up to Sept 2, 2026 for judges
+// POST /api/demo/seed — Seeds a sample journal journey ONLY IF user has 0 entries
 journalRouter.post('/demo/seed', async (req, res) => {
   try {
-    const batch = db.batch();
     const entriesCol = db.collection('users').doc(req.uid).collection('entries');
 
-    // Purge any existing entries dated beyond September 2, 2026
-    const sept2End = new Date('2026-09-02T23:59:59.999Z');
+    // Never overwrite or delete user entries: check if user already has active entries
     const existingSnap = await entriesCol.get();
-    for (const doc of existingSnap.docs) {
-      const data = doc.data();
-      const createdAt = data.createdAt?.toDate ? data.createdAt.toDate() : (data.createdAt ? new Date(data.createdAt) : null);
-      if (createdAt && createdAt > sept2End) {
-        batch.delete(doc.ref);
-      }
+    const activeEntries = existingSnap.docs.filter((doc) => !doc.data().isDeleted);
+    if (activeEntries.length > 0) {
+      return res.status(400).json({
+        error: 'You already have active journal reflections. Demo data was not added to preserve your personal history.',
+        alreadyHasEntries: true,
+        count: activeEntries.length,
+      });
     }
+
+    const batch = db.batch();
 
     // All sample entries strictly dated between Aug 21, 2026 and Sept 2, 2026
     const sampleJourneys = [
@@ -284,31 +285,33 @@ journalRouter.post('/demo/seed', async (req, res) => {
   }
 });
 
-// GET /api/entries — list the CALLER's own entries, newest first. There is
-// no route that accepts a uid parameter to look up someone else's entries.
+// GET /api/entries — list the CALLER's own entries, newest first (excluding Recycle Bin items).
 journalRouter.get('/entries', async (req, res) => {
   try {
     const limit = Math.min(parseInt(req.query.limit, 10) || 30, 100);
 
     const snap = await db
       .collection('users')
-      .doc(req.uid) // <-- verified uid, never from the client
+      .doc(req.uid)
       .collection('entries')
       .orderBy('createdAt', 'desc')
-      .limit(limit)
+      .limit(limit * 2)
       .get();
 
-    const entries = snap.docs.map((doc) => {
-      const data = doc.data();
-      return {
-        id: doc.id,
-        title: data.title,
-        summary: data.summary,
-        mood: data.mood,
-        themes: data.themes,
-        createdAt: data.createdAt ? data.createdAt.toDate().toISOString() : null,
-      };
-    });
+    const entries = snap.docs
+      .filter((doc) => !doc.data().isDeleted)
+      .slice(0, limit)
+      .map((doc) => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          title: data.title,
+          summary: data.summary,
+          mood: data.mood,
+          themes: data.themes,
+          createdAt: data.createdAt ? data.createdAt.toDate().toISOString() : null,
+        };
+      });
 
     res.json({ entries });
   } catch (err) {
@@ -317,9 +320,39 @@ journalRouter.get('/entries', async (req, res) => {
   }
 });
 
-// GET /api/entries/:id — a single entry WITH its full transcript. Ownership
-// is enforced by only ever reading from users/{req.uid}/entries/{id} — a
-// caller can never supply another user's uid, so this can't leak.
+// GET /api/entries/trash — list entries in the Recycle Bin
+journalRouter.get('/entries/trash', async (req, res) => {
+  try {
+    const snap = await db
+      .collection('users')
+      .doc(req.uid)
+      .collection('entries')
+      .get();
+
+    const trashEntries = snap.docs
+      .filter((doc) => doc.data().isDeleted === true)
+      .map((doc) => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          title: data.title,
+          summary: data.summary,
+          mood: data.mood,
+          themes: data.themes,
+          createdAt: data.createdAt ? data.createdAt.toDate().toISOString() : null,
+          deletedAt: data.deletedAt?.toDate ? data.deletedAt.toDate().toISOString() : null,
+        };
+      })
+      .sort((a, b) => new Date(b.deletedAt || b.createdAt || 0) - new Date(a.deletedAt || a.createdAt || 0));
+
+    res.json({ entries: trashEntries });
+  } catch (err) {
+    console.error('[GET /api/entries/trash] failed for uid=%s:', req.uid, err.message);
+    res.status(500).json({ error: 'Could not load Recycle Bin.' });
+  }
+});
+
+// GET /api/entries/:id — single entry
 journalRouter.get('/entries/:id', async (req, res) => {
   try {
     const doc = await db
@@ -345,7 +378,7 @@ journalRouter.get('/entries/:id', async (req, res) => {
   }
 });
 
-// DELETE /api/entries/:id — delete a single entry owned by the caller
+// DELETE /api/entries/:id — soft delete (moves to Recycle Bin)
 journalRouter.delete('/entries/:id', async (req, res) => {
   try {
     const docRef = db
@@ -359,10 +392,91 @@ journalRouter.delete('/entries/:id', async (req, res) => {
       return res.status(404).json({ error: 'Entry not found.' });
     }
 
-    await docRef.delete();
-    res.json({ success: true, id: req.params.id });
+    await docRef.set(
+      {
+        isDeleted: true,
+        deletedAt: FieldValue.serverTimestamp(),
+      },
+      { merge: true }
+    );
+
+    res.json({ success: true, id: req.params.id, softDeleted: true });
   } catch (err) {
     console.error('[DELETE /api/entries/:id] failed for uid=%s:', req.uid, err.message);
     res.status(500).json({ error: 'Could not delete this entry right now.' });
+  }
+});
+
+// POST /api/entries/:id/restore — restore an entry from Recycle Bin
+journalRouter.post('/entries/:id/restore', async (req, res) => {
+  try {
+    const docRef = db
+      .collection('users')
+      .doc(req.uid)
+      .collection('entries')
+      .doc(req.params.id);
+
+    const doc = await docRef.get();
+    if (!doc.exists) {
+      return res.status(404).json({ error: 'Entry not found.' });
+    }
+
+    await docRef.set(
+      {
+        isDeleted: false,
+        restoredAt: FieldValue.serverTimestamp(),
+      },
+      { merge: true }
+    );
+
+    res.json({ success: true, id: req.params.id, restored: true });
+  } catch (err) {
+    console.error('[POST /api/entries/:id/restore] failed for uid=%s:', req.uid, err.message);
+    res.status(500).json({ error: 'Could not restore this entry.' });
+  }
+});
+
+// DELETE /api/entries/:id/permanent — permanently delete forever
+journalRouter.delete('/entries/:id/permanent', async (req, res) => {
+  try {
+    const docRef = db
+      .collection('users')
+      .doc(req.uid)
+      .collection('entries')
+      .doc(req.params.id);
+
+    const doc = await docRef.get();
+    if (!doc.exists) {
+      return res.status(404).json({ error: 'Entry not found.' });
+    }
+
+    await docRef.delete();
+    res.json({ success: true, id: req.params.id, permanentlyDeleted: true });
+  } catch (err) {
+    console.error('[DELETE /api/entries/:id/permanent] failed for uid=%s:', req.uid, err.message);
+    res.status(500).json({ error: 'Could not permanently delete entry.' });
+  }
+});
+
+// POST /api/entries/trash/empty — empty entire Recycle Bin
+journalRouter.post('/entries/trash/empty', async (req, res) => {
+  try {
+    const snap = await db
+      .collection('users')
+      .doc(req.uid)
+      .collection('entries')
+      .get();
+
+    const trashedDocs = snap.docs.filter((doc) => doc.data().isDeleted === true);
+    const batch = db.batch();
+    for (const doc of trashedDocs) {
+      batch.delete(doc.ref);
+    }
+    await batch.commit();
+
+    res.json({ success: true, count: trashedDocs.length });
+  } catch (err) {
+    console.error('[POST /api/entries/trash/empty] failed for uid=%s:', req.uid, err.message);
+    res.status(500).json({ error: 'Could not empty Recycle Bin.' });
   }
 });
