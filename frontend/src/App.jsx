@@ -272,18 +272,14 @@ export default function App() {
     );
   }
 
-  if (!user) {
-    return (
-      <div className="tendril-shell">
-        <Login />
-      </div>
-    );
-  }
-
   return (
-    <div className={`tendril-shell ${path === '/' ? 'shell-reflect-fixed' : ''}`}>
-      {/* Google App Header Bar */}
-      <header className="google-app-header">
+    <div className={`tendril-shell ${path === '/' && user ? 'shell-reflect-fixed' : ''}`}>
+      {!user ? (
+        <Login />
+      ) : (
+        <>
+          {/* Google App Header Bar */}
+          <header className="google-app-header">
         <div className="brand-wrapper" onClick={() => { navigate('/'); setMobileTab('reflect'); }}>
           <div className="brand-glyph">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" style={{ color: '#a8c7fa' }}>
@@ -519,19 +515,21 @@ export default function App() {
         </button>
       </nav>
 
-      {/* Memory Inspector Modal */}
-      {showMemoryModal && (
-        <MemoryProfileModal
-          onClose={() => setShowMemoryModal(false)}
-          entries={entries}
-          onOpenEntry={(id) => {
-            setShowMemoryModal(false);
-            handleOpenEntry(id);
-          }}
-        />
+          {/* Memory Inspector Modal */}
+          {showMemoryModal && (
+            <MemoryProfileModal
+              onClose={() => setShowMemoryModal(false)}
+              entries={entries}
+              onOpenEntry={(id) => {
+                setShowMemoryModal(false);
+                handleOpenEntry(id);
+              }}
+            />
+          )}
+        </>
       )}
 
-      {/* In-App Music Player — Sleek glassmorphic circle present from the beginning */}
+      {/* In-App Music Player — Sleek glassmorphic circle present from the beginning (Login and Workspace) */}
       <InAppMusicPlayer track={musicTrack} />
     </div>
   );
