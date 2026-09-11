@@ -54,15 +54,15 @@ journalRouter.post('/chat', async (req, res) => {
   }
 
   try {
-    const { message, history = [], image, voice = true } = req.body;
+    const { message, history = [], image, voice = true, language = 'en' } = req.body;
     // Continuity: fold in the user's own recent/archive memory (Article 9)
     const memoryContext = await loadMemoryContext(req.uid).catch(() => null);
     const preamble = memoryContext ? buildSystemPreamble(memoryContext) : '';
-    const reply = await chatReply(history, message, preamble, image);
+    const reply = await chatReply(history, message, preamble, image, language);
 
-    // Google Live TTS: synthesize warm, realistic human audio
+    // Google Live TTS: synthesize warm, realistic human audio (falls back to client Web Speech if needed)
     let audioContent = null;
-    if (voice) {
+    if (voice && language === 'en') {
       audioContent = await synthesizeGoogleLiveTts(reply).catch(() => null);
     }
 

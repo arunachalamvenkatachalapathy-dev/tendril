@@ -30,10 +30,10 @@ async function authedFetch(path, options = {}) {
   return res.json();
 }
 
-export function sendChatMessage(message, history, image = null, voice = true) {
+export function sendChatMessage(message, history, image = null, voice = true, language = 'en') {
   return authedFetch('/api/chat', {
     method: 'POST',
-    body: JSON.stringify({ message, history, image, voice }),
+    body: JSON.stringify({ message, history, image, voice, language }),
   });
 }
 

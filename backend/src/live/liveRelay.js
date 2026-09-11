@@ -22,7 +22,7 @@ import { getGeminiApiKey } from '../secretManager.js';
 import { loadMemoryContext, buildSystemPreamble, appendIdeasForEntry } from '../memory/pipeline.js';
 import { generateJsonArray, summarizeConversation } from '../gemini.js';
 
-const LIVE_MODEL = process.env.GEMINI_LIVE_MODEL || 'gemini-2.5-flash-native-audio-preview-12-2025';
+const LIVE_MODEL = process.env.GEMINI_LIVE_MODEL || 'gemini-2.5-flash-native-audio-latest';
 const AUTH_TIMEOUT_MS = 10_000;
 const IDEA_EXTRACTION_TURN_INTERVAL = 3; // extract ideas every N model turns
 
@@ -58,8 +58,10 @@ export function attachVoiceRelay(httpServer) {
 async function handleConnection(clientSocket) {
   // 1. Require the Firebase ID token as the FIRST message on the socket.
   //    No upstream Live API connection is opened before this succeeds.
-  const uid = await waitForVerifiedUid(clientSocket);
-  if (!uid) return; // waitForVerifiedUid already closed the socket
+  const authData = await waitForVerifiedAuth(clientSocket);
+  if (!authData || !authData.uid) return; // waitForVerifiedAuth already closed the socket
+  const { uid, language = 'en' } = authData;
+  let currentLanguage = language;
 
   // Terminate any previous session for this user to guarantee strictly one live session
   if (activeUserSessions.has(uid)) {
@@ -84,6 +86,10 @@ async function handleConnection(clientSocket) {
     const apiKey = await getGeminiApiKey();
     const ai = new GoogleGenAI({ apiKey });
 
+    const langInstruction = currentLanguage === 'multi'
+      ? '5. LANGUAGE MANDATE: Multilingual mode is ACTIVE. Detect whatever language the user speaks (English, Spanish, French, Hindi, Tamil, German, Japanese, etc.) and respond fluently, naturally, and warmly in that exact same spoken language.'
+      : '5. LANGUAGE MANDATE: English mode is ACTIVE. You must strictly converse and respond in fluent, natural English at all times, regardless of background noise.';
+
     liveSession = await ai.live.connect({
       model: LIVE_MODEL,
       config: {
@@ -103,6 +109,7 @@ CRITICAL SPOKEN CONVERSATION RULES:
 2. Validate and reflect what the user shared with genuine emotional depth and presence.
 3. MANDATORY: ALWAYS conclude your response by asking ONE intuitive, open-ended, and thought-provoking question that invites the user to go deeper into their thoughts, feelings, or choices. Never end a turn with a flat statement or without an intuitive question.
 4. Never recite bullet points, list items, or technical jargon. Speak warmly as a trusted companion.
+${langInstruction}
 
 ${preamble ? `Personalized Context:\n${preamble}` : ''}`,
       },
@@ -342,6 +349,9 @@ words. Return ONLY a JSON array of strings.\n\n${transcriptBuffer
           console.warn('[liveRelay] failed to send client content:', err.message);
         }
       }
+    } else if (payload.type === 'set_language' && payload.language) {
+      currentLanguage = payload.language;
+      console.log('[liveRelay] updated session language to %s for uid=%s', currentLanguage, uid);
     } else if (payload.type === 'save_session') {
       persistLiveVoiceEntry().catch(() => {});
     } else if (payload.type === 'end_session') {
@@ -361,7 +371,7 @@ words. Return ONLY a JSON array of strings.\n\n${transcriptBuffer
   });
 }
 
-function waitForVerifiedUid(clientSocket) {
+function waitForVerifiedAuth(clientSocket) {
   return new Promise((resolve) => {
     const timeout = setTimeout(() => {
       clientSocket.close(4401, 'Auth timeout');
@@ -380,7 +390,7 @@ function waitForVerifiedUid(clientSocket) {
         // (Article 2) — construct the "Bearer <token>" shape verifyToken
         // expects.
         const uid = await verifyToken(`Bearer ${payload.idToken}`);
-        resolve(uid);
+        resolve({ uid, language: payload.language || 'en' });
       } catch (err) {
         clientSocket.close(4401, 'Invalid token');
         resolve(null);

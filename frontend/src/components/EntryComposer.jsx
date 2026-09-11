@@ -20,6 +20,8 @@ export default function EntryComposer({ onSaved, onExtractIdeas, initialVoiceAct
     setNotice,
     saveCurrentNote,
     savingNote,
+    language,
+    toggleLanguage,
   } = useVoiceContext();
 
   const [draft, setDraft] = useState('');
@@ -149,6 +151,30 @@ export default function EntryComposer({ onSaved, onExtractIdeas, initialVoiceAct
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            {/* Language Mode Toggle */}
+            <button
+              type="button"
+              className="btn-google-secondary"
+              onClick={toggleLanguage}
+              style={{
+                fontSize: '12px',
+                padding: '6px 12px',
+                borderRadius: '9999px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                color: language === 'en' ? '#a8c7fa' : '#6dd58c',
+              }}
+              title={
+                language === 'en'
+                  ? 'Speech language: English (Click for Multilingual Auto-Detect)'
+                  : 'Speech language: Multilingual Auto-Detect (Click for English)'
+              }
+            >
+              <span>{language === 'en' ? '🇺🇸' : '🌐'}</span>
+              <span>{language === 'en' ? 'English' : 'Multilingual'}</span>
+            </button>
+
             {/* Voice Replies Toggle */}
             <button
               type="button"

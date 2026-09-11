@@ -96,6 +96,30 @@ export function useVoiceSession() {
   const [hasMic, setHasMic] = useState(true);
   const [micActive, setMicActive] = useState(false);
   const [voiceOutputEnabled, setVoiceOutputEnabled] = useState(true);
+  const [language, setLanguage] = useState(() => {
+    try {
+      return localStorage.getItem('tendril_voice_lang') || 'en';
+    } catch {
+      return 'en';
+    }
+  });
+
+  const languageRef = useRef('en');
+  useEffect(() => {
+    languageRef.current = language;
+    try {
+      localStorage.setItem('tendril_voice_lang', language);
+    } catch {}
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      try {
+        wsRef.current.send(JSON.stringify({ type: 'set_language', language }));
+      } catch {}
+    }
+  }, [language]);
+
+  const toggleLanguage = useCallback(() => {
+    setLanguage((prev) => (prev === 'en' ? 'multi' : 'en'));
+  }, []);
 
   const micActiveRef = useRef(false);
   useEffect(() => { micActiveRef.current = micActive; }, [micActive]);
@@ -593,7 +617,7 @@ export function useVoiceSession() {
           clearTimeout(wsTimeout);
           connectingPromiseRef.current = null;
           reconnectAttemptsRef.current = 0;
-          ws.send(JSON.stringify({ type: 'auth', idToken: token }));
+          ws.send(JSON.stringify({ type: 'auth', idToken: token, language: languageRef.current }));
 
           pingIntervalRef.current = setInterval(() => {
             if (ws.readyState === WebSocket.OPEN) {
@@ -724,7 +748,7 @@ export function useVoiceSession() {
 
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       try {
-        wsRef.current.send(JSON.stringify({ type: 'text_message', text: clean }));
+        wsRef.current.send(JSON.stringify({ type: 'text_message', text: clean, language: languageRef.current }));
         return;
       } catch (e) {
         console.warn('[Voice] WS send failed, falling back to HTTP:', e);
@@ -737,7 +761,7 @@ export function useVoiceSession() {
         role: t.role === 'assistant' ? 'assistant' : 'user',
         text: t.text,
       }));
-      const res = await sendChatMessage(clean, history, imagePayload, voiceOutputRef.current);
+      const res = await sendChatMessage(clean, history, imagePayload, voiceOutputRef.current, languageRef.current);
       if (res.reply) {
         setLiveTranscript((prev) => [...prev, { role: 'assistant', text: res.reply, timestamp: Date.now() }]);
         setCurrentSubtitle({ role: 'assistant', text: res.reply, isLive: false });
@@ -779,7 +803,7 @@ export function useVoiceSession() {
       recognitionRef.current = recognition;
       recognition.continuous = true;
       recognition.interimResults = true;
-      recognition.lang = 'en-US';
+      recognition.lang = languageRef.current === 'multi' ? (navigator.language || 'en-US') : 'en-US';
       recognition.maxAlternatives = 1;
 
       let silenceTimer = null;
@@ -999,6 +1023,9 @@ export function useVoiceSession() {
     hasMic,
     micActive,
     voiceOutputEnabled,
+    language,
+    setLanguage,
+    toggleLanguage,
     toggleMic,
     toggleVoiceOutput,
     stopAudioPlayback,

@@ -12,6 +12,8 @@ export default function FloatingVoiceControls({ path, navigate }) {
     saveCurrentNote,
     savingNote,
     saveSuccessNotice,
+    language,
+    toggleLanguage,
   } = useVoiceContext();
 
   const isUserSpeaking = micActive && (audioLevel > 12 || (currentSubtitle?.role === 'user' && currentSubtitle?.isLive));
@@ -86,6 +88,35 @@ export default function FloatingVoiceControls({ path, navigate }) {
           transform: translateY(-2px) scale(1.05);
         }
 
+        .tendril-floating-lang {
+          position: fixed;
+          bottom: 128px;
+          right: 24px;
+          height: 32px;
+          padding: 0 10px;
+          border-radius: 9999px;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          background: rgba(20, 27, 40, 0.88);
+          border: 1px solid rgba(168, 199, 250, 0.25);
+          color: #e3e3e3;
+          font-size: 11.5px;
+          font-weight: 600;
+          cursor: pointer;
+          z-index: 99998;
+          backdrop-filter: blur(14px);
+          -webkit-backdrop-filter: blur(14px);
+          box-shadow: 0 4px 16px rgba(0, 0, 0, 0.28);
+          transition: all 0.25s cubic-bezier(0.2, 0, 0, 1);
+          outline: none;
+        }
+
+        .tendril-floating-lang:hover {
+          transform: translateY(-2px) scale(1.05);
+          border-color: rgba(168, 199, 250, 0.45);
+        }
+
         .tendril-live-transcript-pill {
           position: fixed;
           bottom: 24px;
@@ -117,6 +148,24 @@ export default function FloatingVoiceControls({ path, navigate }) {
           }
         }
       `}</style>
+
+      {/* Floating Language Toggle stacked above the mic button */}
+      <button
+        type="button"
+        className="tendril-floating-lang"
+        onClick={toggleLanguage}
+        title={
+          language === 'en'
+            ? 'Speech recognition: English (Click for Multilingual)'
+            : 'Speech recognition: Multilingual Auto-Detect (Click for English)'
+        }
+        aria-label="Toggle speech language"
+      >
+        <span style={{ fontSize: '12px' }}>{language === 'en' ? '🇺🇸' : '🌐'}</span>
+        <span style={{ color: language === 'en' ? '#a8c7fa' : '#6dd58c' }}>
+          {language === 'en' ? 'EN' : 'Multi'}
+        </span>
+      </button>
 
       {/* Floating Circular Mic Button stacked right above the floating music button */}
       <button
