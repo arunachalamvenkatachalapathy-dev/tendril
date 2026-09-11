@@ -104,7 +104,7 @@ export default function Dashboard({ uid, onBack, onSeedRefresh, entries = [] }) 
             </div>
           </div>
 
-          {data && (
+          {data && data.blurb && (
             <p style={{
               fontSize: '14.5px',
               color: 'var(--text-secondary)',
@@ -112,7 +112,11 @@ export default function Dashboard({ uid, onBack, onSeedRefresh, entries = [] }) 
               maxWidth: '780px',
               marginTop: '16px'
             }}>
-              {data.blurb}
+              {typeof data.blurb === 'string' && !data.blurb.includes('[object Object]')
+                ? data.blurb
+                : typeof data.blurb === 'object'
+                ? (data.blurb.summary || "Your reflections are synthesizing into personal cognitive patterns.")
+                : "Your reflections are synthesizing into personal cognitive patterns."}
             </p>
           )}
         </div>

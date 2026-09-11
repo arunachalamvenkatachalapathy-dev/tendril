@@ -86,10 +86,16 @@ dashboardRouter.get('/dashboard/insights', async (req, res) => {
 
     // --- Blurb: sourced from memory summaries (requirement 5c), not raw entries
     const memoryContext = await loadMemoryContext(req.uid);
-    const blurb =
-      memoryContext.recent || memoryContext.archive
-        ? `${memoryContext.recent} ${memoryContext.archive}`.trim()
-        : "You haven't journaled enough yet for a pattern summary — a few more entries and this will fill in.";
+    const recentText = typeof memoryContext.recent === 'string'
+      ? memoryContext.recent
+      : (memoryContext.recent?.summary || '');
+    const archiveText = typeof memoryContext.archive === 'string'
+      ? memoryContext.archive
+      : (memoryContext.archive?.summary || '');
+
+    const combinedText = [recentText, archiveText].filter(Boolean).join(' ').trim();
+    const blurb = combinedText ||
+      "You haven't journaled enough yet for a pattern summary — a few more entries and this will fill in.";
 
     // --- Recommendation + Action items: run in parallel, both best-effort
     let recommendation = null;

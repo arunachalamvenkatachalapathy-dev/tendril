@@ -3,71 +3,106 @@ import { useState, useEffect } from 'react';
 export const FEEL_SONGS = [
   {
     id: 'succession-focus',
-    title: 'Succession Theme & Piano Focus',
-    artist: 'Nicholas Britell / Orchestral',
+    title: 'Succession & Cinematic Piano Playlist',
+    artist: 'Nicholas Britell / Orchestral Continuous Stream',
     mood: 'energized',
     moodLabel: 'Cinematic & Drive',
     emoji: '🎻',
     color: '#a8c7fa',
+    type: 'playlist',
+    playlistId: 'PLdisKgV_W5Z9f1uK6n9A-jX-H8p6J7f0e',
     videoId: 'jZq3m2jN1oU',
-    description: 'Dramatic classical piano cadence for deep determination and problem solving.',
+    searchQuery: 'Succession OST and Cinematic Piano Playlist',
+    description: 'Dramatic classical piano cadence and orchestral suites for deep determination and problem solving.',
   },
   {
     id: 'lofi-calm',
-    title: 'Lofi Beats to Reflect & Journal',
-    artist: 'Lofi Girl / ChilledCow',
+    title: 'Lofi Beats to Reflect & Journal Playlist',
+    artist: 'Lofi Girl Official Continuous Playlist',
     mood: 'calm',
     moodLabel: 'Calm & Warm',
     emoji: '🌿',
     color: '#6dd58c',
+    type: 'playlist',
+    playlistId: 'PLofht4PTcKYnaH8w5olJCI-wUVxuoMHqM',
     videoId: 'jfKfP97GQzM',
-    description: 'Cozy, gentle downtempo beats to slow down mental chatter.',
+    searchQuery: 'lofi hip hop radio beats to relax study to playlist',
+    description: 'Cozy, gentle downtempo continuous beats to slow down mental chatter.',
   },
   {
     id: 'interstellar-space',
-    title: 'Cosmic & Interstellar Ambient',
-    artist: 'Hans Zimmer / Ambient Space',
+    title: 'Cosmic & Interstellar Ambient Playlist',
+    artist: 'Hans Zimmer / Ambient Space Continuous Suite',
     mood: 'hopeful',
     moodLabel: 'Cosmic Reflection',
     emoji: '🌌',
     color: '#c58af9',
+    type: 'playlist',
+    playlistId: 'PLx0sYbCqOb8TBPRdmBHs5Iftvv9TPboYG',
     videoId: '45ETZ1CaVEw',
+    searchQuery: 'Interstellar Soundtrack and Deep Space Ambient Playlist',
     description: 'Expansive ethereal soundscapes designed for cosmic reflection and perspective.',
   },
   {
     id: 'rain-piano',
-    title: 'Peaceful Rain & Soft Piano',
-    artist: 'Relaxing Ambient',
+    title: 'Peaceful Rain & Soft Piano Playlist',
+    artist: 'Rainy Day Cafe & Classical Ambient Stream',
     mood: 'calm',
     moodLabel: 'Peaceful Rain',
     emoji: '🌧️',
     color: '#78a9ff',
+    type: 'playlist',
+    playlistId: 'PLQkQf10GEEwc4uH2W3s_j8B_m4S0y8Z4e',
     videoId: 'lTRiuFIWV54',
+    searchQuery: 'Peaceful Piano and Gentle Rain Relaxation Playlist',
     description: 'Gentle raindrops with solitary piano melodies for introspection.',
   },
   {
     id: 'alpha-waves',
-    title: 'Deep Focus & Flow State',
-    artist: 'Brainwave Lab / Alpha Waves',
+    title: 'Deep Focus & Flow State Playlist',
+    artist: 'Brainwave Lab / Alpha & Theta Waves Continuous',
     mood: 'focused',
     moodLabel: 'Deep Flow',
     emoji: '🧠',
     color: '#fdd663',
+    type: 'playlist',
+    playlistId: 'PLr4V_hVkhWbW7Fq6j0H1jN5E69H5B6B4L',
     videoId: 'WPni755-Krg',
+    searchQuery: 'Deep Focus Music Study Binaural Beats Alpha Waves Playlist',
     description: 'Binaural frequencies to sustain unbroken focus during writing or reflection.',
   },
   {
     id: 'morning-uplift',
-    title: 'Acoustic Warmth & Gentle Sunrise',
-    artist: 'Morning Acoustic Vibes',
+    title: 'Acoustic Warmth & Gentle Sunrise Playlist',
+    artist: 'Morning Acoustic Vibes & Coffeehouse Stream',
     mood: 'happy',
     moodLabel: 'Uplifting Clarity',
     emoji: '🌅',
     color: '#ffb74d',
+    type: 'playlist',
+    playlistId: 'PL3-sRm8xAzY9P_s2F1Q8A7D9k3f5g7h1j',
     videoId: 'WJ3-F02-U_g',
+    searchQuery: 'Morning Acoustic Guitar Sunshine Relaxation Playlist',
     description: 'Bright, heartwarming acoustic picking to inspire optimism and clarity.',
   },
 ];
+
+/**
+ * Constructs a YouTube playlist embed URL
+ */
+export function getEmbedUrl(track) {
+  if (!track) return '';
+  if (track.playlistId) {
+    return 'https://www.youtube-nocookie.com/embed/videoseries?list=' + track.playlistId + '&autoplay=1&enablejsapi=1&playsinline=1';
+  }
+  if (track.searchQuery) {
+    return 'https://www.youtube-nocookie.com/embed?listType=search&list=' + encodeURIComponent(track.searchQuery) + '&autoplay=1&enablejsapi=1&playsinline=1';
+  }
+  if (track.videoId) {
+    return 'https://www.youtube-nocookie.com/embed/' + track.videoId + '?autoplay=1&loop=1&playlist=' + track.videoId + '&enablejsapi=1&playsinline=1';
+  }
+  return 'https://www.youtube-nocookie.com/embed?listType=search&list=' + encodeURIComponent(track.title || 'ambient playlist') + '&autoplay=1&enablejsapi=1&playsinline=1';
+}
 
 /**
  * Global helper to play music in the app from anywhere
@@ -207,10 +242,10 @@ export function FeelSongsBoards({ onSelectSong, currentTrackId }) {
                 borderTop: '1px solid rgba(255, 255, 255, 0.06)',
               }}>
                 <span style={{ fontSize: '11px', color: isPlaying ? song.color : 'var(--text-dim)', fontWeight: '500' }}>
-                  {isPlaying ? '● Now Playing in App' : '▶ Play Track'}
+                  {isPlaying ? '● Playing Playlist in App' : '▶ Play Playlist'}
                 </span>
                 <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                  YouTube Music
+                  Continuous Playlist
                 </span>
               </div>
             </div>
@@ -335,21 +370,30 @@ export function InAppMusicPlayer({ track, onClose }) {
         </div>
       </div>
 
-      {/* Embedded YouTube Player */}
-      {!isMinimized && (
-        <div style={{ position: 'relative', width: '100%', height: '180px', background: '#000' }}>
-          <iframe
-            width="100%"
-            height="180"
-            src={'https://www.youtube-nocookie.com/embed/' + track.videoId + '?autoplay=1&enablejsapi=1&playsinline=1'}
-            title={track.title}
-            frameBorder="0"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
-            style={{ display: 'block', border: 'none' }}
-          />
-        </div>
-      )}
+      {/* Embedded YouTube Player — NEVER unmounted so audio runs continuously until app is closed */}
+      <div
+        style={{
+          position: 'relative',
+          width: '100%',
+          height: isMinimized ? '0px' : '180px',
+          background: '#000',
+          overflow: 'hidden',
+          transition: 'height 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+          opacity: isMinimized ? 0 : 1,
+          pointerEvents: isMinimized ? 'none' : 'auto',
+        }}
+      >
+        <iframe
+          width="100%"
+          height="180"
+          src={getEmbedUrl(track)}
+          title={track.title}
+          frameBorder="0"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowFullScreen
+          style={{ display: 'block', border: 'none' }}
+        />
+      </div>
     </div>
   );
 }
