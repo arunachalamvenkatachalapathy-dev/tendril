@@ -30,12 +30,19 @@ export default function EntryComposer({ onSaved, onExtractIdeas, initialVoiceAct
   const scrollRef = useRef(null);
   const fileInputRef = useRef(null);
 
-  // Initialize voice if requested on mount
+  const hasAutoStartedVoiceRef = useRef(false);
+
+  // Initialize voice only once on initial mount if requested, or when switching into voice mode
   useEffect(() => {
-    if (initialVoiceActive && !micActive) {
+    if (!initialVoiceActive) {
+      hasAutoStartedVoiceRef.current = false;
+      return;
+    }
+    if (initialVoiceActive && !hasAutoStartedVoiceRef.current) {
+      hasAutoStartedVoiceRef.current = true;
       start(true);
     }
-  }, [initialVoiceActive, micActive, start]);
+  }, [initialVoiceActive, start]);
 
   const forwardedIdeasRef = useRef(new Set());
 
@@ -410,7 +417,16 @@ export default function EntryComposer({ onSaved, onExtractIdeas, initialVoiceAct
           <button
             type="button"
             className={`btn-google-icon ${micActive ? 'active-mic' : ''}`}
-            onClick={status === 'speaking' ? stopAudioPlayback : (onSwitchToVoice && !initialVoiceActive ? onSwitchToVoice : toggleMic)}
+            onClick={() => {
+              if (status === 'speaking') {
+                stopAudioPlayback();
+              }
+              if (!initialVoiceActive && onSwitchToVoice) {
+                onSwitchToVoice();
+              } else {
+                toggleMic();
+              }
+            }}
             title={status === 'speaking' ? 'Interrupt Gemini speech' : onSwitchToVoice && !initialVoiceActive ? 'Switch to Convo voice mode' : micActive ? 'Mute microphone' : hasMic ? 'Start voice conversation' : 'Microphone unavailable'}
             style={{ flexShrink: 0 }}
           >

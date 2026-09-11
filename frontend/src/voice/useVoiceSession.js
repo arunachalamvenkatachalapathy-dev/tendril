@@ -607,7 +607,9 @@ export function useVoiceSession() {
     // Freeze current user subtitle as finished speaking instead of clearing it,
     // and DO NOT cut off Gemini's voice playback!
     setCurrentSubtitle((prev) => (prev ? { ...prev, isLive: false } : null));
+    micActiveRef.current = false;
     setMicActive(false);
+    setStatus((prev) => (prev === 'speaking' ? prev : 'idle'));
   }, [stopAudioMeter, stopMicCaptureOnly]);
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -983,7 +985,7 @@ export function useVoiceSession() {
   // ─────────────────────────────────────────────────────────────────────────────
 
   const toggleMic = useCallback(async () => {
-    if (micActive) {
+    if (micActive || micActiveRef.current) {
       stopMicCapture();
       return;
     }
@@ -998,6 +1000,7 @@ export function useVoiceSession() {
 
     micStreamRef.current = stream;
     setHasMic(true);
+    micActiveRef.current = true;
     setMicActive(true);
     setNotice(null);
     shouldReconnectRef.current = true;

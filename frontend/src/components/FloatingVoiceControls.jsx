@@ -1,7 +1,7 @@
 import React from 'react';
 import { useVoiceContext } from '../voice/VoiceContext.jsx';
 
-export default function FloatingVoiceControls({ path, navigate, onOpenVoiceConvo }) {
+export default function FloatingVoiceControls({ path, navigate, onOpenVoiceConvo, composerMode }) {
   const {
     micActive,
     toggleMic,
@@ -15,6 +15,12 @@ export default function FloatingVoiceControls({ path, navigate, onOpenVoiceConvo
     language,
     toggleLanguage,
   } = useVoiceContext();
+
+  // On the Reflect screen, full inline voice controls already exist in the center card and composer.
+  // Hide floating controls completely on Reflect to eliminate duplicate icons and mobile overshadowing.
+  if (path === '/') {
+    return null;
+  }
 
   const handleMicClick = () => {
     if (!micActive) {
@@ -154,6 +160,24 @@ export default function FloatingVoiceControls({ path, navigate, onOpenVoiceConvo
           to {
             opacity: 1;
             transform: translate(-50%, 0);
+          }
+        }
+
+        @media (max-width: 768px) {
+          .tendril-floating-mic {
+            bottom: 92px !important;
+            right: 16px !important;
+          }
+          .tendril-floating-lang {
+            bottom: 144px !important;
+            right: 16px !important;
+          }
+          .tendril-live-transcript-pill {
+            bottom: 88px !important;
+            left: 50% !important;
+            transform: translateX(-50%) !important;
+            max-width: calc(100vw - 32px) !important;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45) !important;
           }
         }
       `}</style>

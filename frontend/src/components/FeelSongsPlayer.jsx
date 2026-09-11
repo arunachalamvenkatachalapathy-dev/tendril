@@ -351,8 +351,10 @@ function getInitialTrack(initialTrack) {
  * - Succession Main Theme (Lofi Remix) default track for all users.
  * - Real-time Song Search & YouTube audio stream search.
  */
-export function InAppMusicPlayer({ track }) {
-  const [isExpanded, setIsExpanded] = useState(false);
+export function InAppMusicPlayer({ track, isExpanded: controlledExpanded, onToggleExpanded }) {
+  const [internalExpanded, setInternalExpanded] = useState(false);
+  const isExpanded = controlledExpanded !== undefined ? controlledExpanded : internalExpanded;
+  const setIsExpanded = onToggleExpanded || setInternalExpanded;
   const [showSearchModal, setShowSearchModal] = useState(false);
   const [showVolumeModal, setShowVolumeModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -408,6 +410,9 @@ export function InAppMusicPlayer({ track }) {
 
     const handleClickOutside = (event) => {
       if (widgetRef.current && !widgetRef.current.contains(event.target)) {
+        if (event.target.closest && event.target.closest('.mobile-music-trigger-btn')) {
+          return;
+        }
         setIsExpanded(false);
         setShowSearchModal(false);
         setShowVolumeModal(false);
@@ -418,7 +423,7 @@ export function InAppMusicPlayer({ track }) {
     return () => {
       document.removeEventListener('pointerdown', handleClickOutside);
     };
-  }, [isExpanded]);
+  }, [isExpanded, setIsExpanded]);
 
   // Auto-minimize player card back to the round button after 15 seconds of inactivity
   useEffect(() => {
@@ -675,91 +680,132 @@ export function InAppMusicPlayer({ track }) {
   const youtubeWatchUrl = activeTrack.customUrl || (activeTrack.videoId ? 'https://www.youtube.com/watch?v=' + activeTrack.videoId : 'https://www.youtube.com');
 
   return (
-    <div ref={widgetRef} style={{ position: 'fixed', bottom: '24px', right: '24px', zIndex: 99998 }}>
-      
-      {/* 1. Subtle, Non-Flashy Glassmorphic Round Button (always present, never flashy) */}
-      <button
-        type="button"
-        onClick={() => setIsExpanded(prev => !prev)}
-        title={isPlaying ? 'Tendril Music: ' + activeTrack.title + ' (' + volume + '% volume)' : 'Tendril Ambient Soundscapes'}
-        style={{
-          position: 'fixed',
-          bottom: '24px',
-          right: '24px',
-          width: '40px',
-          height: '40px',
-          borderRadius: '50%',
-          background: isExpanded ? 'rgba(28, 34, 48, 0.92)' : 'rgba(18, 22, 32, 0.85)',
-          backdropFilter: 'blur(20px)',
-          WebkitBackdropFilter: 'blur(20px)',
-          border: isExpanded ? '1px solid #a8c7fa' : '1px solid rgba(255, 255, 255, 0.14)',
-          boxShadow: '0 4px 16px rgba(0, 0, 0, 0.4)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          cursor: 'pointer',
-          padding: 0,
-          transition: 'all 0.2s ease',
-          color: isPlaying ? '#a8c7fa' : 'var(--text-secondary)',
-          zIndex: 99999,
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.background = 'rgba(28, 34, 52, 0.95)';
-          e.currentTarget.style.borderColor = 'rgba(168, 199, 250, 0.4)';
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.background = isExpanded ? 'rgba(28, 34, 48, 0.92)' : 'rgba(18, 22, 32, 0.85)';
-          e.currentTarget.style.borderColor = isExpanded ? '#a8c7fa' : 'rgba(255, 255, 255, 0.14)';
-        }}
-      >
-        {/* Subtle clean music icon */}
-        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M9 18V5l12-2v13"/>
-          <circle cx="6" cy="18" r="3"/>
-          <circle cx="18" cy="16" r="3"/>
-        </svg>
+    <>
+      <style>{`
+        .tendril-music-container {
+          position: fixed;
+          bottom: 24px;
+          right: 24px;
+          z-index: 99998;
+        }
+        .tendril-music-round-btn {
+          position: fixed;
+          bottom: 24px;
+          right: 24px;
+          width: 40px;
+          height: 40px;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          padding: 0;
+          transition: all 0.2s ease;
+          z-index: 99999;
+          outline: none;
+        }
+        .in-app-music-card {
+          position: fixed;
+          bottom: 74px;
+          right: 24px;
+          z-index: 99998;
+          width: 380px;
+          max-width: calc(100vw - 48px);
+        }
+        @media (max-width: 768px) {
+          /* On mobile screens, hide the floating round button that was covering the Universe nav tab */
+          .tendril-music-round-btn {
+            display: none !important;
+          }
+          .tendril-music-container {
+            bottom: auto !important;
+            right: auto !important;
+            top: 60px !important;
+            left: 0 !important;
+            width: 100% !important;
+            pointer-events: none;
+          }
+          .in-app-music-card {
+            position: fixed !important;
+            top: 60px !important;
+            bottom: auto !important;
+            left: 12px !important;
+            right: 12px !important;
+            width: auto !important;
+            max-width: calc(100vw - 24px) !important;
+            max-height: calc(100dvh - 148px) !important;
+            overflow-y: auto !important;
+            box-shadow: 0 16px 48px rgba(0, 0, 0, 0.85) !important;
+          }
+        }
+      `}</style>
+      <div ref={widgetRef} className="tendril-music-container">
         
-        {/* Understated ambient listening dot (no flashy pulsing) */}
-        {isPlaying && (
-          <span style={{
-            position: 'absolute',
-            top: '7px',
-            right: '7px',
-            width: '5px',
-            height: '5px',
-            borderRadius: '50%',
-            background: '#a8c7fa',
-          }} />
-        )}
-      </button>
+        {/* 1. Subtle, Non-Flashy Glassmorphic Round Button (always present on desktop, never flashy) */}
+        <button
+          type="button"
+          className="tendril-music-round-btn"
+          onClick={() => setIsExpanded(prev => !prev)}
+          title={isPlaying ? 'Tendril Music: ' + activeTrack.title + ' (' + volume + '% volume)' : 'Tendril Ambient Soundscapes'}
+          style={{
+            background: isExpanded ? 'rgba(28, 34, 48, 0.92)' : 'rgba(18, 22, 32, 0.85)',
+            backdropFilter: 'blur(20px)',
+            WebkitBackdropFilter: 'blur(20px)',
+            border: isExpanded ? '1px solid #a8c7fa' : '1px solid rgba(255, 255, 255, 0.14)',
+            boxShadow: '0 4px 16px rgba(0, 0, 0, 0.4)',
+            color: isPlaying ? '#a8c7fa' : 'var(--text-secondary)',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = 'rgba(28, 34, 52, 0.95)';
+            e.currentTarget.style.borderColor = 'rgba(168, 199, 250, 0.4)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = isExpanded ? 'rgba(28, 34, 48, 0.92)' : 'rgba(18, 22, 32, 0.85)';
+            e.currentTarget.style.borderColor = isExpanded ? '#a8c7fa' : 'rgba(255, 255, 255, 0.14)';
+          }}
+        >
+          {/* Subtle clean music icon */}
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M9 18V5l12-2v13"/>
+            <circle cx="6" cy="18" r="3"/>
+            <circle cx="18" cy="16" r="3"/>
+          </svg>
+          
+          {/* Understated ambient listening dot (no flashy pulsing) */}
+          {isPlaying && (
+            <span style={{
+              position: 'absolute',
+              top: '7px',
+              right: '7px',
+              width: '5px',
+              height: '5px',
+              borderRadius: '50%',
+              background: '#a8c7fa',
+            }} />
+          )}
+        </button>
 
-      {/* 2. Expanded Glassmorphic Player Card
-          Placed directly above the round button at bottom: 74px.
-          CRITICAL: NEVER use display: none or visibility: hidden!
-          Using opacity + pointerEvents preserves the iframe in memory,
-          so audio CONTINUES UNINTERRUPTED and NEVER RESTARTS when clicking the round button! */}
-      <div
-        className="in-app-music-card"
-        style={{
-          position: 'fixed',
-          bottom: '74px',
-          right: '24px',
-          zIndex: 99998,
-          width: '380px',
-          maxWidth: 'calc(100vw - 48px)',
-          background: 'rgba(14, 18, 28, 0.92)',
-          backdropFilter: 'blur(28px) saturate(180%)',
-          WebkitBackdropFilter: 'blur(28px) saturate(180%)',
-          border: '1px solid rgba(255, 255, 255, 0.12)',
-          borderRadius: '16px',
-          boxShadow: '0 16px 48px rgba(0, 0, 0, 0.7), 0 0 20px rgba(0, 0, 0, 0.25)',
-          overflow: 'hidden',
-          transition: 'opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1), transform 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
-          opacity: isExpanded ? 1 : 0,
-          transform: isExpanded ? 'scale(1) translateY(0)' : 'scale(0.95) translateY(10px)',
-          pointerEvents: isExpanded ? 'auto' : 'none',
-        }}
-      >
+        {/* 2. Expanded Glassmorphic Player Card
+            Placed directly above the round button at bottom: 74px on desktop, or anchored from header on mobile.
+            CRITICAL: NEVER use display: none or visibility: hidden!
+            Using opacity + pointerEvents preserves the iframe in memory,
+            so audio CONTINUES UNINTERRUPTED and NEVER RESTARTS when clicking the round button! */}
+        <div
+          className="in-app-music-card"
+          style={{
+            background: 'rgba(14, 18, 28, 0.92)',
+            backdropFilter: 'blur(28px) saturate(180%)',
+            WebkitBackdropFilter: 'blur(28px) saturate(180%)',
+            border: '1px solid rgba(255, 255, 255, 0.12)',
+            borderRadius: '16px',
+            boxShadow: '0 16px 48px rgba(0, 0, 0, 0.7), 0 0 20px rgba(0, 0, 0, 0.25)',
+            overflow: 'hidden',
+            transition: 'opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1), transform 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+            opacity: isExpanded ? 1 : 0,
+            transform: isExpanded ? 'scale(1) translateY(0)' : 'scale(0.95) translateY(10px)',
+            pointerEvents: isExpanded ? 'auto' : 'none',
+          }}
+        >
         {/* Top Header Bar */}
         <div style={{
           padding: '9px 12px',
@@ -1262,6 +1308,7 @@ export function InAppMusicPlayer({ track }) {
         </div>
       </div>
     </div>
+    </>
   );
 }
 
