@@ -403,6 +403,9 @@ export function InAppMusicPlayer({ track }) {
     ? Math.min(volume, 5)
     : volume;
 
+  const isDucked = Boolean(duckState.userSpeaking || duckState.assistantSpeaking);
+  const duckedText = duckState.userSpeaking ? '0% (Muted for Speaking)' : '5% (Ducked for Convo)';
+
   // Sync track when external event fires
   useEffect(() => {
     if (track) {
@@ -765,7 +768,7 @@ export function InAppMusicPlayer({ track }) {
                 {activeTrack.title}
               </div>
               <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
-                {activeTrack.moodLabel || 'Ambient'} • {isDucked ? '5% (Ducked for Convo)' : `${volume}% volume`}
+                {activeTrack.moodLabel || 'Ambient'} • {isDucked ? duckedText : `${volume}% volume`}
               </div>
             </div>
           </div>
@@ -867,7 +870,7 @@ export function InAppMusicPlayer({ track }) {
                 setShowVolumeModal(v => !v);
                 setShowSearchModal(false);
               }}
-              title={isDucked ? `Volume: ${volume}% (ducked to 5% during convo speech)` : "Adjust volume (Default: 10%)"}
+              title={isDucked ? `Volume: ${volume}% (${duckedText})` : "Adjust volume (Default: 10%)"}
               style={{
                 background: showVolumeModal ? 'rgba(168, 199, 250, 0.2)' : 'rgba(255, 255, 255, 0.05)',
                 border: isDucked ? '1px solid #fdd663' : '1px solid rgba(255, 255, 255, 0.1)',
@@ -885,7 +888,7 @@ export function InAppMusicPlayer({ track }) {
                 <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
                 <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
               </svg>
-              <span>{isDucked ? '5%' : `${volume}%`}</span>
+              <span>{duckState.userSpeaking ? '0%' : duckState.assistantSpeaking ? '5%' : `${volume}%`}</span>
             </button>
 
             {/* Minimize / Down Arrow button */}
