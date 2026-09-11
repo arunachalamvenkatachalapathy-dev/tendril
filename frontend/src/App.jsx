@@ -14,7 +14,6 @@ import HuntView from './components/HuntView.jsx';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
 import GeminiSprinkleLoader from './components/GeminiSprinkleLoader.jsx';
 import { InAppMusicPlayer } from './components/FeelSongsPlayer.jsx';
-import ThemeSelector from './components/ThemeSelector.jsx';
 import SettingsModal from './components/SettingsModal.jsx';
 import { useTheme } from './theme.js';
 import { VoiceProvider } from './voice/VoiceContext.jsx';

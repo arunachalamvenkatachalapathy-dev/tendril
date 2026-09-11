@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { signInWithGoogle, signInWithGoogleRedirect, signInAsGuest, auth } from '../firebase.js';
+import { signInWithGoogle, signInAsGuest } from '../firebase.js';
 import ThemeSelector from './ThemeSelector.jsx';
 import { useTheme } from '../theme.js';
 
@@ -23,8 +23,8 @@ export default function Login() {
       const isPopupBlocked = err?.code === 'auth/popup-blocked' || err?.message?.includes('popup');
       setError(
         isPopupBlocked
-          ? 'Google sign-in popup was blocked by your browser. Click "1-Click Guest Access" below to enter immediately.'
-          : (err?.message || 'Sign-in failed. Please try 1-Click Guest Access below.')
+          ? 'Sign-in popup was blocked. Please allow popups for this site, or use Guest Access below.'
+          : (err?.message || 'Failed to sign in. Please try again or use Guest Access.')
       );
     } finally {
       setLoading(false);
@@ -54,7 +54,8 @@ export default function Login() {
         window.dispatchEvent(new CustomEvent('tendril:localGuest', { detail: pseudoUser }));
         setError(null);
       } catch (fallbackErr) {
-        setError(err?.message || 'Could not start guest session.');
+        console.error('Fallback guest session creation failed:', fallbackErr);
+        setError(fallbackErr?.message || err?.message || 'Could not start guest session.');
       }
     } finally {
       setGuestLoading(false);
