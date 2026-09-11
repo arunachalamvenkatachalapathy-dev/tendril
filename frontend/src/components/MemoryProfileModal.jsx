@@ -86,7 +86,7 @@ export default function MemoryProfileModal({ onClose, entries = [], onOpenEntry 
               className={`google-pill-tab ${activeTab === 'universe' ? 'active' : ''}`}
               onClick={() => setActiveTab('universe')}
             >
-              🌌 Memory Universe
+              Memory Universe
             </button>
             <button
               className={`google-pill-tab ${activeTab === 'graph' ? 'active' : ''}`}

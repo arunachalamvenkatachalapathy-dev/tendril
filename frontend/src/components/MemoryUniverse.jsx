@@ -733,7 +733,7 @@ export default function MemoryUniverse({ entries = [], memoryData = null, onOpen
                     flexShrink: 0,
                   }} />
                   <span style={{ fontSize: '11px', color: '#a8c7fa', fontWeight: '600' }}>
-                    📅 {hoveredPlanet.dateStr}
+                    {hoveredPlanet.dateStr}
                   </span>
                   <span style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'capitalize' }}>
                     • {hoveredPlanet.mood}
@@ -794,10 +794,10 @@ export default function MemoryUniverse({ entries = [], memoryData = null, onOpen
                 flexWrap: 'wrap',
               }}>
                 <span style={{ background: 'rgba(255,255,255,0.04)', padding: '2px 6px', borderRadius: '4px' }}>
-                  💬 {hoveredPlanet.msgCount} turns
+                  {hoveredPlanet.msgCount} turns
                 </span>
                 <span style={{ background: 'rgba(255,255,255,0.04)', padding: '2px 6px', borderRadius: '4px' }}>
-                  🪐 {hoveredPlanet.classification}
+                  {hoveredPlanet.classification}
                 </span>
               </div>
 
@@ -922,7 +922,7 @@ export default function MemoryUniverse({ entries = [], memoryData = null, onOpen
                     fontSize: '11px',
                     fontWeight: '600',
                   }}>
-                    📅 {fullDate}
+                    {fullDate}
                   </span>
                   <span className="google-chip" style={{
                     background: 'rgba(255, 255, 255, 0.05)',

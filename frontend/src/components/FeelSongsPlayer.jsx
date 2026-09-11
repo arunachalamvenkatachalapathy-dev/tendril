@@ -1,107 +1,133 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 
 export const FEEL_SONGS = [
   {
     id: 'succession-focus',
-    title: 'Succession & Cinematic Piano Playlist',
-    artist: 'Nicholas Britell / Orchestral Continuous Stream',
+    title: 'Succession & Cinematic Piano',
+    artist: 'Nicholas Britell / Orchestral Stream',
     mood: 'energized',
     moodLabel: 'Cinematic & Drive',
-    emoji: '🎻',
     color: '#a8c7fa',
-    type: 'playlist',
-    playlistId: 'PLdisKgV_W5Z9f1uK6n9A-jX-H8p6J7f0e',
     videoId: 'jZq3m2jN1oU',
-    searchQuery: 'Succession OST and Cinematic Piano Playlist',
-    description: 'Dramatic classical piano cadence and orchestral suites for deep determination and problem solving.',
+    description: 'Dramatic classical piano cadence and orchestral suites for intense problem solving.',
   },
   {
     id: 'lofi-calm',
-    title: 'Lofi Beats to Reflect & Journal Playlist',
-    artist: 'Lofi Girl Official Continuous Playlist',
+    title: 'Lofi Beats to Reflect & Journal',
+    artist: 'Lofi Girl Continuous Live Stream',
     mood: 'calm',
     moodLabel: 'Calm & Warm',
-    emoji: '🌿',
     color: '#6dd58c',
-    type: 'playlist',
-    playlistId: 'PLofht4PTcKYnaH8w5olJCI-wUVxuoMHqM',
     videoId: 'jfKfP97GQzM',
-    searchQuery: 'lofi hip hop radio beats to relax study to playlist',
-    description: 'Cozy, gentle downtempo continuous beats to slow down mental chatter.',
+    description: 'Cozy, gentle downtempo continuous stream to quiet mental chatter.',
   },
   {
     id: 'interstellar-space',
-    title: 'Cosmic & Interstellar Ambient Playlist',
-    artist: 'Hans Zimmer / Ambient Space Continuous Suite',
+    title: 'Cosmic & Interstellar Ambient',
+    artist: 'Hans Zimmer / Deep Space Ambient',
     mood: 'hopeful',
     moodLabel: 'Cosmic Reflection',
-    emoji: '🌌',
     color: '#c58af9',
-    type: 'playlist',
-    playlistId: 'PLx0sYbCqOb8TBPRdmBHs5Iftvv9TPboYG',
     videoId: '45ETZ1CaVEw',
-    searchQuery: 'Interstellar Soundtrack and Deep Space Ambient Playlist',
     description: 'Expansive ethereal soundscapes designed for cosmic reflection and perspective.',
   },
   {
     id: 'rain-piano',
-    title: 'Peaceful Rain & Soft Piano Playlist',
-    artist: 'Rainy Day Cafe & Classical Ambient Stream',
+    title: 'Peaceful Rain & Soft Piano',
+    artist: 'Rainy Day Cafe & Classical Ambient',
     mood: 'calm',
     moodLabel: 'Peaceful Rain',
-    emoji: '🌧️',
     color: '#78a9ff',
-    type: 'playlist',
-    playlistId: 'PLQkQf10GEEwc4uH2W3s_j8B_m4S0y8Z4e',
     videoId: 'lTRiuFIWV54',
-    searchQuery: 'Peaceful Piano and Gentle Rain Relaxation Playlist',
-    description: 'Gentle raindrops with solitary piano melodies for introspection.',
+    description: 'Continuous soothing raindrops paired with solitary piano melodies for introspection.',
   },
   {
     id: 'alpha-waves',
-    title: 'Deep Focus & Flow State Playlist',
-    artist: 'Brainwave Lab / Alpha & Theta Waves Continuous',
+    title: 'Deep Focus & Flow State',
+    artist: 'Brainwave Lab / Alpha Waves Stream',
     mood: 'focused',
     moodLabel: 'Deep Flow',
-    emoji: '🧠',
     color: '#fdd663',
-    type: 'playlist',
-    playlistId: 'PLr4V_hVkhWbW7Fq6j0H1jN5E69H5B6B4L',
     videoId: 'WPni755-Krg',
-    searchQuery: 'Deep Focus Music Study Binaural Beats Alpha Waves Playlist',
-    description: 'Binaural frequencies to sustain unbroken focus during writing or reflection.',
+    description: 'Continuous binaural frequencies to sustain unbroken focus during writing or reflection.',
   },
   {
     id: 'morning-uplift',
-    title: 'Acoustic Warmth & Gentle Sunrise Playlist',
-    artist: 'Morning Acoustic Vibes & Coffeehouse Stream',
+    title: 'Acoustic Warmth & Gentle Sunrise',
+    artist: 'Morning Acoustic Vibes & Coffeehouse',
     mood: 'happy',
     moodLabel: 'Uplifting Clarity',
-    emoji: '🌅',
     color: '#ffb74d',
-    type: 'playlist',
-    playlistId: 'PL3-sRm8xAzY9P_s2F1Q8A7D9k3f5g7h1j',
     videoId: 'WJ3-F02-U_g',
-    searchQuery: 'Morning Acoustic Guitar Sunshine Relaxation Playlist',
     description: 'Bright, heartwarming acoustic picking to inspire optimism and clarity.',
   },
 ];
 
 /**
- * Constructs a YouTube playlist embed URL
+ * Extracts a YouTube Video ID or Playlist ID from any URL or raw string
+ */
+export function parseYouTubeInput(input) {
+  if (!input || typeof input !== 'string') return null;
+  const trimmed = input.trim();
+
+  // 1. Check for playlist URL
+  const listMatch = trimmed.match(/[?&]list=([a-zA-Z0-9_-]+)/);
+  if (listMatch) {
+    return { type: 'playlist', id: listMatch[1] };
+  }
+
+  // 2. Check for standard YouTube watch URL: v=...
+  const vMatch = trimmed.match(/[?&]v=([a-zA-Z0-9_-]{11})/);
+  if (vMatch) {
+    return { type: 'video', id: vMatch[1] };
+  }
+
+  // 3. Check for short link: youtu.be/...
+  const shortMatch = trimmed.match(/youtu\.be\/([a-zA-Z0-9_-]{11})/);
+  if (shortMatch) {
+    return { type: 'video', id: shortMatch[1] };
+  }
+
+  // 4. Check for embed link: /embed/...
+  const embedMatch = trimmed.match(/\/embed\/([a-zA-Z0-9_-]+)/);
+  if (embedMatch) {
+    return { type: embedMatch[1].startsWith('PL') ? 'playlist' : 'video', id: embedMatch[1] };
+  }
+
+  // 5. If it's a raw 11-char video ID or raw PL playlist ID
+  if (/^[a-zA-Z0-9_-]{11}$/.test(trimmed)) {
+    return { type: 'video', id: trimmed };
+  }
+  if (/^(PL|RD|UU)[a-zA-Z0-9_-]+$/.test(trimmed)) {
+    return { type: 'playlist', id: trimmed };
+  }
+
+  return { type: 'video', id: trimmed };
+}
+
+/**
+ * Constructs a verified embed URL
  */
 export function getEmbedUrl(track) {
   if (!track) return '';
+
+  // Custom user-pasted URL or ID
+  if (track.customUrl) {
+    const parsed = parseYouTubeInput(track.customUrl);
+    if (parsed) {
+      if (parsed.type === 'playlist') {
+        return 'https://www.youtube-nocookie.com/embed/videoseries?list=' + parsed.id + '&autoplay=1&enablejsapi=1&playsinline=1';
+      }
+      return 'https://www.youtube-nocookie.com/embed/' + parsed.id + '?autoplay=1&loop=1&playlist=' + parsed.id + '&enablejsapi=1&playsinline=1';
+    }
+  }
+
   if (track.playlistId) {
     return 'https://www.youtube-nocookie.com/embed/videoseries?list=' + track.playlistId + '&autoplay=1&enablejsapi=1&playsinline=1';
   }
-  if (track.searchQuery) {
-    return 'https://www.youtube-nocookie.com/embed?listType=search&list=' + encodeURIComponent(track.searchQuery) + '&autoplay=1&enablejsapi=1&playsinline=1';
-  }
-  if (track.videoId) {
-    return 'https://www.youtube-nocookie.com/embed/' + track.videoId + '?autoplay=1&loop=1&playlist=' + track.videoId + '&enablejsapi=1&playsinline=1';
-  }
-  return 'https://www.youtube-nocookie.com/embed?listType=search&list=' + encodeURIComponent(track.title || 'ambient playlist') + '&autoplay=1&enablejsapi=1&playsinline=1';
+
+  const vId = track.videoId || 'jfKfP97GQzM';
+  return 'https://www.youtube-nocookie.com/embed/' + vId + '?autoplay=1&loop=1&playlist=' + vId + '&enablejsapi=1&playsinline=1';
 }
 
 /**
@@ -111,7 +137,6 @@ export function playInAppMusic(trackOrQuery) {
   if (!trackOrQuery) return;
   let track = trackOrQuery;
   if (typeof trackOrQuery === 'string') {
-    // Search query or track title
     const found = FEEL_SONGS.find(s => 
       s.title.toLowerCase().includes(trackOrQuery.toLowerCase()) ||
       s.mood.toLowerCase().includes(trackOrQuery.toLowerCase())
@@ -122,7 +147,7 @@ export function playInAppMusic(trackOrQuery) {
 }
 
 /**
- * Boards of Feel Songs component for the dashboard & reflection
+ * Boards of Feel Songs component for dashboard
  */
 export function FeelSongsBoards({ onSelectSong, currentTrackId }) {
   return (
@@ -136,7 +161,10 @@ export function FeelSongsBoards({ onSelectSong, currentTrackId }) {
         marginBottom: '14px',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ fontSize: '18px' }}>🎧</span>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#a8c7fa" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M3 18v-6a9 9 0 0 1 18 0v6"/>
+            <path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/>
+          </svg>
           <h3 style={{ fontSize: '15px', fontWeight: '500', color: '#e3e3e3', margin: 0 }}>
             Feel Songs &amp; Mood Soundscapes
           </h3>
@@ -152,7 +180,7 @@ export function FeelSongsBoards({ onSelectSong, currentTrackId }) {
           </span>
         </div>
         <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-          Click any board banner to stream music directly in Tendril
+          Click any board to stream music or change links
         </span>
       </div>
 
@@ -207,9 +235,10 @@ export function FeelSongsBoards({ onSelectSong, currentTrackId }) {
                     border: '1px solid ' + song.color + '40',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '4px',
+                    gap: '5px',
+                    letterSpacing: '0.02em',
                   }}>
-                    <span>{song.emoji}</span>
+                    <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: song.color }} />
                     <span>{song.moodLabel}</span>
                   </span>
 
@@ -242,10 +271,10 @@ export function FeelSongsBoards({ onSelectSong, currentTrackId }) {
                 borderTop: '1px solid rgba(255, 255, 255, 0.06)',
               }}>
                 <span style={{ fontSize: '11px', color: isPlaying ? song.color : 'var(--text-dim)', fontWeight: '500' }}>
-                  {isPlaying ? '● Playing Playlist in App' : '▶ Play Playlist'}
+                  {isPlaying ? '● Playing in App' : 'Play Track'}
                 </span>
                 <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                  Continuous Playlist
+                  Continuous Stream
                 </span>
               </div>
             </div>
@@ -257,13 +286,45 @@ export function FeelSongsBoards({ onSelectSong, currentTrackId }) {
 }
 
 /**
- * Floating / Docked In-App Music Player Banner
+ * In-App Music Player Banner with Change Link Option
  */
 export function InAppMusicPlayer({ track, onClose }) {
   const [isMinimized, setIsMinimized] = useState(false);
-  const [isPlaying, setIsPlaying] = useState(true);
+  const [showChangeModal, setShowChangeModal] = useState(false);
+  const [customInput, setCustomInput] = useState('');
+  const [activeTrack, setActiveTrack] = useState(track);
 
-  if (!track) return null;
+  useEffect(() => {
+    if (track) setActiveTrack(track);
+  }, [track]);
+
+  if (!activeTrack) return null;
+
+  function handleApplyCustomUrl(e) {
+    e?.preventDefault();
+    if (!customInput.trim()) return;
+    const parsed = parseYouTubeInput(customInput.trim());
+    if (!parsed) return;
+
+    const newTrack = {
+      ...activeTrack,
+      id: 'custom-' + Date.now(),
+      title: 'Custom YouTube Stream',
+      artist: 'User Link',
+      customUrl: customInput.trim(),
+      videoId: parsed.type === 'video' ? parsed.id : null,
+      playlistId: parsed.type === 'playlist' ? parsed.id : null,
+      moodLabel: 'Custom Music',
+    };
+    setActiveTrack(newTrack);
+    setShowChangeModal(false);
+    setCustomInput('');
+  }
+
+  function handleSelectPreset(preset) {
+    setActiveTrack(preset);
+    setShowChangeModal(false);
+  }
 
   return (
     <div
@@ -273,9 +334,9 @@ export function InAppMusicPlayer({ track, onClose }) {
         bottom: '24px',
         right: '24px',
         zIndex: 99998,
-        maxWidth: isMinimized ? '320px' : '440px',
+        maxWidth: isMinimized ? '340px' : '460px',
         width: 'calc(100vw - 48px)',
-        background: 'rgba(15, 18, 26, 0.95)',
+        background: 'rgba(15, 18, 26, 0.96)',
         backdropFilter: 'blur(16px)',
         border: '1px solid rgba(168, 199, 250, 0.3)',
         borderRadius: '16px',
@@ -295,7 +356,11 @@ export function InAppMusicPlayer({ track, onClose }) {
         borderBottom: isMinimized ? 'none' : '1px solid rgba(255, 255, 255, 0.08)',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
-          <span style={{ fontSize: '16px' }}>{track.emoji || '🎵'}</span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#a8c7fa" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+            <path d="M9 18V5l12-2v13"/>
+            <circle cx="6" cy="18" r="3"/>
+            <circle cx="18" cy="16" r="3"/>
+          </svg>
           <div style={{ minWidth: 0 }}>
             <div style={{
               fontSize: '12.5px',
@@ -305,23 +370,47 @@ export function InAppMusicPlayer({ track, onClose }) {
               overflow: 'hidden',
               textOverflow: 'ellipsis',
             }}>
-              {track.title}
+              {activeTrack.title}
             </div>
             <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-              Playing in Tendril • {track.moodLabel || 'Feel Songs'}
+              Playing in Tendril • {activeTrack.moodLabel || 'Feel Songs'}
             </div>
           </div>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+          {/* Change Track / Custom URL Button */}
+          <button
+            onClick={() => setShowChangeModal(v => !v)}
+            title="Change music or paste any YouTube URL"
+            style={{
+              background: showChangeModal ? 'rgba(168, 199, 250, 0.25)' : 'rgba(255, 255, 255, 0.06)',
+              border: '1px solid rgba(168, 199, 250, 0.3)',
+              color: '#c7d8ff',
+              borderRadius: '9999px',
+              padding: '2px 8px',
+              fontSize: '11px',
+              fontWeight: '500',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+              transition: 'all 0.15s ease',
+            }}
+          >
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+            </svg>
+            <span>Change</span>
+          </button>
+
           {/* Equalizer animation */}
-          {isPlaying && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '2px', marginRight: '6px' }}>
-              <span className="soundwave-bar bar-1" />
-              <span className="soundwave-bar bar-2" />
-              <span className="soundwave-bar bar-3" />
-            </div>
-          )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '2px', marginLeft: '4px', marginRight: '4px' }}>
+            <span className="soundwave-bar bar-1" />
+            <span className="soundwave-bar bar-2" />
+            <span className="soundwave-bar bar-3" />
+          </div>
 
           {/* Minimize / Expand Toggle */}
           <button
@@ -370,6 +459,69 @@ export function InAppMusicPlayer({ track, onClose }) {
         </div>
       </div>
 
+      {/* Change Music Input Dropdown Form */}
+      {showChangeModal && (
+        <div style={{
+          padding: '12px 14px',
+          background: '#121622',
+          borderBottom: '1px solid rgba(168, 199, 250, 0.2)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '8px',
+        }}>
+          <div style={{ fontSize: '11.5px', color: '#a8c7fa', fontWeight: '500' }}>
+            Paste any YouTube video or playlist link:
+          </div>
+          <form onSubmit={handleApplyCustomUrl} style={{ display: 'flex', gap: '6px' }}>
+            <input
+              type="text"
+              value={customInput}
+              onChange={(e) => setCustomInput(e.target.value)}
+              placeholder="https://www.youtube.com/watch?v=... or playlist ID"
+              style={{
+                flex: 1,
+                padding: '6px 10px',
+                fontSize: '12px',
+                background: 'rgba(255, 255, 255, 0.06)',
+                border: '1px solid var(--border-subtle)',
+                borderRadius: '8px',
+                color: '#fff',
+                outline: 'none',
+              }}
+            />
+            <button
+              type="submit"
+              className="btn-google-primary"
+              style={{ padding: '6px 12px', fontSize: '12px', borderRadius: '8px', whiteSpace: 'nowrap' }}
+            >
+              Play Link
+            </button>
+          </form>
+
+          {/* Quick Preset Selector */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', marginTop: '4px' }}>
+            {FEEL_SONGS.map((s) => (
+              <button
+                key={s.id}
+                type="button"
+                onClick={() => handleSelectPreset(s)}
+                style={{
+                  padding: '3px 8px',
+                  borderRadius: '9999px',
+                  background: activeTrack.id === s.id ? 'rgba(168, 199, 250, 0.2)' : 'rgba(255, 255, 255, 0.04)',
+                  border: activeTrack.id === s.id ? '1px solid #a8c7fa' : '1px solid var(--border-subtle)',
+                  color: activeTrack.id === s.id ? '#a8c7fa' : 'var(--text-secondary)',
+                  fontSize: '10.5px',
+                  cursor: 'pointer',
+                }}
+              >
+                {s.title.split('&')[0].trim()}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Embedded YouTube Player — NEVER unmounted so audio runs continuously until app is closed */}
       <div
         style={{
@@ -384,10 +536,11 @@ export function InAppMusicPlayer({ track, onClose }) {
         }}
       >
         <iframe
+          key={activeTrack.id || activeTrack.videoId || activeTrack.customUrl}
           width="100%"
           height="180"
-          src={getEmbedUrl(track)}
-          title={track.title}
+          src={getEmbedUrl(activeTrack)}
+          title={activeTrack.title}
           frameBorder="0"
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
           allowFullScreen
@@ -397,3 +550,4 @@ export function InAppMusicPlayer({ track, onClose }) {
     </div>
   );
 }
+

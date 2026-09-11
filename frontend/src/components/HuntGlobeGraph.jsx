@@ -752,14 +752,14 @@ export default function HuntGlobeGraph({
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
                   <span className="google-chip" style={{ background: 'rgba(192, 132, 252, 0.15)', color: '#c084fc', borderColor: 'rgba(192, 132, 252, 0.4)' }}>
-                    ✨ Connected Idea Across Days: #{activeConnection.sharedConcept}
+                    Connected Idea Across Days: #{activeConnection.sharedConcept}
                   </span>
                   <button onClick={() => setActiveConnection(null)} className="btn-google-icon" style={{ width: '24px', height: '24px' }}>✕</button>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '12px', marginTop: '10px' }}>
                   <div style={{ padding: '12px', background: 'rgba(0,0,0,0.25)', borderRadius: '10px' }}>
                     <div style={{ fontSize: '11px', color: '#6dd58c', marginBottom: '4px' }}>
-                      📅 {activeConnection.nodeA.dayLabel}
+                      {activeConnection.nodeA.dayLabel}
                     </div>
                     <div style={{ fontSize: '13px', color: '#e3e3e3', fontWeight: '500' }}>
                       {activeConnection.nodeA.entryTitle}
@@ -780,7 +780,7 @@ export default function HuntGlobeGraph({
 
                   <div style={{ padding: '12px', background: 'rgba(0,0,0,0.25)', borderRadius: '10px' }}>
                     <div style={{ fontSize: '11px', color: '#6dd58c', marginBottom: '4px' }}>
-                      📅 {activeConnection.nodeB.dayLabel}
+                      {activeConnection.nodeB.dayLabel}
                     </div>
                     <div style={{ fontSize: '13px', color: '#e3e3e3', fontWeight: '500' }}>
                       {activeConnection.nodeB.entryTitle}
@@ -818,7 +818,7 @@ export default function HuntGlobeGraph({
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <span className="google-chip" style={{ background: 'rgba(109, 213, 140, 0.15)', color: '#6dd58c' }}>
-                      📅 {selectedNode.dayLabel}
+                      {selectedNode.dayLabel}
                     </span>
                     <span style={{ fontSize: '13px', color: '#e3e3e3', fontWeight: '500' }}>
                       {selectedNode.entryCount} reflection{selectedNode.entryCount > 1 ? 's' : ''} logged
@@ -903,7 +903,7 @@ export default function HuntGlobeGraph({
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
                   <span style={{ fontSize: '13.5px', fontWeight: '600', color: '#a8c7fa' }}>
-                    🌐 Hunt Origin
+                    Hunt Origin
                   </span>
                   <button onClick={() => setSelectedNode(null)} className="btn-google-icon" style={{ width: '24px', height: '24px' }}>✕</button>
                 </div>

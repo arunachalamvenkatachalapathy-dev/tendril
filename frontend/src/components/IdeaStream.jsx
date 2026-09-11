@@ -267,7 +267,7 @@ export default function IdeaStream({ ideas = [] }) {
               {/* Nudge */}
               {synthesis.nudge && (
                 <p style={{ fontSize: '12px', color: 'var(--text-secondary)', fontStyle: 'italic', margin: 0, lineHeight: '1.5' }}>
-                  💬 {synthesis.nudge}
+                  {synthesis.nudge}
                 </p>
               )}
 
